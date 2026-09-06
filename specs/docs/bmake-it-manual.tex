@@ -1,0 +1,908 @@
+\documentclass[11pt]{report}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{parskip}
+\usepackage{enumitem}
+\usepackage{longtable}
+\usepackage{booktabs}
+\usepackage{seqsplit}
+\usepackage{tocloft}
+
+\lstdefinelanguage{bmake}{
+  morecomment=[l]{\#},
+  morestring=[b]",
+  sensitive=true
+}
+\lstset{
+  basicstyle=\ttfamily\small,
+  breaklines=true,
+  frame=single,
+  framesep=3pt,
+  columns=fullflexible,
+  backgroundcolor=\color{black!3}
+}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!50!black,
+  urlcolor=blue!50!black
+}
+
+\title{\textbf{Bmake It}\\[0.3em]\large A BSD-Make-Based Cross-Platform Build System\\[0.3em]\normalsize Package Documentation}
+\author{Draft v1}
+\date{\today}
+
+\newcommand{\reqfoot}[1]{\footnote{\footnotesize\seqsplit{#1}}}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+This document describes \texttt{Bmake It}, a BSD-make-based build
+system for C, C++, and lex/yacc grammar sources, designed to mimic the
+conceptual model of Dassault Systèmes' RADE/\texttt{mkmk} tool
+(workspaces, frameworks, modules, prerequisites) while reusing real BSD
+make infrastructure wherever it fits\reqfoot{CON-use-bsdmake}. Every
+substantive claim in this document is footnoted with the requirement,
+decision, or constraint alias from the project's discovery-driven
+design record (\texttt{project-model/}) that established it, so any
+statement here can be traced back to its origin and rationale.
+
+This is a \emph{draft} document, written while the design is still
+being finalized; sections marked \textbf{[open]} describe areas where
+the underlying design is intentionally still undecided or deferred.
+\end{abstract}
+
+\tableofcontents
+
+%===============================================================
+\chapter{Overview}
+%===============================================================
+
+\section{What Bmake It Is}
+
+\texttt{Bmake It} is a cross-platform build system for C and C++
+(plus lex/yacc grammar sources, which compile down to C/C++)\reqfoot{REQ-supported-languages},
+built on top of real BSD make rather than GNU make or a bespoke build
+tool. Its object model — \emph{workspaces} containing \emph{frameworks}
+containing \emph{modules} — is deliberately modeled on Dassault
+Systèmes' RADE/\texttt{mkmk} tool, a CAA (Component Application
+Architecture) build system used internally at Dassault Systèmes since
+the late 1990s. Where \texttt{mkmk}'s specific mechanisms don't fit
+BSD make's own idioms well, \texttt{Bmake It} diverges deliberately
+rather than reproducing them exactly\reqfoot{CON-use-bsdmake}.
+
+Three mechanisms present in real \texttt{mkmk} are explicitly
+\emph{not} carried over, by design rather than oversight:
+
+\begin{itemize}
+\item No dedicated ``identity card'' special file for declaring
+  prerequisites — prerequisites are declared directly in the ordinary
+  framework \verb|makefile|\reqfoot{NREQ-no-identitycard-special-file}.
+\item No four-level RADE header hierarchy (Public / Protected /
+  Private / Local) — \texttt{Bmake It} uses a simpler three-level
+  scheme instead, described in Chapter~\ref{ch:basic-usage}\reqfoot{NREQ-no-four-level-header-visibility}.
+\item No \texttt{mkGetPreq}/\texttt{mkCopyPreq}-style commands for
+  managing prerequisite search paths — prerequisite resolution is
+  purely dynamic, with no static-copy mode and no dedicated setup
+  command\reqfoot{NREQ-no-copy-preq-commands}.
+\end{itemize}
+
+\section{Design Philosophy}
+
+The guiding principle throughout is: \emph{reuse real BSD make
+variables and mechanisms wherever they already exist; introduce new,
+project-specific ones only where BSD make genuinely has no
+equivalent.} This shows up consistently:
+
+\begin{itemize}
+\item Target selection reuses BSD make's own \verb|TARGET=|/\verb|TARGET_ARCH=|
+  convention rather than inventing new names\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req}.
+\item Installation reuses \verb|DESTDIR| unchanged; \verb|PREFIX|, it
+  turns out, is not actually a native BSD make concept at all (see
+  Section~\ref{sec:validation})\reqfoot{REQ-prefix-is-new-not-reused-req}.
+\item Compile and link flags (\verb|CFLAGS|, \verb|CXXFLAGS|,
+  \verb|LDFLAGS|, \verb|YFLAGS|, \verb|LFLAGS|) are the ordinary BSD
+  make variables, extended via \verb|+=| — no wrapper macros the way
+  real \texttt{mkmk} used \verb|LOCAL_CFLAGS|-style
+  names\reqfoot{REQ-flags-reuse-bsd-native-vars-req}.
+\item Debug-vs-release is controlled via BSD make's own
+  \verb|DEBUG_FLAGS|, not a new \verb!MODE=debug|release! abstraction\reqfoot{REQ-debug-release-via-native-bsd-flags-req}.
+\item Shared-library versioning reuses \verb|SHLIB_MAJOR|/\verb|SHLIB_MINOR|
+  directly from real \verb|bsd.lib.mk|\reqfoot{REQ-shlib-major-minor-cross-platform-emission-req}.
+\end{itemize}
+
+New, project-specific concepts (\verb|PARENT_WS|, \verb|PREREQS|,
+\verb|PROG|, \verb|LIB|, \verb|LIBS|, \verb|LIB_SHARED|, \verb|INCL|,
+\verb|TOOLCHAIN|) exist only for domain concepts BSD make has no
+native equivalent for at all — workspace parenting, framework
+prerequisites, module identity, linking, header promotion, and
+toolchain bundle selection\reqfoot{REQ-uniform-makefile-filename-req}.
+
+\textbf{This reuse-first philosophy has real, tested limits.} An
+empirical validation pass against real FreeBSD \verb|share/mk| and a
+portable \texttt{bmake} binary found that several assumed
+``native reuse'' cases were actually wrong: \verb|LIB_SHARED| has no
+native BSD-make equivalent at all (real \verb|bsd.lib.mk| builds a
+static archive whenever \verb|LIB| is set, and \emph{additionally}
+builds a shared library only if \verb|SHLIB_MAJOR| is
+present)\reqfoot{REQ-lib-shared-is-new-not-reused-req}, \verb|PREFIX|
+does not exist in \verb|bsd.prog.mk|/\verb|bsd.lib.mk| at
+all\reqfoot{REQ-prefix-is-new-not-reused-req}, and
+\verb|TARGET|/\verb|TARGET_ARCH| have no effect whatsoever without
+FreeBSD's full base-system build machinery, which a standalone project
+does not have\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req}.
+These corrections are described in Section~\ref{sec:validation} and
+are already reflected in the macro reference in
+Chapter~\ref{ch:advanced}.
+
+\section{The Domain Model}
+\label{sec:domain-model}
+
+\begin{description}
+\item[Workspace] A set of frameworks\reqfoot{REQ-workspace-is-set-of-frameworks}.
+  A workspace may declare an ordered list of \emph{parent} workspaces;
+  the build searches them, in declared order, for anything not found
+  locally\reqfoot{REQ-workspace-parent-search-order}. This search is
+  purely dynamic — there is no physical-copy mode and no separate
+  setup command, unlike real \texttt{mkmk}'s
+  \texttt{mkGetPreq}/\texttt{mkCopyPreq}\reqfoot{DEC-prereq-access-dynamic-only}.
+  A workspace carries no resource files of its
+  own\reqfoot{NREQ-no-workspace-level-share-source}.
+
+\item[Framework] Contains one or more modules, exposes public headers,
+  and declares its prerequisite frameworks\reqfoot{REQ-framework-contains-modules}.
+  A framework's prerequisite declaration is \emph{mandatory}, even when
+  empty — its presence is what makes a directory auto-discoverable as
+  a framework in the first place\reqfoot{REQ-prereqs-mandatory-even-empty-req}.
+
+\item[Module] The basic link unit: a module produces exactly one
+  executable, static library, or shared
+  library\reqfoot{REQ-module-is-basic-link-unit}. A module's directory
+  is named \verb|NAME.m|\reqfoot{REQ-module-dir-naming-convention}, and
+  modules are auto-discovered by scanning — no explicit list is
+  maintained by hand\reqfoot{REQ-modules-and-frameworks-auto-discovered-req}.
+
+\item[Resource files] Non-source runtime data (icons, configuration
+  files, and similar), carried by both modules and
+  frameworks\reqfoot{REQ-resource-file-model}, staged through a
+  three-layer \verb|share/| overlay described in
+  Section~\ref{sec:resources}.
+\end{description}
+
+\section{Platform and Language Scope}
+
+\textbf{Languages}: C, C++, and lex/yacc grammar sources. Java,
+Fortran, IDL, and Express — all supported by real \texttt{mkmk} — are
+explicitly out of scope for now\reqfoot{REQ-supported-languages}.
+
+\textbf{Hosts}: macOS (via MacPorts), Linux, and the \texttt{*BSD}
+family\reqfoot{CON-cross-platform-targets}, plus Cygwin and WSL treated
+as \texttt{*NIX}-like build hosts (WSL is, for build purposes, simply
+Linux; no native MSVC toolchain is required)\reqfoot{REQ-windows-hosts-cygwin-wsl}.
+
+\textbf{Phase 1} — the concrete, currently-targeted scope — is exactly
+four build targets\reqfoot{REQ-phase1-concrete-targets}:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Target key & Meaning \\
+\midrule
+\verb|macos-arm64| & macOS, Apple Silicon, LLVM (default toolchain) \\
+\verb|macos-arm64-gcc| & macOS, Apple Silicon, GCC \\
+\verb|freebsd-amd64| & FreeBSD, x86-64, LLVM (default toolchain) \\
+\verb|freebsd-amd64-gcc| & FreeBSD, x86-64, GCC \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Everything outside this set — OpenBSD/NetBSD, per-distribution Linux
+labeling, kernel-level or Darwin/XNU development, macOS \texttt{.app}
+bundle output, the exact \texttt{win} ABI story (MinGW vs.\ Cygwin vs.\
+MSVC), musl libc — is deliberately deferred, not designed against yet\reqfoot{REQ-userland-only-scope}.
+
+%===============================================================
+\chapter{Basic Usage}
+\label{ch:basic-usage}
+%===============================================================
+
+This chapter covers the minimum needed to create a workspace, populate
+it with a framework and a module, and build it.
+
+\section{Directory Layout at a Glance}
+
+Every level of the hierarchy — workspace, framework, module — uses a
+file literally named \verb|makefile| (not \verb|makefile.mk|), which
+\verb|.include|s a role-specific helper file, mirroring the way real
+BSD make's own \verb|bsd.prog.mk|/\verb|bsd.lib.mk| work\reqfoot{REQ-uniform-makefile-filename-req}:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Level & Makefile contents (first line) & Key macro(s) \\
+\midrule
+Workspace & \verb|.include <mk.workspace.mk>| & \verb|PARENT_WS=| \\
+Framework & \verb|.include <mk.framework.mk>| & \verb|PREREQS=| \\
+Module (executable) & \verb|.include <mk.prog.mk>| & \verb|PROG=|, \verb|LIBS=| \\
+Module (library) & \verb|.include <mk.lib.mk>| & \verb|LIB=|, \verb|LIB_SHARED=|, \verb|LIBS=| \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Creating a Workspace}
+
+A workspace is just a directory containing a \verb|makefile|:
+
+\begin{lstlisting}[language=bmake]
+.include <mk.workspace.mk>
+PARENT_WS=/abs/path/to/parent-ws-1 /abs/path/to/parent-ws-2
+\end{lstlisting}
+
+\verb|PARENT_WS| is an ordered, space-delimited list of \textbf{absolute}
+paths to parent workspaces\reqfoot{REQ-workspace-parent-macro-absolute-req}
+— relative paths were explicitly considered and rejected as too
+fragile. If left empty, the workspace has no parents and everything it
+needs must live inside it. Frameworks inside the workspace are
+auto-discovered: any immediate subdirectory containing a \verb|makefile|
+that declares \verb|PREREQS=| is treated as a
+framework\reqfoot{REQ-framework-discovery-signal-req}; there is no
+explicit list to maintain.
+
+\section{Creating a Framework}
+
+A framework is a directory (any name — no special suffix, unlike
+modules) containing its own \verb|makefile|:
+
+\begin{lstlisting}[language=bmake]
+.include <mk.framework.mk>
+PREREQS=System
+\end{lstlisting}
+
+\verb|PREREQS=| is \textbf{mandatory even when empty}
+(\verb|PREREQS=| with nothing after it is valid and means ``no
+prerequisites'')\reqfoot{REQ-prereqs-mandatory-even-empty-req} — this
+is not merely documentation, it is the literal signal the workspace
+uses to recognize the directory as a framework at all. The list is
+ordered, all entries are implicitly public (there is no per-entry
+visibility qualifier the way real \texttt{mkmk}'s identity card
+distinguished Public/Protected/Private), and \verb|Bmake It| does
+\emph{not} validate the ordering or detect
+cycles\reqfoot{REQ-framework-prereqs-macro-req}: an incorrectly
+ordered or cyclic \verb|PREREQS| list simply surfaces later as an
+ordinary ``header not found'' compile
+error\reqfoot{REQ-prereqs-misorder-no-validation-req}.
+
+A framework has three directories for hand-written headers,
+described fully in Section~\ref{sec:headers}, and an optional
+\verb|share/| directory for resources (Section~\ref{sec:resources}).
+
+\section{Creating a Module}
+
+A module's directory is always named \verb|NAME.m|; \verb|NAME| also
+becomes the default output name if not overridden\reqfoot{REQ-module-dir-naming-convention, REQ-prog-lib-default-to-module-name-req}.
+Whether \verb|NAME.m| and \verb|name.m| are distinct depends entirely
+on the host filesystem's own case sensitivity — \texttt{Bmake It}
+does not itself enforce or normalize case\reqfoot{REQ-module-name-case-sensitivity-req}.
+
+\subsection*{An executable module}
+\begin{lstlisting}[language=bmake]
+.include <mk.prog.mk>
+PROG=hello        # optional -- defaults to the directory name
+LIBS=greet        # link-time only, space-delimited
+\end{lstlisting}
+
+\subsection*{A library module}
+\begin{lstlisting}[language=bmake]
+.include <mk.lib.mk>
+LIB=greet             # optional -- defaults to the directory name
+LIB_SHARED=YES        # default; LIB_SHARED=NO builds a static archive instead
+LIBS=
+\end{lstlisting}
+
+\verb|LIB_SHARED| defaults to \verb|YES|;
+setting it explicitly to \verb|NO| builds a static/archive library
+instead\reqfoot{REQ-lib-shared-is-new-not-reused-req}. \textbf{Important, and
+confirmed by empirical testing against real \texttt{bsd.lib.mk}}: this
+\verb|YES|/\verb|NO| toggle is not itself a native BSD make mechanism
+— real \verb|bsd.lib.mk| unconditionally builds a static archive
+whenever \verb|LIB| is set, and additionally builds a shared library
+only when \verb|SHLIB_MAJOR| is also present. \texttt{Bmake It}'s
+\verb|mk.lib.mk| implements the \verb|LIB_SHARED| abstraction on top of
+that native behavior\reqfoot{REQ-lib-shared-is-new-not-reused-req}.
+
+A module's \verb|src/| directory is scanned automatically: every
+source file physically present there is treated as compilation input,
+with no \verb|SRCS=|-style list to maintain by
+hand\reqfoot{REQ-module-src-auto-discovery}. \verb|.y| and \verb|.l|
+(yacc and lex) files are compiled through the same automatic
+mechanism, confirmed working via built-in suffix transformation rules
+with zero explicit rule declarations\reqfoot{OBS-validation-yacc-lex-suffix-rules-confirmed}.
+
+\verb|LIBS=| lists other modules or system libraries this module links
+against. It is \textbf{purely a link-time instruction} and has no
+effect whatsoever on header visibility, even for sibling modules in
+the same framework\reqfoot{REQ-libs-macro-link-only-headers-via-prereqs-req}
+— see Section~\ref{sec:headers} for how header visibility actually
+works.
+
+\section{Header Visibility}
+\label{sec:headers}
+
+Headers have exactly three visibility levels\reqfoot{REQ-three-level-header-visibility-req}:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Level & Directory & Visible to \\
+\midrule
+Public & \verb|fw/include/| & Any framework declaring this one in \verb|PREREQS=| \\
+Framework-internal & \verb|fw/local/include/| & All of this framework's own modules \\
+Module-private & \verb|module.m/include/| & Only that module's own source files \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Header visibility is resolved \textbf{exclusively} through the
+containing framework's \verb|PREREQS=| declaration — never through a
+module's \verb|LIBS=|\reqfoot{REQ-headers-resolved-from-source-req}.
+This is a genuine, deliberate design point worth internalizing: a
+module can link against a library via \verb|LIBS=| while remaining
+completely unable to see that library's headers, if the containing
+frameworks aren't in a \verb|PREREQS=| relationship. Headers are
+always read directly from source (\verb|include/| directories) —
+never from build output — because headers are plain text and don't
+need per-target staging the way compiled artifacts
+do\reqfoot{REQ-headers-resolved-from-source-req}. The one exception is
+\emph{generated} headers (from yacc/lex), covered in
+Section~\ref{sec:generated-headers}.
+
+\section{Building}
+
+Run \verb|make| in a module directory to build just that module, in a
+framework directory to build all its modules, or at the workspace root
+to build everything. Modules and frameworks are auto-discovered by
+scanning — modules via the \verb|.m| suffix, frameworks via the
+\verb|makefile|+\verb|PREREQS=| signal\reqfoot{REQ-modules-and-frameworks-auto-discovered-req}.
+
+The build strategy is \emph{fused}: each module compiles, generates
+headers if applicable, and links in one pass — matching real
+\verb|bsd.*.mk| idiom directly, rather than a global
+compile-everything-then-link-everything
+split\reqfoot{REQ-fused-build-per-module-full-dependency-order-req}.
+Build order across frameworks follows the \verb|PREREQS=| dependency
+graph; build order across sibling modules follows the \verb|LIBS=|
+graph plus any consumed generated-header
+dependency\reqfoot{REQ-framework-build-order-follows-prereqs-graph-req, REQ-fused-build-per-module-full-dependency-order-req}.
+The concrete mechanism generating this order — confirmed by a working
+prototype, not merely designed on paper — is described in
+Section~\ref{sec:dep-order}.
+
+\begin{lstlisting}[language=bash]
+$ cd myworkspace/Hello
+$ make                    # builds every module in Hello, in dependency order
+$ cd hello.m
+$ make                    # builds just this one module
+\end{lstlisting}
+
+\section{Cleaning and Installing}
+
+\verb|make clean| removes \textbf{every} generated artifact for the
+selected target — not just the compiled binaries, but also the
+\verb|distrib/| packaging staging area, per-module \verb|.depend|
+files, and the internal dependency-resolution
+caches\reqfoot{REQ-clean-removes-all-derived-artifacts-req}. After
+\verb|make clean TARGET=all|, the tree should be indistinguishable
+from a fresh checkout.
+
+\verb|make install DESTDIR=<staging-root> PREFIX=<final-path>| copies
+the built \verb|bin|/\verb|lib|/\verb|share| content into
+\verb|$(DESTDIR)$(PREFIX)|. \verb|DESTDIR| is confirmed genuinely
+native to BSD make. \verb|PREFIX|, however, is \textbf{not} — testing
+found zero references to it anywhere in real
+\verb|bsd.own.mk|/\verb|bsd.prog.mk|/\verb|bsd.lib.mk|; real FreeBSD
+base-system installs use hardcoded individual \verb|*DIR| variables
+(\verb|BINDIR|, \verb|LIBDIR|, etc.) directly rather than a single
+unifying \verb|PREFIX| the way GNU autotools or MacPorts do it.
+\texttt{Bmake It}'s \verb|mk.prog.mk|/\verb|mk.lib.mk| derive those
+\verb|*DIR| variables from \verb|PREFIX=| themselves\reqfoot{REQ-prefix-is-new-not-reused-req}.
+It requires the target to already be built — it will not implicitly
+trigger a build for you\reqfoot{REQ-install-requires-prebuilt-target-req}.
+\textbf{Note}: confirmed by testing against both real FreeBSD and
+NetBSD's own \verb|share/mk|, BSD make's \verb|install| does not
+auto-create missing \verb|DESTDIR| parent
+directories\reqfoot{OBS-validation-destdir-native-prefix-is-not} — the
+destination tree must already exist.
+
+%===============================================================
+\chapter{Advanced Features}
+\label{ch:advanced}
+%===============================================================
+
+\section{Target Selection and Cross-Compilation}
+
+The full target key has the shape
+\verb|<os>-<arch>[-<toolchain>][-<abi>]|, with each bracketed segment
+omitted whenever it equals that platform's default\reqfoot{REQ-target-key-omit-defaults-req}:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Segment & Default (omitted) & Shown when non-default \\
+\midrule
+Toolchain & \verb|llvm| & \verb|gcc| \\
+ABI/libc & \verb|msvc| (win); \verb|glibc| (linux) & \verb|mingw|, \verb|cygwin|; \verb|musl| \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+On the command line:
+\begin{lstlisting}[language=bash]
+$ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
+\end{lstlisting}
+
+\verb|TARGET=| and \verb|TARGET_ARCH=| reuse real BSD make's own
+FreeBSD cross-build variable names\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req};
+\verb|TOOLCHAIN=| is new, since BSD make has no native concept of a
+toolchain \emph{bundle} (compiler, linker, and archiver selected
+together)\reqfoot{REQ-toolchain-cli-variable-req}. Setting
+\verb|TOOLCHAIN=| \verb|.include|s a dedicated
+\verb|mk.toolchain.<name>.mk|, which sets \verb|CC|/\verb|CXX|/\verb|LD|/\verb|AR|/\verb|AS|
+as a coherent bundle; these remain individually overridable afterward
+for mixed setups (e.g.\ Clang with GNU \verb|ld|)\reqfoot{REQ-toolchain-triggers-dedicated-mk-file-req}.
+
+\textbf{A significant, empirically-confirmed correction}: unlike most
+of the variables reused directly from BSD make,
+\verb|TARGET|/\verb|TARGET_ARCH| do \emph{not} come with working
+cross-compilation ``for free.'' Testing against real FreeBSD
+\verb|share/mk| showed that setting \verb|TARGET_ARCH=arm64| on an
+\texttt{amd64} host still produced a plain \texttt{x86-64} binary —
+these variables are inert without FreeBSD's base-system
+\verb|Makefile.inc1|/\verb|buildworld| machinery, which a standalone
+project does not have\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req}.
+Further investigation across the whole BSD-make family (FreeBSD,
+NetBSD, and generic portable \texttt{pmake}) found the identical
+pattern everywhere: real cross-compilation always happens via an
+\emph{external orchestration layer}, with \verb|TARGET|/\verb|TARGET_ARCH|-style
+variables used only as \emph{data} for architecture-conditional
+branching, never as a trigger that itself selects a compiler binary.
+Consequently, \verb|mk.toolchain.<name>.mk| must itself map
+\verb|(TARGET, TARGET_ARCH, TOOLCHAIN)| combinations to concrete
+compiler paths\reqfoot{REQ-toolchain-mk-must-set-explicit-cc-paths-req, OBS-validation-cross-compile-is-external-orchestration-everywhere}.
+
+\section{Resource Files}
+\label{sec:resources}
+
+Both modules and frameworks may carry a \verb|share/| directory for
+non-source runtime data\reqfoot{REQ-resource-file-model}. Resources
+support per-target variants via a three-level fallback hierarchy:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Directory & Applies to \\
+\midrule
+\verb|share/common/| & Every target, unconditionally \\
+\verb|share/<os>/| & All architectures of one OS (e.g.\ \verb|share/freebsd/|) \\
+\verb|share/<os>_<arch>/| & One specific OS+architecture pairing \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Staging is a \textbf{layered overlay copy}, not a
+pick-one-directory selection: \verb|common/| copies first, then
+\verb|<os>/| on top of it (overwriting same-named files), then
+\verb|<os>_<arch>/| on top of that\reqfoot{REQ-share-overlay-copy-order}.
+Files unique to any one layer survive regardless; only files present
+at multiple layers end up as the most specific version. Unlike the
+compiled-artifact target key, the resource fallback key is
+\textbf{OS+architecture only} — toolchain never affects which resource
+variant is selected\reqfoot{REQ-share-dir-fallback-hierarchy}.
+
+\section{Generated Headers}
+\label{sec:generated-headers}
+
+Headers produced by tooling (yacc/lex output, for
+example) don't exist until the build runs, so they can't live in
+\verb|include/| as source. They are, by default, \textbf{private} to
+the generating module, landing in
+\verb|module/build/<KEY>/include/|\reqfoot{REQ-generated-headers-in-build-tree-req}.
+
+A module promotes specific generated headers to public visibility via
+\verb|INCL=|:
+\begin{lstlisting}[language=bmake]
+INCL=grammar.h
+\end{lstlisting}
+On build, the listed headers are copied up into
+\verb|fw/build/<KEY>/include/| — a framework-level directory
+containing \textbf{only} promoted generated headers, never hand-written
+ones\reqfoot{REQ-incl-macro-promotes-generated-headers-req}. When
+another framework resolves a \verb|PREREQS|-declared framework's
+headers, it checks \emph{both} that framework's \verb|include/|
+(hand-written) \emph{and} its \verb|build/<KEY>/include/| (promoted
+generated) — the one deliberate, scoped exception to ``never consult
+build output for headers''\reqfoot{REQ-generated-headers-in-build-tree-req}.
+There is no workspace-level equivalent: a workspace-wide generated-header
+directory is never consulted at compile time, only during packaging.
+
+\section{Versioned Shared Libraries}
+
+Shared-library versioning reuses \verb|SHLIB_MAJOR|/\verb|SHLIB_MINOR|
+directly, translated per platform by \verb|mk.lib.mk|:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Platform & Emission \\
+\midrule
+FreeBSD / Linux (ELF) & \verb|libfoo.so.MAJOR[.MINOR]| + standard symlink chain \\
+macOS (Mach-O) & \verb|libfoo.MAJOR.dylib| + symlink + linker \verb|-compatibility_version|/\verb|-current_version| \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A single author-facing macro pair drives both platform-appropriate
+emission strategies, since embedded Mach-O version metadata (not just
+the filename) is macOS's actual ABI-compatibility
+mechanism\reqfoot{REQ-shlib-major-minor-cross-platform-emission-req}.
+This specific translation for macOS remains \textbf{unverified against
+real MacPorts \texttt{bsdmake}} — no macOS environment was available
+during this project's validation pass, and real \verb|bsd.lib.mk|'s
+shared-library logic was designed primarily for ELF; MacPorts'
+\verb|bsdmake| may have no Mach-O awareness at all, in which case this
+logic needs to be written entirely inside \texttt{Bmake It}'s own
+\verb|mk.lib.mk|. \textbf{[open]}
+
+\section{Packaging}
+
+Packaging is driven by separate named \verb|make| targets, one per
+format, rather than a single parameterized
+target\reqfoot{REQ-packaging-per-format-targets-req}: confirmed target
+names so far are \verb|port| (BSD ports-style source recipe) and
+\verb|pkg| (macOS-style binary package), with \verb|deb|/\verb|rpm|
+following the same pattern. Every binary-package target (\verb|pkg|,
+\verb|deb|, \verb|rpm|) stages a \verb|distrib/<KEY>/| directory — the
+same target-key scheme as \verb|build/| — by internally invoking the
+equivalent of \verb|install DESTDIR=distrib/<KEY>|, reusing the install
+machinery rather than a separate copy
+mechanism\reqfoot{REQ-packaging-invokes-install-into-distrib-req}.
+
+\verb|make port| is \textbf{categorically different}: it produces a
+source-based, BSD-ports-style recipe (port \verb|Makefile|,
+\verb|distinfo|, patches, \verb|pkg-plist|) for the ports system to
+fetch and build itself — no pre-built binary is ever staged or
+embedded\reqfoot{REQ-port-target-is-source-recipe-not-binary-package-req}.
+Its exact generation mechanism is deferred to a later
+phase\reqfoot{REQ-make-port-deferred-req}. \textbf{[open]}
+
+\section{Running a Built Program}
+
+\verb|make run PROGRAM=<name> ARGS='<args>'|, run at workspace level,
+sets the platform-appropriate dynamic-library search-path variable
+(\verb|LD_LIBRARY_PATH| on Linux/FreeBSD, \verb|DYLD_LIBRARY_PATH| on
+macOS) to include the workspace's consolidated \verb|build/<KEY>/lib/|,
+then executes \verb|build/<KEY>/bin/<PROGRAM>| with the given
+arguments\reqfoot{REQ-run-target-req} — mirroring real
+\texttt{mkmk}'s own \texttt{mkrun} command, adapted to
+\texttt{Bmake It}'s own \verb|build/<KEY>/| layout.
+
+\section{Self-Documentation: \texttt{make help}}
+
+\verb|make help|, run at any level, lists every valid target and
+variable applicable there, along with a description and — where
+relevant — the set of valid values (for example,
+\verb!LIB_SHARED=YES|NO!). Each role-specific \verb|mk.*.mk| file is
+responsible for documenting its own contribution, so the aggregate
+output always matches exactly what's actually
+\verb|.include|d at that level\reqfoot{REQ-help-target-req}.
+
+\section{Convenience Targets}
+
+Two small convenience targets exist purely to reduce hand-editing
+error, without introducing any resolution or search behavior (they do
+\textbf{not} reopen the earlier rejection of
+\texttt{mkGetPreq}/\texttt{mkCopyPreq}):
+
+\begin{lstlisting}[language=bash]
+$ make add-prereq FW=System     # appends System to PREREQS= in the current framework
+$ make add-parent WS=/abs/path  # appends /abs/path to PARENT_WS=
+\end{lstlisting}
+\reqfoot{REQ-add-prereq-add-parent-convenience-targets-req}
+
+\section{Dependency-Order Generation}
+\label{sec:dep-order}
+
+Since real \verb|bsd.subdir.mk| has no concept of a topological build
+order — it simply processes whatever \verb|SUBDIR| list it's given —
+\texttt{Bmake It} generates that order itself, in a mechanism
+confirmed by a working, tested prototype rather than only designed on
+paper\reqfoot{REQ-dep-order-generation-mechanism-req}:
+
+\begin{enumerate}
+\item Discover \verb|.m| module directories by scanning.
+\item Query each module's \verb|LIBS=| \emph{in isolation}, via
+  \verb|bmake -f <dir>/makefile -V LIBS| — confirmed to read the
+  variable without triggering a build.
+\item Topologically sort (Kahn's algorithm), silently ignoring any
+  \verb|LIBS=| entry that isn't a locally-discovered module (such
+  references are resolved via the framework's \verb|PREREQS=|
+  instead, not module-level ordering).
+\item Emit the sorted order to a generated \verb|.mk| fragment
+  (\verb|SUBDIR=modA.m modB.m ...|), \verb|.include|d before
+  \verb|.include <bsd.subdir.mk>|.
+\end{enumerate}
+
+This was tested on a real four-module dependency chain
+(\texttt{A}$\leftarrow$\texttt{B}$\leftarrow$\texttt{C}$\leftarrow$\texttt{D},
+with \texttt{C} depending on both \texttt{A} and \texttt{B}) and built
+in the correct order every time; a genuine cycle
+(\texttt{X}$\leftrightarrow$\texttt{Y}) was confirmed to fail loudly
+with a clear diagnostic rather than hanging or silently producing a
+broken order. The identical mechanism generalizes directly to
+workspace-level framework ordering, querying \verb|PREREQS=| instead
+of \verb|LIBS=|.
+
+\subsection*{The \texttt{order} Target}
+\label{sec:order-target}
+
+This generation step is formalized as its own explicit,
+workspace-level target: \verb|make order| performs a \textbf{blank
+run} — no compilation, no linking — scanning every framework and every
+module across the whole workspace, resolving the complete dependency
+graph (framework order via \verb|PREREQS=|, and each framework's
+module order via \verb|LIBS=|) in one pass, and writing the result to
+a cache\reqfoot{REQ-order-target-blank-run-req}. The default
+\verb|make| target then reads that cache rather than re-resolving
+order inline on every invocation.
+
+The order cache is treated as an \emph{implicit prerequisite} of the
+default build, not an optional manual step: if it is missing or
+detected stale, \verb|make| regenerates it automatically before
+proceeding, so a fresh checkout builds correctly with plain
+\verb|make| and no separate mandatory
+invocation\reqfoot{REQ-order-cache-auto-triggered-req}. \verb|make order|
+remains independently runnable on its own, for inspecting the
+resolved build order without triggering an actual build.
+
+As a defensive safety net on top of this — since the order cache
+\emph{should} always be correct, but a stale cache, a partial manual
+build, or a genuine bug could in principle defeat it — immediately
+before invoking the linker for a module, \texttt{Bmake It} verifies
+that every \verb|LIBS=| entry's build artifact actually exists. A
+missing one produces an explicit, specific error (\emph{``cannot link
+\texttt{hello}: prerequisite library \texttt{greet} (from
+\texttt{LIBS=}) has not been built yet''}) rather than the linker's
+own generic \emph{``cannot find -lgreet''}\reqfoot{REQ-link-time-not-yet-built-guard-req}.
+This should essentially never fire in ordinary operation; its value is
+a clear diagnostic on the rare occasion something has genuinely gone
+wrong.
+
+\section{Caching}
+
+Two distinct caches, both modeled on real BSD make's own
+\verb|.depend| idiom (a generated file, regenerated via an explicit or
+detected-stale trigger, consumed via \verb|.include| on subsequent
+runs)\reqfoot{REQ-prereqs-resolution-cached-like-depend-req}:
+
+\begin{enumerate}
+\item \textbf{\texttt{PARENT\_WS}/\texttt{PREREQS} resolution cache} —
+  workspace/framework-level: caches header search paths and build
+  order so they aren't re-walked on every invocation. Formalized as an
+  explicit workspace-level target, \verb|make order| — described in
+  Section~\ref{sec:order-target}.
+\item \textbf{Per-module \texttt{.depend}} — file-level,
+  \texttt{mkdep}-style: which source files include which headers
+  (transitively), so touching a header only triggers recompilation of
+  the affected \verb|.o| files, not a full module rebuild.
+\end{enumerate}
+
+\textbf{The per-module case has a genuinely interesting empirical
+story, worth telling in full rather than just stating the conclusion.}
+An initial test ran the separate \verb|make depend| target against
+real FreeBSD \verb|share/mk| and found it nearly useless — no header
+tracking, just one link-level line. That looked like confirmation the
+mechanism needed custom shell-script wiring. A closer look reversed
+that conclusion: every ordinary compile already includes
+\verb|-MD -MF.depend.<obj>| — \verb|bsd.sys.mk| wires the
+\emph{compiler's own} native dependency-generation flag into every
+build, with no separate step at all, and this was confirmed correct
+end-to-end (touching a shared header triggered recompilation of
+exactly the right objects). But a further cross-check against
+NetBSD's own bundled \verb|mk| set found \emph{zero} such wiring there
+— plain compiles, no dependency flags, no rebuild when a header
+changed. So the working mechanism is real, but specific to FreeBSD's
+own actual \verb|bsd.sys.mk|, not a general BSD-make-family property.
+Since macOS (via MacPorts) is a phase-1 host and MacPorts' own
+\verb|bsdmake| could not be tested in this pass, whether it includes
+equivalent wiring is genuinely unknown\reqfoot{REQ-md-dependency-tracking-freebsd-specific-req}
+— though the fallback is simple either way: \verb|mk.prog.mk|/\verb|mk.lib.mk|
+can add the same \verb|-MD| flags themselves if MacPorts turns out to
+lack them.
+
+Exact generated filenames, staleness-detection mechanisms, and
+regeneration triggers for the \verb|PARENT_WS|/\verb|PREREQS| cache
+are deliberately deferred until real \verb|bsd.*.mk| infrastructure
+can be checked hands-on for what it already
+provides\reqfoot{OBS-cache-mechanism-needs-empirical-check}. \textbf{[open]}
+
+\section{Empirical Validation Summary}
+\label{sec:validation}
+
+A number of claims in this document rest on empirical testing rather
+than documentation alone — real \verb|bsd.*.mk| behavior sometimes
+diverges from reasonable-sounding assumptions, and more than once in
+this project's own validation pass, a first test result turned out to
+need correcting after a closer look. Testing was performed using the
+portable \texttt{bmake} package (a NetBSD-derived,
+FreeBSD/MacPorts-lineage-compatible \texttt{make}) against both a real
+FreeBSD \verb|share/mk| checkout and NetBSD's own bundled \verb|mk|
+set\reqfoot{OBS-validation-yacc-lex-suffix-rules-confirmed}. A full
+account, organized by risk tier — including the corrections themselves,
+not just their final conclusions — is maintained separately as
+\texttt{spec/60-bsd-make-validation-plan.md}; the headline results:
+
+\begin{center}
+\begin{longtable}{p{0.3\textwidth}p{0.6\textwidth}}
+\toprule
+Assumption tested & Result \\
+\midrule
+\endhead
+\verb|.y|/\verb|.l| suffix rules & Confirmed working automatically, zero explicit rules needed \\
+\verb|DESTDIR| staging & Confirmed genuinely native, works as expected \\
+\verb|DEBUG_FLAGS| & Confirmed genuinely native, real working mechanism \\
+Dynamic \verb|SUBDIR!=| population & Confirmed working — the whole auto-discovery design rests on this \\
+\verb!LIB_SHARED=YES|NO! & \textbf{Not native} — real \verb|bsd.lib.mk| has no such toggle \\
+\verb|TARGET|/\verb|TARGET_ARCH| & \textbf{Inert} without FreeBSD base-system machinery \\
+\verb|PREFIX| & \textbf{Not native} — does not exist in \verb|bsd.prog.mk|/\verb|bsd.lib.mk| \\
+Per-object \verb|-MD| header dependency tracking & Confirmed genuinely working — but specific to FreeBSD's own \verb|bsd.sys.mk|; absent from NetBSD's bundled set; MacPorts status unknown \\
+\bottomrule
+\end{longtable}
+\end{center}
+
+%===============================================================
+\chapter{Tutorial: Building \texttt{System} and \texttt{Hello} From Scratch}
+%===============================================================
+
+This tutorial builds the same worked example used throughout the
+design documents: two frameworks, \texttt{System} (no dependencies)
+and \texttt{Hello} (depends on \texttt{System}), where \texttt{Hello}
+contains an executable module \texttt{hello.m} and a shared-library
+module \texttt{libgreet.m} that \texttt{hello.m} links
+against\reqfoot{REQ-framework-contains-modules}.
+
+\section{Step 1 --- Create the Workspace}
+
+\begin{lstlisting}[language=bash]
+$ mkdir -p myworkspace
+$ cd myworkspace
+$ cat > makefile <<'EOF'
+.include <mk.workspace.mk>
+PARENT_WS=
+EOF
+\end{lstlisting}
+
+An empty \verb|PARENT_WS=| is valid — this workspace has no parents.
+
+\section{Step 2 --- Create the \texttt{System} Framework}
+
+\begin{lstlisting}[language=bash]
+$ mkdir -p System/include System/local/include
+$ cat > System/makefile <<'EOF'
+.include <mk.framework.mk>
+PREREQS=
+EOF
+\end{lstlisting}
+
+The empty, but present, \verb|PREREQS=| is what makes \texttt{System}
+auto-discoverable as a framework at all\reqfoot{REQ-prereqs-mandatory-even-empty-req}.
+
+\section{Step 3 --- Create the \texttt{Hello} Framework}
+
+\begin{lstlisting}[language=bash]
+$ mkdir -p Hello/include Hello/local/include
+$ cat > Hello/makefile <<'EOF'
+.include <mk.framework.mk>
+PREREQS=System
+EOF
+\end{lstlisting}
+
+\section{Step 4 --- Create the \texttt{libgreet.m} Library Module}
+
+\begin{lstlisting}[language=bash]
+$ mkdir -p Hello/libgreet.m/src Hello/libgreet.m/include
+$ cat > Hello/libgreet.m/makefile <<'EOF'
+.include <mk.lib.mk>
+LIB=greet
+LIB_SHARED=YES
+SHLIB_MAJOR=1
+LIBS=
+EOF
+$ cat > Hello/libgreet.m/include/greet.h <<'EOF'
+void greet(void);
+EOF
+$ cat > Hello/libgreet.m/src/greet.c <<'EOF'
+#include "greet.h"
+#include <stdio.h>
+void greet(void) { printf("hello from libgreet\n"); }
+EOF
+\end{lstlisting}
+
+Note \verb|greet.h| lives in the module's own \emph{private}
+\verb|include/| — visible only to \verb|libgreet.m|'s own sources, not
+even to sibling module \verb|hello.m|, regardless of the fact that
+\verb|hello.m| will link against
+it\reqfoot{REQ-three-level-header-visibility-req, REQ-libs-macro-link-only-headers-via-prereqs-req}.
+If \texttt{hello.m} needed to \verb|#include "greet.h"| directly, it
+would need to live in \texttt{Hello}'s \verb|local/include/| instead.
+
+\section{Step 5 --- Create the \texttt{hello.m} Executable Module}
+
+\begin{lstlisting}[language=bash]
+$ mkdir -p Hello/hello.m/src
+$ cat > Hello/hello.m/makefile <<'EOF'
+.include <mk.prog.mk>
+PROG=hello
+LIBS=greet
+EOF
+$ cat > Hello/hello.m/src/main.c <<'EOF'
+extern void greet(void);
+int main(void) { greet(); return 0; }
+EOF
+\end{lstlisting}
+
+\section{Step 6 --- Build}
+
+\begin{lstlisting}[language=bash]
+$ cd Hello
+$ make
+\end{lstlisting}
+
+Behind the scenes: \verb|libgreet.m| is built first (it has no
+dependency on \verb|hello.m|), producing \verb|libgreet.so.1| with a
+\verb|libgreet.so| symlink; \verb|hello.m| is built second, since its
+\verb|LIBS=greet| entry makes it depend on \verb|libgreet.m| having
+been \emph{fully} built first\reqfoot{REQ-fused-build-per-module-full-dependency-order-req}.
+Both modules' artifacts are then copied up into
+\verb|Hello/build/<KEY>/{bin,lib}/|\reqfoot{REQ-aggregation-step-copies-outputs}.
+
+\section{Step 7 --- Run It}
+
+\begin{lstlisting}[language=bash]
+$ cd ..    # back to the workspace root
+$ make run PROGRAM=hello
+hello from libgreet
+\end{lstlisting}
+
+\verb|make run| sets \verb|LD_LIBRARY_PATH| (or
+\verb|DYLD_LIBRARY_PATH| on macOS) to include the workspace's
+consolidated \verb|build/<KEY>/lib/| before executing, so
+\verb|libgreet.so| is found without needing a real \verb|make install|
+step first\reqfoot{REQ-run-target-req}.
+
+\section{Step 8 --- Clean Up}
+
+\begin{lstlisting}[language=bash]
+$ make clean TARGET=all
+\end{lstlisting}
+
+This removes every generated artifact for every target present — the
+whole \verb|build/| tree, any \verb|distrib/| packaging staging, and
+all internal caches — leaving the workspace indistinguishable from a
+fresh checkout\reqfoot{REQ-clean-removes-all-derived-artifacts-req}.
+
+\vfill
+\begin{center}
+\rule{0.5\textwidth}{0.4pt}\\[0.3em]
+\small
+This document cites the discovery-driven design record maintained in
+\texttt{project-model/}. Every footnoted alias (e.g.\
+\texttt{REQ-framework-contains-modules}) corresponds to exactly one
+file there, carrying its full rationale, decision history, and any
+superseded predecessors.
+\end{center}
+
+\end{document}

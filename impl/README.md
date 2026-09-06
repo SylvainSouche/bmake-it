@@ -1,0 +1,78 @@
+# Bmake It
+
+BSD-make-based cross-platform build system for C/C++ (and lex/yacc),
+inspired by Dassault Systèmes RADE/`mkmk` concepts (workspaces, frameworks,
+modules, prerequisites) while staying idiomatic to BSD make.
+
+## Layout
+
+```
+impl/
+├── mk/
+│   ├── mk.common.mk          # host/target detection, OS_ARCH key, shared defs
+│   ├── mk.toolchain.llvm.mk  # LLVM/clang toolchain bundle
+│   ├── mk.toolchain.gcc.mk   # GNU gcc toolchain bundle
+│   ├── mk.workspace.mk       # workspace role (PARENT_WS=, framework discovery)
+│   ├── mk.framework.mk       # framework role (PREREQS=, module discovery+order)
+│   ├── mk.prog.mk            # executable module (PROG=, LIBS=)
+│   └── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
+├── scripts/
+│   ├── gen-mod-order.sh      # topological sort of *.m modules from LIBS=
+│   └── gen-fw-order.sh       # topological sort of frameworks from PREREQS=
+└── examples/myworkspace/     # worked example (System + Hello frameworks)
+```
+
+## Quick start
+
+```sh
+# Requires: bmake, a C toolchain (clang or gcc), optionally flex/bison
+cd examples/myworkspace
+bmake                          # build for host OS/arch (e.g. linux-amd64)
+bmake TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc   # select target key
+bmake clean
+bmake install DESTDIR=/tmp/stage PREFIX=/usr/local
+```
+
+Run the example binary:
+
+```sh
+LD_LIBRARY_PATH=build/linux-amd64/lib ./build/linux-amd64/bin/hello
+# → Hello, Bmake It!
+```
+
+## Domain model
+
+| Concept    | Role makefile        | Key macros                          |
+|------------|----------------------|-------------------------------------|
+| Workspace  | `mk.workspace.mk`    | `PARENT_WS=` (absolute paths)       |
+| Framework  | `mk.framework.mk`    | `PREREQS=` (**mandatory**, even empty) |
+| Executable | `mk.prog.mk`         | `PROG=`, `LIBS=`                    |
+| Library    | `mk.lib.mk`          | `LIB=`, `LIB_SHARED=YES\|NO`, `INCL=`, `SHLIB_MAJOR=` |
+
+- **Module dirs** named `NAME.m`, auto-discovered.
+- **Frameworks** auto-discovered via `makefile` containing `PREREQS=`.
+- **Header visibility** (3 levels): `fw/include/` (public via PREREQS),
+  `fw/local/include/` (all modules of this framework), `module.m/include/`
+  (private). Generated headers stay private unless listed in `INCL=`.
+- **LIBS=** is link-only; it does not affect header search.
+- **Build outputs** under `build/<os>-<arch>[-toolchain]/{bin,lib,share,obj,include}/`.
+
+## Target key
+
+`<os>-<arch>[-<toolchain>][-<abi>]` with defaults omitted (`llvm`, platform
+default ABI). Phase-1 concrete keys from the design: `macos-arm64`,
+`macos-arm64-gcc`, `freebsd-amd64`, `freebsd-amd64-gcc`. Host builds also
+work (e.g. `linux-amd64` on a Linux host).
+
+## Status
+
+Implements the design described in the accompanying specification documents
+(`00-overview.md` … `60-bsd-make-validation-plan.md`). Known limitations:
+
+- Cross-compilation toolchains are stubs (host compiler used); real path
+  tables for phase-1 targets need filling on FreeBSD/macOS hardware.
+- Cycle detection reports failure rather than being silent (prototype
+  behaviour).
+- Packaging targets (`pkg`, `port`, …) and full `share/` overlay testing
+  are structural placeholders.
+- `.depend` / mkdep-style header dependency tracking not yet wired.

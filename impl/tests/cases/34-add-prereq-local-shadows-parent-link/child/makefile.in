@@ -1,0 +1,2 @@
+PARENT_WS=@@PARENT@@
+.include <mk.workspace.mk>

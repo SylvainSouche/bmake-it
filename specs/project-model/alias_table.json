@@ -1,0 +1,1766 @@
+{
+  "add-prereq-add-parent-convenience-targets": {
+    "active": true,
+    "id": "6f38-6a8c-bbfe-7516",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "add-prereq-add-parent-convenience-targets-req": {
+    "active": true,
+    "id": "6f38-6a8c-bbfe-2001",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "aggregation-by-copy": {
+    "active": true,
+    "id": "6f38-6a89-baec-b7d2",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "aggregation-step-copies-outputs": {
+    "active": true,
+    "id": "6f38-6a89-baec-3053",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "alpine-musl-shared-lib-runtime-symbol-resolution-broken": {
+    "active": true,
+    "id": "0f87-6a97-47f7-9bf9",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "app-bundle-deferred": {
+    "active": true,
+    "id": "6f38-6a8a-06e9-dce9",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "app-bundle-deferred-req": {
+    "active": true,
+    "id": "6f38-6a8a-06e9-e018",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "build-obj-os-arch-output": {
+    "active": false,
+    "id": "6f38-6a88-1836-3d88",
+    "status": "superseded",
+    "type": "req"
+  },
+  "build-output-mirrors-install-prefix": {
+    "active": true,
+    "id": "6f38-6a8a-06bf-eece",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "build-output-mirrors-prefix-layout": {
+    "active": true,
+    "id": "6f38-6a8a-06bf-bede",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "build-output-tree-structure": {
+    "active": true,
+    "id": "6f38-6a89-ba51-340e",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "build-system-self-test-harness": {
+    "active": true,
+    "id": "6f38-6a8f-5206-44f4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "build-system-self-test-harness-req": {
+    "active": true,
+    "id": "6f38-6a8f-5206-3e89",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cache-mechanism-needs-empirical-check": {
+    "active": true,
+    "id": "6f38-6a8c-30a5-87fe",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "clean-removes-all-derived-artifacts": {
+    "active": true,
+    "id": "6f38-6a8f-519a-bee9",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "clean-removes-all-derived-artifacts-req": {
+    "active": true,
+    "id": "6f38-6a8f-519a-d42b",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "clean-target-scope": {
+    "active": true,
+    "id": "6f38-6a8b-de94-5df7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "clean-target-scope-req": {
+    "active": false,
+    "id": "6f38-6a8b-de94-3b56",
+    "status": "superseded",
+    "type": "req"
+  },
+  "compiler-native-dependency-tracking-req": {
+    "active": true,
+    "id": "6f38-6a91-4c89-ba40",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "copy-up-collision-diff-aware": {
+    "active": true,
+    "id": "6f38-6a8d-1de3-846e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "copy-up-collision-diff-aware-req": {
+    "active": true,
+    "id": "6f38-6a8d-1de3-1237",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-compile-check-scoped-to-actual-builds-req": {
+    "active": true,
+    "id": "0f87-6a98-5dca-b115",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-compile-netbsd-target-req": {
+    "active": true,
+    "id": "0f87-6a97-d20a-cb7c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-compile-per-target-triple-quirks-req": {
+    "active": true,
+    "id": "0f87-6a95-b3d4-d67d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-compile-same-os-cross-arch-req": {
+    "active": true,
+    "id": "0f87-6a95-c754-c645",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-compile-sysroot-check-fired-on-non-build-invocations": {
+    "active": true,
+    "id": "0f87-6a98-5db8-74f2",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "cross-compile-sysroot-check-scoped-to-builds-dec": {
+    "active": true,
+    "id": "0f87-6a98-5db8-a528",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-compile-via-clang-target-sysroot-dec": {
+    "active": true,
+    "id": "0f87-6a95-b3ca-44d7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-platform-targets": {
+    "active": true,
+    "id": "6f38-6a88-1836-d9b9",
+    "status": "recorded",
+    "type": "con"
+  },
+  "cross-target-catch-all-error-dec": {
+    "active": true,
+    "id": "0f87-6a98-5d9c-e9ad",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-target-selection-must-fail-loudly-req": {
+    "active": true,
+    "id": "0f87-6a98-5da8-9fc2",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-target-silent-native-fallback-risk": {
+    "active": true,
+    "id": "0f87-6a98-5d9c-ef85",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "cygwin-native-vs-mingw-cross-are-separate-packages": {
+    "active": true,
+    "id": "6f38-6a8a-085d-2587",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "cygwin-runtime-has-no-arm64-port": {
+    "active": true,
+    "id": "0f87-6a98-a928-82da",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "cygwin-scoped-to-x86-family-only": {
+    "active": true,
+    "id": "0f87-6a98-a928-6065",
+    "status": "recorded",
+    "type": "con"
+  },
+  "debug-release-via-native-bsd-flags": {
+    "active": true,
+    "id": "6f38-6a8c-b939-8ea9",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "debug-release-via-native-bsd-flags-req": {
+    "active": true,
+    "id": "6f38-6a8c-b939-38a7",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "default-build-host-os-arch": {
+    "active": true,
+    "id": "6f38-6a88-1836-0f69",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "default-toolchain-llvm": {
+    "active": true,
+    "id": "6f38-6a88-1836-c0f9",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "dep-order-generation-mechanism-prototyped": {
+    "active": true,
+    "id": "6f38-6a8e-7e12-7f94",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "dep-order-generation-mechanism-req": {
+    "active": true,
+    "id": "6f38-6a8e-7e12-a30d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "destdir-prefix-confirmed": {
+    "active": true,
+    "id": "6f38-6a8b-dfb1-18e7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "destdir-prefix-confirmed-req": {
+    "active": false,
+    "id": "6f38-6a8b-dfb1-cc5e",
+    "status": "superseded",
+    "type": "req"
+  },
+  "distrib-dir-for-packaging-staging": {
+    "active": true,
+    "id": "6f38-6a8c-195e-b3df",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "distrib-dir-for-packaging-staging-req": {
+    "active": false,
+    "id": "6f38-6a8c-195e-457f",
+    "status": "superseded",
+    "type": "req"
+  },
+  "distrib-dir-for-packaging-staging-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-696d-a08d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "flags-reuse-bsd-native-vars": {
+    "active": true,
+    "id": "6f38-6a8c-b9f4-d59f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "flags-reuse-bsd-native-vars-req": {
+    "active": false,
+    "id": "6f38-6a8c-b9f4-3c16",
+    "status": "superseded",
+    "type": "req"
+  },
+  "flags-reuse-bsd-native-vars-req-v2": {
+    "active": true,
+    "id": "0f87-6a95-270b-85c4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "framework-build-order-follows-prereqs-graph": {
+    "active": true,
+    "id": "6f38-6a8a-a40e-c2dd",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "framework-build-order-follows-prereqs-graph-req": {
+    "active": true,
+    "id": "6f38-6a8a-a40e-8342",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "framework-contains-modules": {
+    "active": true,
+    "id": "6f38-6a88-1836-a7fa",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "framework-discovery-signal-req": {
+    "active": true,
+    "id": "6f38-6a8a-f6ee-e69f",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "framework-discovery-via-prereqs-in-makefile": {
+    "active": true,
+    "id": "6f38-6a8a-f6ee-245c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "framework-header-exposure": {
+    "active": false,
+    "id": "6f38-6a88-1836-dd30",
+    "status": "superseded",
+    "type": "req"
+  },
+  "framework-prereqs": {
+    "active": true,
+    "id": "6f38-6a88-1836-f948",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "framework-prereqs-macro": {
+    "active": true,
+    "id": "6f38-6a8a-0550-3cf8",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "framework-prereqs-macro-req": {
+    "active": true,
+    "id": "6f38-6a8a-0550-cadc",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fused-build-per-module-full-dependency-order": {
+    "active": true,
+    "id": "6f38-6a8a-d8b2-1579",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "fused-build-per-module-full-dependency-order-req": {
+    "active": true,
+    "id": "6f38-6a8a-d8b2-fbd8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "generated-headers-in-build-tree": {
+    "active": true,
+    "id": "6f38-6a8a-9a77-b1a2",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "generated-headers-in-build-tree-req": {
+    "active": true,
+    "id": "6f38-6a8a-9a77-a8c9",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "headers-resolved-from-source-not-build": {
+    "active": true,
+    "id": "6f38-6a8a-967a-a54e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "headers-resolved-from-source-req": {
+    "active": true,
+    "id": "6f38-6a8a-967a-e5b0",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "help-target": {
+    "active": true,
+    "id": "6f38-6a8f-5180-7741",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "help-target-req": {
+    "active": true,
+    "id": "6f38-6a8f-5180-1a89",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "impl-add-prereq-target": {
+    "active": true,
+    "id": "0f87-6a98-7918-e195",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-copy-up-diff-aware": {
+    "active": true,
+    "id": "0f87-6a98-8ee9-ae83",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-compile-check-scoped": {
+    "active": true,
+    "id": "0f87-6a98-5de3-5c78",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-compile-netbsd": {
+    "active": true,
+    "id": "0f87-6a98-5de3-a99c",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-compile-triple-quirks": {
+    "active": true,
+    "id": "0f87-6a98-5de3-61b8",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-target-catch-all-error": {
+    "active": true,
+    "id": "0f87-6a98-5de3-c340",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-flags-reuse-native-vars": {
+    "active": true,
+    "id": "0f87-6a98-5ff4-5d24",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-framework-discovery-signal": {
+    "active": true,
+    "id": "0f87-6a98-77f0-fa5a",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-help-target": {
+    "active": true,
+    "id": "0f87-6a98-7829-4019",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-incl-promotes-generated-headers": {
+    "active": true,
+    "id": "0f87-6a98-7718-886d",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-install-requires-prebuilt": {
+    "active": true,
+    "id": "0f87-6a98-7755-574e",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-lib-shared-new-macro": {
+    "active": true,
+    "id": "0f87-6a98-77f0-ca62",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-libs-macro-link-only": {
+    "active": true,
+    "id": "0f87-6a98-76c2-a96e",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-link-time-not-yet-built-guard": {
+    "active": true,
+    "id": "0f87-6a98-8b7f-9215",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-linux-libc-default-glibc": {
+    "active": true,
+    "id": "0f87-6a98-772e-6156",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-mingw-cross-toolchain": {
+    "active": true,
+    "id": "0f87-6a98-96de-785b",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-mod-order-no-hardcoded-sys-mk": {
+    "active": true,
+    "id": "0f87-6a98-5e9c-0a14",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-msvc-toolchain": {
+    "active": true,
+    "id": "0f87-6a98-96de-1865",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-nested-invocation-reentrancy-guard": {
+    "active": true,
+    "id": "0f87-6a98-5f76-2a44",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-prereqs-mandatory": {
+    "active": true,
+    "id": "0f87-6a98-76a7-f34f",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-prereqs-parent-ws-fallback": {
+    "active": true,
+    "id": "0f87-6a98-5e47-0c71",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-prog-lib-default-naming": {
+    "active": true,
+    "id": "0f87-6a98-5ff4-1b42",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-rade-export-header": {
+    "active": true,
+    "id": "0f87-6a9a-b8d2-c192",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-run-target": {
+    "active": true,
+    "id": "0f87-6a98-7946-1d85",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-self-test-harness": {
+    "active": true,
+    "id": "0f87-6a98-7829-d674",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-shlib-major-minor-emission": {
+    "active": true,
+    "id": "0f87-6a98-76ed-e260",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-vcvarsall-auto-discovery": {
+    "active": true,
+    "id": "0f87-6a9a-d311-f245",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-win-host-detection": {
+    "active": true,
+    "id": "0f87-6a98-96de-1355",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-win-target-naming": {
+    "active": true,
+    "id": "0f87-6a98-96de-331e",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "incl-macro-promotes-generated-headers": {
+    "active": true,
+    "id": "6f38-6a8a-9b1e-0a47",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "incl-macro-promotes-generated-headers-req": {
+    "active": true,
+    "id": "6f38-6a8a-9b1e-1229",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "initial-domain-model": {
+    "active": true,
+    "id": "6f38-6a88-1836-bc1f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "install-requires-prebuilt-target": {
+    "active": true,
+    "id": "6f38-6a8c-0d67-5fcc",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "install-requires-prebuilt-target-req": {
+    "active": false,
+    "id": "6f38-6a8c-0d67-2019",
+    "status": "superseded",
+    "type": "req"
+  },
+  "install-requires-prebuilt-target-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-696d-71fc",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "install-target-exists": {
+    "active": true,
+    "id": "6f38-6a8b-df45-91dc",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "install-target-exists-req": {
+    "active": true,
+    "id": "6f38-6a8b-df45-59b4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "keep-simplified-prereq-and-header-model": {
+    "active": true,
+    "id": "6f38-6a89-b763-9d8f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "kernel-and-darwin-dev-deferred": {
+    "active": true,
+    "id": "6f38-6a89-bec3-708c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "language-scope": {
+    "active": true,
+    "id": "6f38-6a89-b79b-673b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "layered-build-output-tree": {
+    "active": true,
+    "id": "6f38-6a89-ba51-6adc",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "lib-default-strips-lib-prefix-dec": {
+    "active": true,
+    "id": "0f87-6a95-5088-b94c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "lib-shared-defaults-yes": {
+    "active": true,
+    "id": "6f38-6a8a-9181-481e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "lib-shared-defaults-yes-req": {
+    "active": false,
+    "id": "6f38-6a8a-9181-db38",
+    "status": "superseded",
+    "type": "req"
+  },
+  "lib-shared-is-new-not-reused-req": {
+    "active": true,
+    "id": "6f38-6a8d-7578-0ea3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "lib-shared-no-is-static": {
+    "active": true,
+    "id": "6f38-6a8a-943b-031c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "lib-shared-no-is-static-req": {
+    "active": false,
+    "id": "6f38-6a8a-943b-5c7e",
+    "status": "superseded",
+    "type": "req"
+  },
+  "libs-macro-link-only-headers-via-prereqs": {
+    "active": true,
+    "id": "6f38-6a8a-943b-a8e2",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "libs-macro-link-only-headers-via-prereqs-req": {
+    "active": true,
+    "id": "6f38-6a8a-943b-a3af",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "link-time-not-yet-built-guard": {
+    "active": true,
+    "id": "6f38-6a91-03ec-7871",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "link-time-not-yet-built-guard-req": {
+    "active": true,
+    "id": "6f38-6a91-03ec-fc4e",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "linux-libc-choice-parallels-win-abi": {
+    "active": true,
+    "id": "6f38-6a8a-0a38-cffe",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "linux-libc-default-glibc": {
+    "active": true,
+    "id": "6f38-6a8a-0d9b-7cca",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "linux-libc-default-glibc-req": {
+    "active": true,
+    "id": "6f38-6a8a-0d9b-2b26",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "macos-vm-connectivity-was-expect-case-bug": {
+    "active": true,
+    "id": "0f87-6a97-e99b-fc2c",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "make-port-deferred": {
+    "active": true,
+    "id": "6f38-6a8c-2025-9f02",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "make-port-deferred-req": {
+    "active": false,
+    "id": "6f38-6a8c-2025-f48c",
+    "status": "superseded",
+    "type": "req"
+  },
+  "make-port-deferred-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-6a49-e347",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "md-dependency-tracking-freebsd-specific-req": {
+    "active": true,
+    "id": "6f38-6a91-a2cf-5c3c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mkdep-style-header-dependency-tracking": {
+    "active": true,
+    "id": "6f38-6a8c-b76b-ec7f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mkdep-style-header-dependency-tracking-req": {
+    "active": false,
+    "id": "6f38-6a8c-b76b-0154",
+    "status": "superseded",
+    "type": "req"
+  },
+  "mkdep-tool-works-wiring-must-be-custom-req": {
+    "active": false,
+    "id": "6f38-6a91-03a8-6697",
+    "status": "superseded",
+    "type": "req"
+  },
+  "mkmk-command-phases-and-cli": {
+    "active": true,
+    "id": "6f38-6a88-1965-243b",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-identitycard-mechanism": {
+    "active": true,
+    "id": "6f38-6a88-1965-e9db",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-interface-visibility-levels": {
+    "active": true,
+    "id": "6f38-6a88-1965-b0e1",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-java-and-windows-specifics": {
+    "active": true,
+    "id": "6f38-6a88-1965-0d15",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-module-buildfile-macros": {
+    "active": true,
+    "id": "6f38-6a88-1965-500b",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-runtime-view-and-resources": {
+    "active": true,
+    "id": "6f38-6a88-1965-448a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mkmk-workspace-concatenation": {
+    "active": true,
+    "id": "6f38-6a88-1965-e898",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mod-order-sysroot-hardcoded-macports-fallback": {
+    "active": true,
+    "id": "0f87-6a95-afab-2ced",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mod-order-sysroot-no-hardcoded-default-dec": {
+    "active": true,
+    "id": "0f87-6a95-afab-771b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "module-build-macros": {
+    "active": true,
+    "id": "6f38-6a8a-0526-337a",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "module-build-macros-req": {
+    "active": false,
+    "id": "6f38-6a8a-0550-fc94",
+    "status": "superseded",
+    "type": "req"
+  },
+  "module-dir-naming-convention": {
+    "active": true,
+    "id": "6f38-6a88-1836-bfe8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "module-is-basic-link-unit": {
+    "active": true,
+    "id": "6f38-6a88-1836-352a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "module-level-build-subdirs-confirmed": {
+    "active": true,
+    "id": "6f38-6a8a-9181-ce2c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "module-level-build-subdirs-req": {
+    "active": true,
+    "id": "6f38-6a8a-9181-1ebf",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "module-makefile-fields": {
+    "active": false,
+    "id": "6f38-6a88-1836-1be8",
+    "status": "superseded",
+    "type": "req"
+  },
+  "module-name-case-sensitivity-follows-fs": {
+    "active": true,
+    "id": "6f38-6a8a-9181-e3a5",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "module-name-case-sensitivity-req": {
+    "active": true,
+    "id": "6f38-6a8a-9181-8613",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "module-prog-or-lib-macro-req": {
+    "active": true,
+    "id": "0f87-6a94-678e-e640",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "module-resource-files": {
+    "active": false,
+    "id": "6f38-6a88-1892-f318",
+    "status": "superseded",
+    "type": "req"
+  },
+  "module-src-auto-discovery": {
+    "active": true,
+    "id": "6f38-6a88-1836-74a5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "modules-and-frameworks-auto-discovered": {
+    "active": true,
+    "id": "6f38-6a8a-dba2-7b93",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "modules-and-frameworks-auto-discovered-req": {
+    "active": true,
+    "id": "6f38-6a8a-dba2-dcc2",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "msvc-dll-needs-explicit-exports": {
+    "active": true,
+    "id": "0f87-6a9a-b50f-e8d7",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "msvc-no-manual-vcvarsall-req": {
+    "active": true,
+    "id": "0f87-6a9a-d35b-a3ed",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "msvc-shared-lib-export-req": {
+    "active": true,
+    "id": "0f87-6a9a-b51c-b267",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "nested-bmake-discovery-self-reentrancy-risk": {
+    "active": true,
+    "id": "0f87-6a95-6a27-378f",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "nested-invocation-reentrancy-guard-dec": {
+    "active": true,
+    "id": "0f87-6a95-6a3a-7038",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "nested-invocation-reentrancy-guard-req": {
+    "active": true,
+    "id": "0f87-6a95-6a53-9e2e",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "netbsd-vm-flaky-ssh-was-filesystem-corruption": {
+    "active": true,
+    "id": "0f87-6a98-2997-bfb8",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "no-copy-preq-commands": {
+    "active": true,
+    "id": "6f38-6a89-bd4b-c4ce",
+    "status": "proposed",
+    "type": "nreq"
+  },
+  "no-four-level-header-visibility": {
+    "active": true,
+    "id": "6f38-6a89-b763-b866",
+    "status": "proposed",
+    "type": "nreq"
+  },
+  "no-identitycard-special-file": {
+    "active": true,
+    "id": "6f38-6a89-b763-cfc9",
+    "status": "proposed",
+    "type": "nreq"
+  },
+  "no-workspace-level-share-source": {
+    "active": true,
+    "id": "6f38-6a8a-0550-58a7",
+    "status": "proposed",
+    "type": "nreq"
+  },
+  "order-cache-auto-triggered": {
+    "active": true,
+    "id": "6f38-6a91-03ec-8e6f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "order-cache-auto-triggered-req": {
+    "active": true,
+    "id": "6f38-6a91-03ec-2589",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "order-target-blank-run": {
+    "active": true,
+    "id": "6f38-6a91-03ec-ae47",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "order-target-blank-run-req": {
+    "active": true,
+    "id": "6f38-6a91-03ec-9f14",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "os-label-set": {
+    "active": true,
+    "id": "6f38-6a89-be97-9afa",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "os-label-set-req": {
+    "active": false,
+    "id": "6f38-6a89-bea6-65e0",
+    "status": "superseded",
+    "type": "req"
+  },
+  "os-label-set-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-696d-920d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "output-naming-os-conventions": {
+    "active": true,
+    "id": "6f38-6a88-1836-5571",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "packaging-invokes-install-into-distrib": {
+    "active": true,
+    "id": "6f38-6a8c-1a1d-da5d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "packaging-invokes-install-into-distrib-req": {
+    "active": false,
+    "id": "6f38-6a8c-1a1d-ed75",
+    "status": "superseded",
+    "type": "req"
+  },
+  "packaging-invokes-install-into-distrib-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-6a03-da95",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "packaging-native-formats-separate-target": {
+    "active": true,
+    "id": "6f38-6a89-baec-0f81",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "packaging-per-format-targets": {
+    "active": true,
+    "id": "6f38-6a8a-0550-d2ae",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "packaging-per-format-targets-req": {
+    "active": true,
+    "id": "6f38-6a8a-0550-b9ed",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "packaging-separate-target-native-formats": {
+    "active": true,
+    "id": "6f38-6a89-baec-6c41",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "phase1-concrete-targets": {
+    "active": true,
+    "id": "6f38-6a89-bb64-0874",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "phase1-target-scope": {
+    "active": true,
+    "id": "6f38-6a89-bb64-d9ed",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "port-target-is-source-recipe-not-binary-package": {
+    "active": true,
+    "id": "6f38-6a8c-1ba0-c38a",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "port-target-is-source-recipe-not-binary-package-req": {
+    "active": false,
+    "id": "6f38-6a8c-1ba0-4647",
+    "status": "superseded",
+    "type": "req"
+  },
+  "port-target-is-source-recipe-not-binary-package-req-v2": {
+    "active": true,
+    "id": "0f87-6a94-6a22-7d41",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "prefix-is-new-not-reused-req": {
+    "active": true,
+    "id": "6f38-6a8e-048e-f811",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "prereq-access-dynamic-only": {
+    "active": true,
+    "id": "6f38-6a89-bd4b-3e07",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prereqs-mandatory-even-empty": {
+    "active": true,
+    "id": "6f38-6a8a-f6ee-0a31",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prereqs-mandatory-even-empty-req": {
+    "active": true,
+    "id": "6f38-6a8a-f6ee-940d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "prereqs-misorder-no-validation": {
+    "active": true,
+    "id": "6f38-6a8a-943b-fa0a",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prereqs-misorder-no-validation-req": {
+    "active": true,
+    "id": "6f38-6a8a-943b-c5a3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "prereqs-parent-ws-fallback-dec": {
+    "active": true,
+    "id": "0f87-6a97-0c22-fb83",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prereqs-parent-ws-fallback-unimplemented": {
+    "active": true,
+    "id": "0f87-6a97-0c17-17c1",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "prereqs-resolution-cached-like-depend": {
+    "active": true,
+    "id": "6f38-6a8c-2159-2fc4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prereqs-resolution-cached-like-depend-req": {
+    "active": true,
+    "id": "6f38-6a8c-2159-4b07",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "prog-lib-default-to-module-name": {
+    "active": true,
+    "id": "6f38-6a8a-9181-61d3",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "prog-lib-default-to-module-name-req": {
+    "active": false,
+    "id": "6f38-6a8a-9181-0693",
+    "status": "superseded",
+    "type": "req"
+  },
+  "prog-lib-default-to-module-name-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-696d-1192",
+    "status": "superseded",
+    "type": "req"
+  },
+  "prog-lib-default-to-module-name-req-v3": {
+    "active": true,
+    "id": "0f87-6a95-509a-8559",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "project-renamed-bmake-it": {
+    "active": true,
+    "id": "0f87-6a9a-c666-3b42",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "qemu-tcg-x86-64-boot-stall-on-host": {
+    "active": true,
+    "id": "0f87-6a97-bd07-f29e",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "rade-inspiration": {
+    "active": true,
+    "id": "6f38-6a88-1836-f6c4",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "rade-is-dassault-trademark": {
+    "active": true,
+    "id": "0f87-6a9a-c666-229d",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "refined-resource-file-model": {
+    "active": true,
+    "id": "6f38-6a89-bc24-835e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "resource-file-definition": {
+    "active": true,
+    "id": "6f38-6a88-188b-2db4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "resource-file-model": {
+    "active": true,
+    "id": "6f38-6a89-bc24-f8a0",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-target": {
+    "active": true,
+    "id": "6f38-6a8f-5180-601d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "run-target-any-workspace-dir-req": {
+    "active": true,
+    "id": "0f87-6a98-7bd0-ed4a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-target-common-mk-walkup-dec": {
+    "active": true,
+    "id": "0f87-6a98-7bca-d340",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "run-target-req": {
+    "active": true,
+    "id": "6f38-6a8f-5180-18f8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-target-workspace-root-only-limitation": {
+    "active": true,
+    "id": "0f87-6a98-7bc3-e76b",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "share-dir-fallback-hierarchy": {
+    "active": true,
+    "id": "6f38-6a89-bccb-d5b8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "share-dir-naming-and-fallback": {
+    "active": true,
+    "id": "6f38-6a89-bccb-4fc4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "share-overlay-copy-order": {
+    "active": true,
+    "id": "6f38-6a89-bcf2-3f23",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "share-overlay-copy-semantics": {
+    "active": true,
+    "id": "6f38-6a89-bcf2-135b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "shlib-major-minor-cross-platform-emission": {
+    "active": true,
+    "id": "6f38-6a8a-d9a5-914d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "shlib-major-minor-cross-platform-emission-req": {
+    "active": true,
+    "id": "6f38-6a8a-d9a5-6177",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "sibling-module-ordering-link-only": {
+    "active": true,
+    "id": "6f38-6a8a-d738-9661",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "sibling-module-ordering-link-only-req": {
+    "active": false,
+    "id": "6f38-6a8a-d738-faf7",
+    "status": "superseded",
+    "type": "req"
+  },
+  "supported-languages": {
+    "active": true,
+    "id": "6f38-6a89-b79d-c3c3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "target-arch-toolchain-selection-is-custom-req": {
+    "active": false,
+    "id": "6f38-6a8d-75c1-0ba0",
+    "status": "superseded",
+    "type": "req"
+  },
+  "target-arch-toolchain-selection-is-custom-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-6a22-d2c7",
+    "status": "superseded",
+    "type": "req"
+  },
+  "target-arch-toolchain-selection-is-custom-req-v3": {
+    "active": false,
+    "id": "0f87-6a94-6a73-e75c",
+    "status": "superseded",
+    "type": "req"
+  },
+  "target-arch-toolchain-selection-is-custom-req-v4": {
+    "active": true,
+    "id": "0f87-6a95-2add-8126",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "target-key-includes-toolchain": {
+    "active": true,
+    "id": "6f38-6a89-bb64-3595",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "target-key-omit-defaults": {
+    "active": true,
+    "id": "6f38-6a8a-0c4d-abe7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "target-key-omit-defaults-req": {
+    "active": true,
+    "id": "6f38-6a8a-0c4d-d8e3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "target-key-string-format": {
+    "active": true,
+    "id": "6f38-6a89-be28-3637",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "target-key-string-format-req": {
+    "active": false,
+    "id": "6f38-6a89-be33-cbe1",
+    "status": "superseded",
+    "type": "req"
+  },
+  "target-selection-uses-bmake-native-vars": {
+    "active": true,
+    "id": "6f38-6a8b-655d-fd33",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "target-selection-uses-bmake-native-vars-req": {
+    "active": false,
+    "id": "6f38-6a8b-655d-b8d7",
+    "status": "superseded",
+    "type": "req"
+  },
+  "test-cygwin-gcc-hello-win-amd64": {
+    "active": true,
+    "id": "0f87-6a9a-a9fa-3729",
+    "status": "passing",
+    "type": "test"
+  },
+  "test-msvc-shared-hello-win-amd64": {
+    "active": true,
+    "id": "0f87-6a9a-bb2c-9372",
+    "status": "passing",
+    "type": "test"
+  },
+  "test-msvc-static-hello-win-amd64": {
+    "active": true,
+    "id": "0f87-6a9a-b50f-0b7d",
+    "status": "passing",
+    "type": "test"
+  },
+  "test-msvc-vcvarsall-auto-win-amd64": {
+    "active": true,
+    "id": "0f87-6a9a-d35b-6e0a",
+    "status": "passing",
+    "type": "test"
+  },
+  "tests-docs-versioning-deferred": {
+    "active": true,
+    "id": "6f38-6a8c-beda-010d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "tests-docs-versioning-deferred-req": {
+    "active": true,
+    "id": "6f38-6a8c-beda-c0ba",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "three-level-header-visibility": {
+    "active": true,
+    "id": "6f38-6a8a-04e6-6d3c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "three-level-header-visibility-req": {
+    "active": true,
+    "id": "6f38-6a8a-04f2-45d5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "toolchain-cli-variable": {
+    "active": true,
+    "id": "6f38-6a8b-66e7-33d7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-cli-variable-req": {
+    "active": false,
+    "id": "6f38-6a8b-66e7-9fa6",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-cli-variable-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-696d-9094",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-cli-variable-req-v3": {
+    "active": false,
+    "id": "0f87-6a94-6a49-82b0",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-cli-variable-req-v4": {
+    "active": true,
+    "id": "0f87-6a95-2afd-4e9b",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "toolchain-detection-hardcoded-path-silently-wrong-compiler": {
+    "active": true,
+    "id": "0f87-6a95-7899-5807",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "toolchain-detection-must-search-path-dec": {
+    "active": true,
+    "id": "0f87-6a95-78d4-6146",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-in-target-key": {
+    "active": true,
+    "id": "6f38-6a89-bb64-3c5c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-mk-must-set-explicit-cc-paths-req": {
+    "active": false,
+    "id": "6f38-6a8e-71e6-f189",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-mk-must-set-explicit-cc-paths-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-6a22-b625",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-mk-must-set-explicit-cc-paths-req-v3": {
+    "active": false,
+    "id": "0f87-6a94-6a73-6506",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-mk-must-set-explicit-cc-paths-req-v4": {
+    "active": false,
+    "id": "0f87-6a95-2b36-05b2",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-mk-must-set-explicit-cc-paths-req-v5": {
+    "active": true,
+    "id": "0f87-6a95-78e1-3ab3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "toolchain-triggers-dedicated-mk-file": {
+    "active": true,
+    "id": "6f38-6a8b-67a0-4f62",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-triggers-dedicated-mk-file-req": {
+    "active": false,
+    "id": "6f38-6a8b-67a0-9bd5",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-triggers-dedicated-mk-file-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-6a03-a659",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-triggers-dedicated-mk-file-req-v3": {
+    "active": false,
+    "id": "0f87-6a94-6a57-ca0d",
+    "status": "superseded",
+    "type": "req"
+  },
+  "toolchain-triggers-dedicated-mk-file-req-v4": {
+    "active": true,
+    "id": "0f87-6a95-2b36-c1c5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "uniform-makefile-filename": {
+    "active": true,
+    "id": "6f38-6a8a-04ce-ed4a",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "uniform-makefile-filename-req": {
+    "active": true,
+    "id": "6f38-6a8a-04e6-c63c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "use-bsdmake": {
+    "active": true,
+    "id": "6f38-6a88-1836-b9b1",
+    "status": "recorded",
+    "type": "con"
+  },
+  "userland-only-scope": {
+    "active": true,
+    "id": "6f38-6a89-bec3-9ca3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "validation-bsd-dep-mk-automatic-wiring-broken": {
+    "active": true,
+    "id": "6f38-6a91-03a8-2bc2",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-compiler-native-md-dependency-tracking-confirmed": {
+    "active": true,
+    "id": "6f38-6a91-4c89-0397",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-cross-compile-is-external-orchestration-everywhere": {
+    "active": true,
+    "id": "6f38-6a8e-71e6-ce0a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-debug-flags-confirmed-native": {
+    "active": true,
+    "id": "6f38-6a8e-04db-4b40",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-destdir-native-prefix-is-not": {
+    "active": true,
+    "id": "6f38-6a8e-048e-e43d",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-dynamic-subdir-confirmed-working": {
+    "active": true,
+    "id": "6f38-6a8e-04b1-edf4",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-lib-shared-does-not-exist-natively": {
+    "active": true,
+    "id": "6f38-6a8d-7578-ecbc",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-md-wiring-is-freebsd-specific-not-family-wide": {
+    "active": true,
+    "id": "6f38-6a91-a2cf-a42d",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-target-arch-inert-without-basesystem": {
+    "active": true,
+    "id": "6f38-6a8d-75c1-95f6",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "validation-yacc-lex-suffix-rules-confirmed": {
+    "active": true,
+    "id": "6f38-6a8d-7558-017a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "variant-not-in-os-arch": {
+    "active": true,
+    "id": "6f38-6a89-baf8-79fb",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "variant-out-of-scope-for-dirtree": {
+    "active": true,
+    "id": "6f38-6a89-bb05-134c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "versioned-naming-bsd-lib-mk-req": {
+    "active": true,
+    "id": "6f38-6a8a-9181-8b21",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "versioned-naming-follows-bsd-lib-mk": {
+    "active": true,
+    "id": "6f38-6a8a-9181-d97c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "versioned-output-naming": {
+    "active": true,
+    "id": "6f38-6a8a-0550-8cf7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "versioned-output-naming-req": {
+    "active": true,
+    "id": "6f38-6a8a-0550-8bb8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "view-drift-refines-cycle-fix-dec": {
+    "active": true,
+    "id": "0f87-6a95-2ac1-924d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "view-drift-refines-repoint-dec": {
+    "active": true,
+    "id": "0f87-6a94-6957-6170",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "vm-graceful-shutdown-and-netbsd-native-confirmed-dec": {
+    "active": true,
+    "id": "0f87-6a98-2b92-702c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "win-arm64-vm-construction-not-automatable": {
+    "active": true,
+    "id": "0f87-6a9a-af21-456a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "win-target-has-three-abi-flavors": {
+    "active": true,
+    "id": "6f38-6a8a-0a04-99a8",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "win-target-tiered-toolchain-req": {
+    "active": true,
+    "id": "0f87-6a98-92e4-4528",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "win-target-via-cross-toolchain": {
+    "active": true,
+    "id": "6f38-6a8a-07b3-0a61",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "win-target-via-cross-toolchain-req": {
+    "active": false,
+    "id": "6f38-6a8a-07b3-1a82",
+    "status": "superseded",
+    "type": "req"
+  },
+  "win-target-via-cross-toolchain-req-v2": {
+    "active": false,
+    "id": "0f87-6a94-6a03-808d",
+    "status": "superseded",
+    "type": "req"
+  },
+  "windows-hosts-cygwin-wsl": {
+    "active": false,
+    "id": "6f38-6a89-b810-3b02",
+    "status": "superseded",
+    "type": "req"
+  },
+  "windows-toolchain-scope-corrected": {
+    "active": true,
+    "id": "0f87-6a98-92d2-c40d",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "windows-toolchain-tiered-msvc-cygwin-mingw": {
+    "active": true,
+    "id": "0f87-6a98-92d8-0b97",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "windows-via-cygwin-wsl": {
+    "active": false,
+    "id": "6f38-6a89-b810-8ff2",
+    "status": "superseded",
+    "type": "dec"
+  },
+  "workspace-build-sequence": {
+    "active": true,
+    "id": "6f38-6a8a-9be8-b758",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "workspace-build-sequence-req": {
+    "active": true,
+    "id": "6f38-6a8a-9be8-14df",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "workspace-is-set-of-frameworks": {
+    "active": true,
+    "id": "6f38-6a88-1836-fe77",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "workspace-no-own-resources": {
+    "active": true,
+    "id": "6f38-6a8a-0550-d971",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "workspace-parent-macro-absolute": {
+    "active": true,
+    "id": "6f38-6a8a-0550-c53e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "workspace-parent-macro-absolute-req": {
+    "active": true,
+    "id": "6f38-6a8a-0550-79c4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "workspace-parent-search-order": {
+    "active": true,
+    "id": "6f38-6a88-1836-74c9",
+    "status": "confirmed",
+    "type": "req"
+  }
+}
