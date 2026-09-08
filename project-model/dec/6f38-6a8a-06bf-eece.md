@@ -7,8 +7,9 @@ status: recorded
 origin: user statement (clarifying question, 2026-08-22)
 created: 2026-08-22
 facets: [architecture]
-generator: migrate.py/v2
-checksum: d709aa579dc9
+rel_informed_by: [6f38-6a89-ba51-340e]
+generator: model.py/2.4.0
+checksum: 313e479f9383
 ---
 
 # Build output under build/<KEY>/ is structured to mirror a real installable prefix layout (plain Unix /usr/local-style, MacPorts /opt/local-style, or a macOS .app bundle), not an arbitrary bin/lib/share convenience layout

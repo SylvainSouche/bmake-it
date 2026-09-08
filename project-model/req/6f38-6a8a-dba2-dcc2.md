@@ -8,9 +8,10 @@ origin: user statement (clarifying question, 2026-08-22)
 created: 2026-08-23
 facets: [architecture]
 rel_decided_by: [6f38-6a8a-dba2-7b93]
+rel_informed_by: [6f38-6a88-1836-bfe8, 6f38-6a8a-f6ee-e69f]
 rel_refines: [6f38-6a88-1836-74a5, 6f38-6a8a-9be8-14df]
-generator: migrate.py/v2
-checksum: 344dcea31253
+generator: model.py/2.4.0
+checksum: 290a8537e0b1
 ---
 
 # A frameworks modules are discovered by scanning for *.m-suffixed immediate subdirectories; a workspaces frameworks are discovered by scanning immediate subdirectories -- neither is explicitly listed in the parent makefile

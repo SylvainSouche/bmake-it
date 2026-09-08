@@ -371,6 +371,78 @@
     "status": "confirmed",
     "type": "req"
   },
+  "harness-comprehensive-feature-coverage": {
+    "active": true,
+    "id": "0f87-6aa0-3be6-84ee",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-comprehensive-feature-coverage-req": {
+    "active": true,
+    "id": "0f87-6aa0-3bf1-5dfa",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-native-builds-also-in-vms": {
+    "active": true,
+    "id": "0f87-6aa0-3c6c-7a1d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-native-builds-also-in-vms-req": {
+    "active": true,
+    "id": "0f87-6aa0-3c7b-b243",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-tests-full-cross-build-matrix": {
+    "active": true,
+    "id": "0f87-6aa0-3c3d-862d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-tests-full-cross-build-matrix-req": {
+    "active": true,
+    "id": "0f87-6aa0-3c48-5074",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-tests-parent-ws-resolution": {
+    "active": true,
+    "id": "0f87-6aa0-3c04-edfb",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-tests-parent-ws-resolution-req": {
+    "active": true,
+    "id": "0f87-6aa0-3c1c-ba14",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-tool-presence-check-or-install": {
+    "active": true,
+    "id": "0f87-6aa0-3c28-7d44",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-tool-presence-check-or-install-req": {
+    "active": true,
+    "id": "0f87-6aa0-3c33-cbda",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-vm-runtime-for-cross-targets": {
+    "active": true,
+    "id": "0f87-6aa0-3c52-50a8",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-vm-runtime-for-cross-targets-req": {
+    "active": true,
+    "id": "0f87-6aa0-3c61-0a27",
+    "status": "confirmed",
+    "type": "req"
+  },
   "headers-resolved-from-source-not-build": {
     "active": true,
     "id": "6f38-6a8a-967a-a54e",
