@@ -371,6 +371,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "graceful-failure-cross-cutting": {
+    "active": true,
+    "id": "0f87-6aa1-048a-d54b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "graceful-failure-cross-cutting-req": {
+    "active": true,
+    "id": "0f87-6aa1-0496-b3d2",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-comprehensive-feature-coverage": {
     "active": true,
     "id": "0f87-6aa0-3be6-84ee",
@@ -770,6 +782,18 @@
   "link-time-not-yet-built-guard-req": {
     "active": true,
     "id": "6f38-6a91-03ec-fc4e",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "linux-glibc-musl-arch-tiering": {
+    "active": true,
+    "id": "0f87-6aa1-04c6-2551",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "linux-glibc-musl-arch-tiering-req": {
+    "active": true,
+    "id": "0f87-6aa1-04d8-2e97",
     "status": "confirmed",
     "type": "req"
   },
@@ -1773,6 +1797,18 @@
     "active": false,
     "id": "6f38-6a89-b810-3b02",
     "status": "superseded",
+    "type": "req"
+  },
+  "windows-shlib-versioninfo-uniform-naming": {
+    "active": true,
+    "id": "0f87-6aa1-04a5-9f70",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "windows-shlib-versioninfo-uniform-naming-req": {
+    "active": true,
+    "id": "0f87-6aa1-04b8-9a6d",
+    "status": "confirmed",
     "type": "req"
   },
   "windows-toolchain-scope-corrected": {
