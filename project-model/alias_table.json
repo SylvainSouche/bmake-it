@@ -161,6 +161,18 @@
     "status": "recorded",
     "type": "dec"
   },
+  "cross-compile-universal-coverage": {
+    "active": true,
+    "id": "0f87-6aa7-c898-0d1e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-compile-universal-coverage-req": {
+    "active": true,
+    "id": "0f87-6aa7-c89f-1b0a",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cross-compile-via-clang-target-sysroot-dec": {
     "active": true,
     "id": "0f87-6a95-b3ca-44d7",
@@ -190,6 +202,18 @@
     "id": "0f87-6a98-5d9c-ef85",
     "status": "recorded",
     "type": "obs"
+  },
+  "cross-test-universal-coverage": {
+    "active": true,
+    "id": "0f87-6aa7-c8a9-0c94",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-test-universal-coverage-req": {
+    "active": true,
+    "id": "0f87-6aa7-c8a9-216c",
+    "status": "confirmed",
+    "type": "req"
   },
   "cygwin-native-vs-mingw-cross-are-separate-packages": {
     "active": true,
@@ -274,6 +298,60 @@
     "id": "0f87-6a94-696d-a08d",
     "status": "confirmed",
     "type": "req"
+  },
+  "doc-generation-doxygen-based": {
+    "active": true,
+    "id": "0f87-6aa7-df9c-d688",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-generation-doxygen-based-req": {
+    "active": true,
+    "id": "0f87-6aa7-dfa7-17a5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "doc-generation-invocation-scope": {
+    "active": true,
+    "id": "0f87-6aa7-e041-cde8",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-generation-invocation-scope-req": {
+    "active": true,
+    "id": "0f87-6aa7-e04d-c63d",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "doc-generation-local-qa-trigger": {
+    "active": true,
+    "id": "0f87-6aa7-dfb2-0138",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-generation-local-qa-trigger-req": {
+    "active": true,
+    "id": "0f87-6aa7-dfc9-38a1",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "doc-pdf-docwith-explicit-grouping": {
+    "active": true,
+    "id": "0f87-6aa7-e392-3337",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-pdf-docwith-explicit-grouping-req": {
+    "active": true,
+    "id": "0f87-6aa7-e39b-037f",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "external-tool-generation-config-topic": {
+    "active": true,
+    "id": "0f87-6aa7-dd89-04d6",
+    "status": "recorded",
+    "type": "obs"
   },
   "flags-reuse-bsd-native-vars": {
     "active": true,
@@ -383,6 +461,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "grid-infrastructure-alternative-to-vm": {
+    "active": true,
+    "id": "0f87-6aa7-c8b2-12cd",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "grid-infrastructure-alternative-to-vm-req": {
+    "active": true,
+    "id": "0f87-6aa7-c8b3-4034",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-cache-management-cli": {
     "active": true,
     "id": "0f87-6aa7-bf94-1066",
@@ -418,6 +508,12 @@
     "id": "0f87-6aa0-3c7b-b243",
     "status": "confirmed",
     "type": "req"
+  },
+  "harness-scaffolding-predates-frozen-matrix": {
+    "active": true,
+    "id": "0f87-6aa7-d87b-29e6",
+    "status": "recorded",
+    "type": "obs"
   },
   "harness-target-matrix-reconciled": {
     "active": true,
@@ -1181,6 +1277,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "per-workspace-local-mk-override-topic": {
+    "active": true,
+    "id": "0f87-6aa7-dd92-ede9",
+    "status": "recorded",
+    "type": "obs"
+  },
   "phase1-concrete-targets": {
     "active": false,
     "id": "6f38-6a89-bb64-0874",
@@ -1798,6 +1900,18 @@
     "id": "0f87-6aa7-b958-558a",
     "status": "recorded",
     "type": "obs"
+  },
+  "vm-nesting-reentrancy-guard": {
+    "active": true,
+    "id": "0f87-6aa7-c4f1-91a5",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "vm-nesting-reentrancy-guard-req": {
+    "active": true,
+    "id": "0f87-6aa7-c4f7-414a",
+    "status": "confirmed",
+    "type": "req"
   },
   "win-arm64-vm-construction-not-automatable": {
     "active": true,
