@@ -176,6 +176,7 @@ Chapter~\ref{ch:advanced}.
 \end{description}
 
 \section{Platform and Language Scope}
+\label{sec:platform-scope}
 
 \textbf{Languages}: C, C++, and lex/yacc grammar sources. Java,
 Fortran, IDL, and Express — all supported by real \texttt{mkmk} — are
@@ -205,6 +206,58 @@ Everything outside this set — OpenBSD/NetBSD, per-distribution Linux
 labeling, kernel-level or Darwin/XNU development, macOS \texttt{.app}
 bundle output, the exact \texttt{win} ABI story (MinGW vs.\ Cygwin vs.\
 MSVC), musl libc — is deliberately deferred, not designed against yet\reqfoot{REQ-userland-only-scope}.
+
+%===============================================================
+\chapter{System Requirements}
+\label{ch:requirements}
+%===============================================================
+
+This chapter states what must already be present on a build host before
+\texttt{Bmake It} can be used. For which hosts and languages are in scope
+at all, see Section~\ref{sec:platform-scope}.
+
+\section{Build System}
+
+A real BSD make binary is required. \texttt{Bmake It} is built on top of
+BSD make's own \verb|bsd.*.mk| infrastructure, or reprogrammed equivalents
+where needed; it does not run under GNU
+make\reqfoot{CON-use-bsdmake}.
+
+\textbf{[open]} Which package supplies BSD make on each host, and the
+exact command to install it, is not yet part of the design record. The
+\texttt{*BSD} family ships it as the system default, and macOS reaches it
+via MacPorts\reqfoot{CON-cross-platform-targets}; the situation on Linux
+is not yet documented here.
+
+\section{Toolchain}
+
+Phase 1 supports two toolchain bundles, selected via
+\verb!TOOLCHAIN=<gcc|llvm>! on the \texttt{make} command line; if
+unspecified, it defaults to \texttt{llvm}\reqfoot{REQ-toolchain-cli-variable-req-v4}.
+At least one of LLVM (Clang) or GCC must be installed and reachable —
+see the Phase 1 target table in Section~\ref{sec:platform-scope} for which
+combinations are currently targeted.
+
+\textbf{Caveat:} toolchain detection currently locates the compiler via a
+single hardcoded absolute path (\verb|/usr/bin/clang|, \verb|/usr/bin/gcc|)
+rather than a \verb|PATH| search. On a host where the compiler lives
+elsewhere — MacPorts' \verb|/opt/local/bin|, pkgsrc's \verb|/usr/pkg/bin|,
+Homebrew, or similar — \verb|TOOLCHAIN=llvm| silently falls back to
+whatever plain \texttt{cc} happens to resolve to, with no warning that the
+requested toolchain was not actually
+used\reqfoot{OBS-toolchain-detection-hardcoded-path-silently-wrong-compiler}.
+
+\section{Languages}
+
+\texttt{Bmake It} compiles C, C++, and lex/yacc grammar sources (which
+themselves compile down to C/C++); no other language toolchain is
+required\reqfoot{REQ-supported-languages}.
+
+\section{Scope}
+
+\texttt{Bmake It} targets userspace binaries and libraries only — no
+kernel module or driver toolchain is
+needed\reqfoot{REQ-userland-only-scope}.
 
 %===============================================================
 \chapter{Basic Usage}

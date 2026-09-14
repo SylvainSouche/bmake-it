@@ -1,8 +1,8 @@
 # Architecture
 
-Generated from `project-model/` · schema_version 2 · 294 objects in model
-Sources: 87 REQ
-Generated 2026-09-07. Regenerate rather than edit — hand edits are lost and drift silently.
+Generated from `project-model/` · schema_version 2 · 319 objects in model
+Sources: 98 REQ
+Generated 2026-09-14. Regenerate rather than edit — hand edits are lost and drift silently.
 
 ## Requirements
 
@@ -246,11 +246,25 @@ Strengthens REQ-framework-prereqs-macro-req: PREREQS= is mandatory in every fram
 
 Refines: `framework-prereqs-macro-req`
 
+### Every make target and macro validates its own inputs and directory-level context, failing with a clear, named diagnostic rather than a raw make/tool error or silent misbehavior
+
+`REQ-graceful-failure-cross-cutting-req` · status **confirmed** · id `0f87-6aa1-0496-b3d2`
+
+Applies to every make target and every variable across the whole system, not just one feature. link-time-not-yet-built-guard-req is the one instance already designed in detail at the time this principle was recorded, treated as the template for how this gets done elsewhere: an explicit pre-check with a specific, named diagnostic rather than an opaque downstream error. help-target-req is a natural pairing, since a graceful-failure message can point back to make help for the full list of valid values rather than repeating everything inline. At the time this was recorded, the targets/macros expected to still need this treatment were TOOLCHAIN=, LIB_SHARED=, add-prereq/add-parent, make run, and make order -- worth auditing against current mk.*.mk behavior, since several of those have since been implemented and may or may not already honor this.
+
 ### For TOOLCHAIN=msvc specifically, a module's shared-library build (LIB_SHARED=YES, the default) must produce a usable import library (.lib) even when the source uses no __declspec(dllexport) annotations -- matching the zero-annotation-needed convention that already works for every other toolchain/target in this project. Exact mechanism (auto-generate a .def exporting every global symbol via dumpbin/nm-equivalent, require annotations project-wide with a portable macro, or something else) is an open follow-up, not yet decided
 
 `REQ-msvc-shared-lib-export-req` · status **confirmed** · id `0f87-6a9a-b51c-b267`
 
 Refines: `win-target-tiered-toolchain-req`
+
+### For every cross-compiled target, the harness provisions/uses a VM of that target platform to actually execute the built binary and verify its runtime behavior; this is either fully automated (no user intervention) or clearly documented with the harness detecting VM-environment presence and pointing to setup docs when absent
+
+`REQ-harness-vm-runtime-for-cross-targets-req` · status **confirmed** · id `0f87-6aa0-3c61-0a27`
+
+Closes the runtime-verification gap for cross builds left open by the full-cross-build-matrix REQ. For each (host, cross-target, toolchain) combination successfully built, the harness needs a way to actually execute the resulting binary to confirm runtime correctness, which requires a VM (or equivalent, e.g. an emulator) of the target OS/arch. Preferred outcome: fully automated, no manual setup step required. Acceptable fallback: if full automation isn't achieved, the setup process is documented, and the harness itself checks whether the required VM environment is present/configured before attempting to use it -- if absent, it fails with a clear message pointing to that documentation, rather than a bare connection-refused or similar low-level error. This is already substantially realized: tests/harness/provision + vm-lib.sh provision real VMs (QEMU/hvf/tart), and the four win-target tests above are genuine VM-executed runtime verifications (hello.exe actually running on a real Windows 11 arm64 VM). The Windows tier's automation gap is itself recorded (win-arm64-vm-construction-not-automatable): reproducing that VM today needs a human at the console, matching this REQ's documented fallback path rather than its preferred one.
+
+Refines: `harness-comprehensive-feature-coverage-req`, `harness-tests-full-cross-build-matrix-req`, `build-system-self-test-harness-req`
 
 ### Frameworks are built in a topological order derived from the workspace-wide PREREQS dependency graph: a framework only builds after all frameworks named in its PREREQS have completed building; behavior on an actual dependency cycle remains unspecified
 
@@ -294,6 +308,12 @@ Supersedes REQ-framework-header-exposure. Three header directories, each with a 
 
 Corrects REQ-lib-shared-defaults-yes-req and REQ-lib-shared-no-is-static-req in light of OBS-validation-lib-shared-does-not-exist-natively: LIB_SHARED= is reclassified from "reused native" to "new, project-specific" in the macro reference (50-makefile-macros.md). Behavior LIB_SHARED=YES (default) must implement in mk.lib.mk: if the module did not set SHLIB_MAJOR explicitly, auto-derive/set a default value (scheme TBD -- open follow-up) so the underlying bsd.lib.mk SHLIB_NAME logic fires and a shared library actually gets built. Behavior LIB_SHARED=NO: do not set SHLIB_MAJOR, so only the static .a gets built -- this case already matches bsd.lib.mk default behavior directly, no extra work needed. Open, NOT yet resolved by this finding: bsd.lib.mk always builds the static .a whenever LIB is set, with no discovered native suppression mechanism -- so a module with LIB_SHARED=YES will, by default reuse of bsd.lib.mk, ALSO get a static .a as a byproduct unless custom mk.lib.mk logic explicitly suppresses it. Whether that byproduct is acceptable or must be suppressed is an open design decision, not yet made.
 
+### Linux glibc is a first-class target on both amd64 and arm64; musl is first-class on amd64 only, with musl-arm64 explicitly not first-tier
+
+`REQ-linux-glibc-musl-arch-tiering-req` · status **confirmed** · id `0f87-6aa1-04d8-2e97`
+
+Elaborates linux-libc-default-glibc-req's glibc-is-default rule with the actual arch tiering: linux-amd64 and linux-arm64 are both first-class under glibc; linux-amd64-musl is first-class; linux-arm64-musl is explicitly not first-tier (not ruled out, just not a target this phase commits to building/testing). Recorded alongside the Windows tiering and DLL-naming decisions from the same session as part of a broader first-class target matrix that was never itself formally recorded as an object -- see the note on linux-glibc-musl-arch-tiering (the DEC this refines) for that open question. alpine-musl-shared-lib-runtime-symbol-resolution-broken is a live empirical finding against this exact tier (Linux/amd64/musl) and should be checked against whether it blocks calling this tier confirmed-working in practice, independent of whether the tiering itself is confirmed as scope.
+
 ### Module directory name case-sensitivity is whatever the host filesystem provides; the build system does not itself enforce or normalize case
 
 `REQ-module-name-case-sensitivity-req` · status **confirmed** · id `6f38-6a8a-9181-8613`
@@ -332,6 +352,14 @@ Supersedes REQ-sibling-module-ordering-link-only-req. Build strategy: each modul
 
 Refines: `workspace-build-sequence-req`, `framework-build-order-follows-prereqs-graph-req`
 
+### Native-host test suites also run inside a provisioned VM of that host OS (not directly on the ambient machine running the harness), using the same VM infrastructure built for cross-target runtime verification -- applied once that infrastructure exists
+
+`REQ-harness-native-builds-also-in-vms-req` · status **confirmed** · id `0f87-6aa0-3c7b-b243`
+
+Extends the VM infrastructure built for cross-target runtime verification to native builds: for each first-class OS (macOS, Linux, FreeBSD, Windows), the harness runs that OS's own native test suite inside a VM of that OS, not directly on the physical/ambient machine invoking the harness. This is explicitly sequenced AFTER cross-target VM support exists -- it reuses that same provisioning mechanism rather than introducing a separate one. Goal: every target, native or cross, gets its runtime verification inside an equivalently controlled, reproducible VM environment, eliminating ambient-host variability as a source of flaky or environment-dependent test results. NetBSD arm64 native testing is already confirmed working under this approach; the filesystem-corruption observation on that same VM is a reminder of exactly the kind of ambient/environment-dependent flakiness this REQ exists to eliminate.
+
+Refines: `harness-vm-runtime-for-cross-targets-req`
+
 ### PARENT_WS and PREREQS resolution results are cached in a generated, auto-.included .mk fragment (modeled directly on real bsd makes .depend mechanism), not recomputed by walking the filesystem on every make invocation
 
 `REQ-prereqs-resolution-cached-like-depend-req` · status **confirmed** · id `6f38-6a8c-2159-4b07`
@@ -368,13 +396,7 @@ Corrects REQ-mkdep-tool-works-wiring-must-be-custom-req: mk.prog.mk/mk.lib.mk do
 
 Scopes REQ-build-output-mirrors-prefix-layout for phase 1: only the plain *NIX/MacPorts-style prefix layout (bin/lib/share) is required. macOS .app bundle output (Contents/MacOS, Contents/Frameworks, Contents/Resources, Info.plist) is deferred -- not designed, not built -- consistent with REQ-phase1-concrete-targets scoping macOS to plain command-line tooling for now.
 
-Refines: `phase1-concrete-targets`, `build-output-mirrors-prefix-layout`
-
-### Phase 1 supports exactly four build targets: macOS/arm64 with llvm, macOS/arm64 with gcc, FreeBSD/x86_64 with llvm, FreeBSD/x86_64 with gcc
-
-`REQ-phase1-concrete-targets` · status **confirmed** · id `6f38-6a89-bb64-0874`
-
-Scopes down the general cross-platform/cross-toolchain requirements (CON-cross-platform-targets, REQ-target-key-includes-toolchain, REQ-default-toolchain-llvm) to a concrete, testable phase-1 target set: {macOS, arm64} x {gcc, llvm} and {FreeBSD, x86_64} x {gcc, llvm}. Linux, other *BSDs, other architectures, and Cygwin/WSL are not required to work yet but the design should not preclude them (per the broader CON/REQ objects already recorded).
+Refines: `harness-target-matrix-reconciled-req`, `build-output-mirrors-prefix-layout`
 
 ### Selecting an unrecognized cross-compile TARGET must fail loudly (a named error), never silently compile natively while claiming that target
 
@@ -423,6 +445,22 @@ Refines: `toolchain-cli-variable-req-v4`
 `REQ-msvc-no-manual-vcvarsall-req` · status **confirmed** · id `0f87-6a9a-d35b-a3ed`
 
 Refines: `win-target-tiered-toolchain-req`
+
+### Test cases cover PARENT_WS resolution comprehensively: workspace with no parents, a framework resolved only via a parent, and conflicting same-named frameworks/files present at multiple levels (local + parent, or multiple parents) verifying the documented precedence order is actually honored
+
+`REQ-harness-tests-parent-ws-resolution-req` · status **confirmed** · id `0f87-6aa0-3c1c-ba14`
+
+At minimum three PARENT_WS test scenarios: (1) no-parent baseline -- a workspace with PARENT_WS= empty only sees its own local frameworks; (2) parent-resolved -- a framework absent from the local workspace but present in a declared parent workspace is found and used correctly; (3) precedence/override -- the SAME framework name (or the same file within a framework) exists in both the local workspace and a parent workspace, or in two different parent workspaces at different PARENT_WS list positions, each with distinguishably different content -- the test verifies which version's content actually gets used, and confirms it matches the ordered-search-first-match-wins semantics already documented (REQ-workspace-parent-search-order). tests/archives/18-parent-ws.tar.gz, 28-prereq-parent-link.tar.gz, 29-prereq-local-shadows-parent.tar.gz, 32/33/34-add-prereq-*-link.tar.gz already exercise this on disk; no IMPL object formally links them back to this REQ yet.
+
+Refines: `build-system-self-test-harness-req`
+
+### Test harness coverage spans every system feature (not just isolated bsd-make mechanics), includes actually executing built programs and verifying correct link resolution (not just successful compilation), and covers both nominal (expected-success) and error (expected-failure, verifying graceful diagnostics) cases
+
+`REQ-harness-comprehensive-feature-coverage-req` · status **confirmed** · id `0f87-6aa0-3bf1-5dfa`
+
+Extends REQ-build-system-self-test-harness-req's scope: test cases must eventually cover the full feature surface of the system (domain-model discovery, PREREQS/LIBS resolution, header visibility levels, resource share/ overlay, INCL= generated-header promotion, SHLIB_MAJOR/MINOR versioning, packaging targets, CLI variable validation, convenience targets, make run, make order, etc.), not remain limited to a small set of isolated bsd-make mechanic checks. Two coverage dimensions apply to every feature: (1) runtime verification -- a nominal case for a program-producing feature must actually run the resulting binary (e.g. via make run or direct execution) and check its output/exit code, not stop at 'it compiled and linked'; (2) nominal AND error cases -- every feature needs both a case demonstrating correct success behavior and at least one case demonstrating that an invalid/error scenario produces the expected graceful diagnostic, not just success-path coverage.
+
+Refines: `build-system-self-test-harness-req`
 
 ### Test infrastructure, documentation generation, and package versioning/metadata are out of scope for the current design pass, deferred to later
 
@@ -486,6 +524,12 @@ For C and C++ compilation, the build system can use either the legacy OS-provide
 
 Absent any cross-compilation target specification, the build produces output for the host's own OS and architecture.
 
+### The harness provides a CLI target to download a target's OS image to cache and build its VM environment, a CLI target to force-supersede a target's cache to the latest available version, and a CLI target to display per-target status: latest version upstream, version currently cached, and whether a VM is built
+
+`REQ-harness-cache-management-cli-req` · status **confirmed** · id `0f87-6aa7-bf9c-22f7`
+
+Refines: `version-freshness-caching-policy-req`
+
 ### The target key <os> component uses one of: macos, win, freebsd, linux; openbsd, netbsd, and Linux-distro-specific labels are deferred, not decided for phase 1
 
 `REQ-os-label-set-req-v2` · status **confirmed** · id `0f87-6a94-696d-920d`
@@ -501,6 +545,30 @@ Refines: `target-key-omit-defaults-req`
 `REQ-target-key-omit-defaults-req` · status **confirmed** · id `6f38-6a8a-0c4d-d8e3`
 
 General key shape: <os>-<arch>[-<toolchain>][-<abi>], where the toolchain segment is present only if it differs from the default (llvm, per REQ-default-toolchain-llvm) -- e.g. gcc is shown, llvm is not -- and the ABI/libc segment (only applicable for OSes that have more than one ABI, currently just win) is present only if it differs from that OSs default (msvc for win, per the earlier win-amd64-msvc collapsing to win-amd64 example). Concretely, this means phase-1 target keys become: macos-arm64 (llvm, default, omitted), macos-arm64-gcc, freebsd-amd64 (llvm, default, omitted), freebsd-amd64-gcc -- superseding the earlier phase-1 key examples which always spelled out -llvm. Supersedes REQ-target-key-string-format-req and refines REQ-phase1-concrete-targets naming (does not change which 4 targets phase 1 covers, only how their keys are spelled).
+
+### The test harness builds, from each host, every first-class cross-compile target with every applicable toolchain -- the full (host x target x toolchain) matrix, not just host-native builds
+
+`REQ-harness-tests-full-cross-build-matrix-req` · status **confirmed** · id `0f87-6aa0-3c48-5074`
+
+For each build host actually available (e.g. a macOS runner, a Linux runner), the harness must invoke builds for every first-class target with every toolchain that target supports, not just the hosts own native target. A build-only pass (compile+link succeeds) is the minimum bar for a cross target that cannot run natively on the build host; REQ-harness-vm-runtime-for-cross-targets-req covers the further step of actually running the resulting cross-built binaries. The win/Cygwin/MSVC toolchain tests already run on a real Windows VM as partial evidence of matrix testing in this spirit, though tests/harness/run-matrix.sh's own general host x target x toolchain sweep is not yet formally linked to this REQ by an IMPL object.
+
+Refines: `build-system-self-test-harness-req`
+
+### The test harness verifies presence of every tool a test case needs before running it; missing tools are either auto-installed (where reasonable, e.g. via the host package manager) or reported with a specific, actionable diagnostic naming the tool and how to obtain it
+
+`REQ-harness-tool-presence-check-or-install-req` · status **confirmed** · id `0f87-6aa0-3c33-cbda`
+
+Before invoking bmake for a given test case, the harness checks that the tools that case needs (compiler, linker, yacc/lex, resource compiler, mkdep, etc. -- varying per test case and per target/toolchain combination) are present on the current host. Auto-install path: for tools reasonably installable via the hosts own package manager (apt on Linux, MacPorts on macOS, pkg on FreeBSD), the harness attempts installation automatically rather than failing. Diagnostic path: for tools that cannot or should not be auto-installed (proprietary toolchains, tools requiring manual licensing/account setup -- TOOLCHAIN=msvc/real cl.exe being the clearest example), the harness fails with a specific message naming the missing tool and how a human obtains/installs it, rather than letting the underlying shell command fail with a bare command-not-found error. No implementation evidence found in the current tests/harness/ tree as of this recording -- this is a genuine open gap, not yet built.
+
+Refines: `build-system-self-test-harness-req`
+
+### The test harness's full target matrix is macOS-arm64 (host-native, gcc+llvm), FreeBSD-amd64 (14.4/15.0/15.1, gcc+llvm), NetBSD-amd64+arm64 (10.1/11.0, gcc+llvm), Linux-amd64+arm64 glibc (Debian 13.7, gcc+llvm), Linux-amd64 musl first-tier (Alpine 3.24.1, gcc+llvm; Linux-arm64 musl explicitly not first-tier), and Windows-amd64 tiered (tier 1: native MSVC + Cygwin gcc/llvm; tier 2: mingw-w64 gcc/llvm cross)
+
+`REQ-harness-target-matrix-reconciled-req` · status **confirmed** · id `0f87-6aa7-bf76-6a71`
+
+Supersedes 6f38-6a89-bb64-0874 (Phase 1 supports exactly four build targets: macOS/arm64 with llvm, macOS/arm64 with gcc, FreeBSD/x86_64 with llvm, FreeBSD/x86_64 with gcc).
+
+Carries forward what remained valid and states what changed.
 
 ### The workspace-level build proceeds in order: resolve PARENT_WS, resolve each frameworks PREREQS (headers), build each module (compile-then-link-then-copy-up to framework), copy framework outputs up to workspace, with share/ resources following the same module-to-framework-to-workspace cascade
 
@@ -551,6 +619,14 @@ choice orthogonal to, and narrower than, TARGET_ARCH.
 
 Refines: `os-label-set-req-v2`
 
+### Windows/Cygwin/MinGW shared-library output uses a plain, unversioned filename and embeds SHLIB_MAJOR/SHLIB_MINOR versioning via a VERSIONINFO resource instead -- identically across all three Windows ABIs, with no Cygwin cyg-prefix special case
+
+`REQ-windows-shlib-versioninfo-uniform-naming-req` · status **confirmed** · id `0f87-6aa1-04b8-9a6d`
+
+Elaborates shlib-major-minor-cross-platform-emission-req's platform-native emission for the Windows case specifically: FreeBSD/Linux get an ELF symlink chain, macOS gets a dylib symlink chain plus linker version flags, and Windows (all three ABIs -- msvc, cygwin, mingw) gets a plain unversioned filename plus an embedded VERSIONINFO resource via the resource compiler. Deliberately uniform: Cygwin's own cyg-prefix + filename-embedded-version convention is not used, even for the cygwin-ABI target, to keep one naming rule across every Windows toolchain tier rather than a Cygwin-specific carve-out. test-msvc-shared-hello-win-amd64 already exercises greet.dll built via this path on a real VM, though the VERSIONINFO resource embedding specifically was not confirmed as part of that test -- worth checking whether it actually landed, since this REQ predates that implementation work and the two were never explicitly cross-checked.
+
+Refines: `shlib-major-minor-cross-platform-emission-req`
+
 ### Workspace, framework, and module levels each use a file named literally 'makefile', which .includes a role-specific helper: <mk.workspace.mk>, <mk.framework.mk>, <mk.prog.mk>, or <mk.lib.mk>
 
 `REQ-uniform-makefile-filename-req` · status **confirmed** · id `6f38-6a8a-04e6-c63c`
@@ -564,6 +640,12 @@ Every level in the tree (workspace root, each framework, each module) has exactl
 Closes the discrimination-signal follow-up from REQ-modules-and-frameworks-auto-discovered-req. Workspace-level scanning (mk.workspace.mk) treats any immediate subdirectory containing a makefile with a PREREQS= declaration as a framework. Since PREREQS= is now mandatory in every framework makefile (REQ-prereqs-mandatory-even-empty-req), this check is reliable and unambiguous. build/ (and any other non-framework directory) is naturally excluded, since it has no makefile at all.
 
 Refines: `modules-and-frameworks-auto-discovered-req`
+
+### bmake it checks the latest stable upstream release for every cached OS image and toolchain version; a cached version that is behind latest but still recent only warns that a newer version exists, it is not auto-replaced -- refreshing to latest requires the explicit force-supersede CLI target
+
+`REQ-version-freshness-caching-policy-req` · status **confirmed** · id `0f87-6aa7-bf8d-4b6b`
+
+Refines: `harness-native-builds-also-in-vms-req`
 
 ### build/<KEY>/{bin,lib,share} mirrors a standard *NIX install-prefix layout for FreeBSD/Linux/MacPorts targets; macOS .app bundle output (a structurally different layout: Contents/MacOS, Contents/Frameworks, Contents/Resources) is a distinct, not-yet-designed alternative
 

@@ -383,6 +383,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "harness-cache-management-cli": {
+    "active": true,
+    "id": "0f87-6aa7-bf94-1066",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-cache-management-cli-req": {
+    "active": true,
+    "id": "0f87-6aa7-bf9c-22f7",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-comprehensive-feature-coverage": {
     "active": true,
     "id": "0f87-6aa0-3be6-84ee",
@@ -404,6 +416,18 @@
   "harness-native-builds-also-in-vms-req": {
     "active": true,
     "id": "0f87-6aa0-3c7b-b243",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-target-matrix-reconciled": {
+    "active": true,
+    "id": "0f87-6aa7-bf6f-3c26",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "harness-target-matrix-reconciled-req": {
+    "active": true,
+    "id": "0f87-6aa7-bf76-6a71",
     "status": "confirmed",
     "type": "req"
   },
@@ -1158,9 +1182,9 @@
     "type": "dec"
   },
   "phase1-concrete-targets": {
-    "active": true,
+    "active": false,
     "id": "6f38-6a89-bb64-0874",
-    "status": "confirmed",
+    "status": "superseded",
     "type": "req"
   },
   "phase1-target-scope": {
@@ -1715,6 +1739,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "version-freshness-caching-policy": {
+    "active": true,
+    "id": "0f87-6aa7-bf86-e31e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "version-freshness-caching-policy-req": {
+    "active": true,
+    "id": "0f87-6aa7-bf8d-4b6b",
+    "status": "confirmed",
+    "type": "req"
+  },
   "versioned-naming-bsd-lib-mk-req": {
     "active": true,
     "id": "6f38-6a8a-9181-8b21",
@@ -1756,6 +1792,12 @@
     "id": "0f87-6a98-2b92-702c",
     "status": "recorded",
     "type": "dec"
+  },
+  "vm-image-caching-layering-unaddressed": {
+    "active": true,
+    "id": "0f87-6aa7-b958-558a",
+    "status": "recorded",
+    "type": "obs"
   },
   "win-arm64-vm-construction-not-automatable": {
     "active": true,
