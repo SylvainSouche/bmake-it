@@ -335,6 +335,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "doc-generation-per-language-tool-pluggable": {
+    "active": true,
+    "id": "0f87-6aa8-072c-0662",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-generation-per-language-tool-pluggable-req": {
+    "active": true,
+    "id": "0f87-6aa8-0736-7365",
+    "status": "confirmed",
+    "type": "req"
+  },
   "doc-pdf-docwith-explicit-grouping": {
     "active": true,
     "id": "0f87-6aa7-e392-3337",
@@ -1469,6 +1481,18 @@
     "status": "recorded",
     "type": "obs"
   },
+  "sanitizer-support": {
+    "active": true,
+    "id": "0f87-6aa8-06c0-50b7",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "sanitizer-support-req": {
+    "active": true,
+    "id": "0f87-6aa8-06c8-38b1",
+    "status": "confirmed",
+    "type": "req"
+  },
   "share-dir-fallback-hierarchy": {
     "active": true,
     "id": "6f38-6a89-bccb-d5b8",
@@ -1754,6 +1778,54 @@
   "uniform-makefile-filename-req": {
     "active": true,
     "id": "6f38-6a8a-04e6-c63c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "unit-test-atf-kyua-adoption": {
+    "active": true,
+    "id": "0f87-6aa8-00fc-a039",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "unit-test-atf-kyua-adoption-req": {
+    "active": true,
+    "id": "0f87-6aa8-0108-371a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "unit-test-feature-for-built-software": {
+    "active": true,
+    "id": "0f87-6aa8-00e9-3173",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "unit-test-feature-for-built-software-req": {
+    "active": true,
+    "id": "0f87-6aa8-00f3-4ed1",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "unit-test-full-suite-html-report": {
+    "active": true,
+    "id": "0f87-6aa8-06d2-914f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "unit-test-full-suite-html-report-req": {
+    "active": true,
+    "id": "0f87-6aa8-06d2-77a9",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "unit-test-per-language-tool-pluggable": {
+    "active": true,
+    "id": "0f87-6aa8-096b-0b7b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "unit-test-per-language-tool-pluggable-req": {
+    "active": true,
+    "id": "0f87-6aa8-0975-8512",
     "status": "confirmed",
     "type": "req"
   },
