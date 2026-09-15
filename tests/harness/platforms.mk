@@ -44,7 +44,7 @@ KIND_linux_amd64_vm     = vm
 ARCH_linux_amd64_vm      = amd64
 TIER_linux_amd64_vm       = 1
 TOOLCHAINS_linux_amd64_vm  = llvm gcc
-IMAGE_URL_linux_amd64_vm   = https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2
+IMAGE_URL_linux_amd64_vm   = https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
 SSH_PORT_linux_amd64_vm    = 2223
 
 # --- Linux glibc arm64, Docker native arch -------------------------------
@@ -64,21 +64,29 @@ DOCKERFILE_linux_amd64_musl = Dockerfile.linux-musl
 PLATFORM_linux_amd64_musl   = linux/amd64
 
 # --- FreeBSD amd64, QEMU VM (TCG) ----------------------------------------
+# Frozen set per harness-target-matrix-reconciled-req is {14.4, 15.0, 15.1};
+# single-pinned to the latest (15.1) for now -- tracking all three
+# simultaneously needs harness-cache-management-cli-req/version-freshness-
+# caching-policy-req, not yet implemented. Filename convention changed
+# since 14.3 (now requires an explicit -ufs/-zfs suffix) -- confirmed via
+# the real 15.1 directory listing, not guessed.
 KIND_freebsd_amd64      = vm
 ARCH_freebsd_amd64        = amd64
 TIER_freebsd_amd64         = 1
 TOOLCHAINS_freebsd_amd64    = llvm gcc
-IMAGE_URL_freebsd_amd64     = https://download.freebsd.org/releases/VM-IMAGES/14.3-RELEASE/amd64/Latest/FreeBSD-14.3-RELEASE-amd64.qcow2.xz
+IMAGE_URL_freebsd_amd64     = https://download.freebsd.org/releases/VM-IMAGES/15.1-RELEASE/amd64/Latest/FreeBSD-15.1-RELEASE-amd64-ufs.qcow2.xz
 SSH_PORT_freebsd_amd64      = 2224
 
 # --- NetBSD amd64, QEMU VM (TCG) -----------------------------------------
+# Frozen set is {10.1, 11.0}; single-pinned to 11.0 for the same reason as
+# FreeBSD above. URL confirmed via the real 11.0 directory listing.
 KIND_netbsd_amd64       = vm
 ARCH_netbsd_amd64         = amd64
 TIER_netbsd_amd64          = 1
 TOOLCHAINS_netbsd_amd64     = llvm gcc
 # The "-live" variant is the ready-to-boot image (not the installer ISO) --
 # NetBSD publishes ready-to-dd images for multiple ports, not just evbarm.
-IMAGE_URL_netbsd_amd64      = https://cdn.netbsd.org/pub/NetBSD/images/10.1/NetBSD-10.1-amd64-live.img.gz
+IMAGE_URL_netbsd_amd64      = https://cdn.netbsd.org/pub/NetBSD/images/11.0/NetBSD-11.0-amd64-live.img.gz
 SSH_PORT_netbsd_amd64       = 2225
 
 # --- NetBSD arm64, QEMU VM (hvf-accelerated) — 2nd tier -------------------
@@ -86,11 +94,16 @@ KIND_netbsd_arm64       = vm
 ARCH_netbsd_arm64         = arm64
 TIER_netbsd_arm64          = 2
 TOOLCHAINS_netbsd_arm64     = llvm gcc
-IMAGE_URL_netbsd_arm64      = https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/evbarm-aarch64/binary/gzimg/arm64.img.gz
+IMAGE_URL_netbsd_arm64      = https://cdn.netbsd.org/pub/NetBSD/NetBSD-11.0/evbarm-aarch64/binary/gzimg/arm64.img.gz
 SSH_PORT_netbsd_arm64       = 2222
 
-# --- Pending, documented only (see plan) ---------------------------------
-# windows: msvc + llvm + gcc, Microsoft ABI primary, cygwin/mingw 2nd tier.
-# Blocked on a new mk.toolchain.msvc.mk in the product itself -- not a
-# test-infrastructure gap. Not in $(PLATFORMS); tracked here so the design
-# accounts for it.
+# --- Pending, documented only ---------------------------------------------
+# windows: tier 1 native MSVC + Cygwin (gcc/llvm), tier 2 mingw-w64 cross.
+# mk.toolchain.msvc.mk now exists in the product (this was the actual
+# blocker before) -- the remaining gap is test-infrastructure only: no
+# Windows VM entry here yet. A genuine amd64 install ISO download was
+# started but paused (see harness-scaffolding-predates-frozen-matrix);
+# arm64 VM construction was found NOT fully automatable regardless (see
+# win-arm64-vm-construction-not-automatable) -- amd64 is the realistic
+# path once the ISO download resumes. Not in $(PLATFORMS) until then;
+# tracked here so the design accounts for it.

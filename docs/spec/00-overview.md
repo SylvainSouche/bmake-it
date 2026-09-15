@@ -55,7 +55,9 @@ than left open:
 - **Languages**: C, C++, and lex/yacc grammar sources (compiled to
   C/C++). Java, Fortran, IDL, Express — out of scope for now
   (`REQ-supported-languages`).
-- **Hosts**: macOS (MacPorts), Linux, *BSD (`CON-cross-platform-targets`),
+- **Hosts**: macOS (third-party package-manager toolchain -- MacPorts,
+  Homebrew, and pkgsrc/pkgin are tier 1, Nix is tier 2; never Apple's own
+  Xcode CLT compiler by default), Linux, *BSD (`CON-cross-platform-targets`),
   plus Cygwin/WSL treated as *NIX-like build hosts, no native MSVC
   requirement (`REQ-windows-hosts-cygwin-wsl`). WSL is really just Linux;
   `win`-target output is reachable via cross-compilation (mingw-w64-class

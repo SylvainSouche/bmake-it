@@ -13,6 +13,17 @@ _MK_TOOLCHAIN_LLVM_MK_ = 1
 # to plain cc/c++ there, which may be a different compiler entirely. Fail
 # loudly instead of silently building with the wrong toolchain.
 #
+# @impl 0f87-6aa9-39c9-34a5 -- _TOOL_PREFIXES is checked BEFORE ambient
+# $PATH (command -v), not after: each mk.paths.<os>.mk already lists that
+# OS's own correct priority order, but relying on command -v first makes
+# the result depend on the INVOKING SHELL's PATH instead, which Bmake It
+# doesn't control -- found on macOS specifically, where /usr/bin (Apple's
+# Xcode toolchain) and /opt/local/bin (MacPorts, the actual intended
+# default per CON-cross-platform-targets) can appear in either order
+# depending on who set up that shell's profile. command -v is now only a
+# last-resort fallback, for a genuinely nonstandard install location none
+# of the known prefixes cover.
+#
 # Bare `!defined(CC)` is not a safe guard here: bmake's own sys.mk
 # unconditionally soft-assigns `CC?=cc` before any of our files are parsed
 # (confirmed on real NetBSD -- /usr/share/mk/sys.mk:28), so CC is *always*
@@ -21,10 +32,11 @@ _MK_TOOLCHAIN_LLVM_MK_ = 1
 # (tracked in .MAKEOVERRIDES) -- that is the one case the user is overriding
 # toolchain selection directly.
 .if empty(.MAKEOVERRIDES:MCC)
-_LLVM_CC != command -v clang 2>/dev/null || \
+_LLVM_CC != _found=""; \
     for _p in ${_TOOL_PREFIXES}; do \
-        [ -x "$$_p/clang" ] && { echo "$$_p/clang"; break; }; \
-    done
+        if [ -x "$$_p/clang" ]; then _found="$$_p/clang"; break; fi; \
+    done; \
+    if [ -n "$$_found" ]; then echo "$$_found"; else command -v clang 2>/dev/null || true; fi
 .  if !empty(_LLVM_CC)
 CC  = ${_LLVM_CC}
 CXX = ${_LLVM_CC:S/clang$/clang++/}

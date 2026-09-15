@@ -12,6 +12,20 @@ BMK_MKDIR = ${.CURDIR}
 
 .include "${BMK_MKDIR}/mk.common.mk"
 
+# ---------------------------------------------------------------------------
+# Local customization hooks (local-mk-hook-files-and-cascade-order-req)
+# Module level sees PARENT_WS's mk/ (outermost), workspace's, framework's,
+# then its own -- outer to inner, all included, in that order.
+# ---------------------------------------------------------------------------
+_LOCAL_MK_DIRS =
+.for _p in ${PARENT_WS}
+_LOCAL_MK_DIRS += ${_p}/mk
+.endfor
+_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+
+_LOCAL_MK_PHASE = pre
+.include "${BMK_MKDIR}/mk.local.mk"
+
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(LIB) || empty(LIB)
 _libdir != basename ${.CURDIR} .m
@@ -101,6 +115,19 @@ _LIB_SEARCH_DIRS += ${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
 .  endif
 .endfor
 
+# Runtime search path for LIBS= dependencies -- without this, a shared lib
+# built here that itself links another shared lib can't be *loaded* later
+# (link-time -L/-l success doesn't imply dyld/ld.so can find it at run
+# time). @rpath install names (macOS) and bare sonames (ELF) both need a
+# consumer-side -rpath to resolve outside a system lib directory. No
+# rpath concept on Windows -- DLL search order is PATH/same-dir based.
+# @impl 0f87-6aa9-448d-537c
+.if ${TARGET} != "win"
+.  for _d in ${_LIB_SEARCH_DIRS}
+LDFLAGS += -Wl,-rpath,${_d}
+.  endfor
+.endif
+
 # @impl 0f87-6a98-76c2-a96e
 .for _l in ${LIBS}
 LDFLAGS += -l${_l}
@@ -113,7 +140,9 @@ _LIBOUT_DIR = ${.CURDIR}/${LIBDIR_LOCAL}
 .if ${TARGET} == "macos"
 SHLIB_NAME     = lib${LIB}.${SHLIB_MAJOR}.dylib
 SHLIB_LINK     = lib${LIB}.dylib
-_SHLIB_LDFLAGS = -dynamiclib -install_name ${SHLIB_NAME} -compatibility_version ${SHLIB_MAJOR} -current_version ${SHLIB_MAJOR}
+# @impl 0f87-6aa9-448d-537c -- @rpath, not a bare filename, so a matching
+# consumer-side -Wl,-rpath (below, and in mk.prog.mk/mk.test.mk) can find it
+_SHLIB_LDFLAGS = -dynamiclib -install_name @rpath/${SHLIB_NAME} -compatibility_version ${SHLIB_MAJOR} -current_version ${SHLIB_MAJOR}
 # @impl 0f87-6a98-96de-331e
 .elif ${TARGET} == "win"
 # No "lib" prefix and no SONAME-style major-version suffix (neither is a
@@ -233,6 +262,11 @@ clean:
 	rm -f *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.dll 2>/dev/null || true
 	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
 
+
+.include "${BMK_MKDIR}/mk.test.mk"
+
+_LOCAL_MK_PHASE = local
+.include "${BMK_MKDIR}/mk.local.mk"
 
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"

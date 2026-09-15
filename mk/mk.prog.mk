@@ -12,6 +12,20 @@ BMK_MKDIR = ${.CURDIR}
 
 .include "${BMK_MKDIR}/mk.common.mk"
 
+# ---------------------------------------------------------------------------
+# Local customization hooks (local-mk-hook-files-and-cascade-order-req)
+# Module level sees PARENT_WS's mk/ (outermost), workspace's, framework's,
+# then its own -- outer to inner, all included, in that order.
+# ---------------------------------------------------------------------------
+_LOCAL_MK_DIRS =
+.for _p in ${PARENT_WS}
+_LOCAL_MK_DIRS += ${_p}/mk
+.endfor
+_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+
+_LOCAL_MK_PHASE = pre
+.include "${BMK_MKDIR}/mk.local.mk"
+
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(PROG) || empty(PROG)
 PROG != basename ${.CURDIR} .m
@@ -90,6 +104,16 @@ _LIB_SEARCH_DIRS += ${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
 .  endif
 .endfor
 
+# Runtime search path for LIBS= -- link-time -L/-l success doesn't imply
+# the resulting binary can find the shared lib at run time (see mk.lib.mk
+# for the same reasoning). No rpath concept on Windows.
+# @impl 0f87-6aa9-448d-537c
+.if ${TARGET} != "win"
+.  for _d in ${_LIB_SEARCH_DIRS}
+LDFLAGS += -Wl,-rpath,${_d}
+.  endfor
+.endif
+
 # @impl 0f87-6a98-76c2-a96e
 .for _l in ${LIBS}
 LDFLAGS += -l${_l}
@@ -160,6 +184,11 @@ clean:
 	rm -f ${PROG} *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.exe 2>/dev/null || true
 	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
 
+
+.include "${BMK_MKDIR}/mk.test.mk"
+
+_LOCAL_MK_PHASE = local
+.include "${BMK_MKDIR}/mk.local.mk"
 
 BMK_HELP_ROLE = prog
 .include "${BMK_MKDIR}/mk.help.mk"

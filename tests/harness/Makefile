@@ -74,22 +74,28 @@ fetch: $(SYSROOTS)/linux-amd64.tar $(SYSROOTS)/linux-arm64.tar $(SYSROOTS)/netbs
 # Phase 2: provision -- Docker images built+tagged once (VM provisioning:
 # not yet implemented, see STATUS)
 # ---------------------------------------------------------------------------
+# debian:trixie-slim (13.x, frozen version 13.7) and alpine:3.24.1 (frozen
+# stable) replace the previous bookworm-slim (12)/latest (floating tag) --
+# per harness-target-matrix-reconciled-req and version-freshness-caching-
+# policy-req (a floating tag is the anti-pattern that policy replaces).
+# Not yet pulled/tested on this host -- tags are real, current Docker Hub
+# tags, but this needs a `make provision` run once internet access allows.
 GLIBC_INSTALL := apt-get update -qq && apt-get install -y -qq --no-install-recommends bmake clang lld gcc file
 MUSL_INSTALL := apk add --no-cache bmake clang lld gcc musl-dev file
 
 $(IMAGES)/.linux-glibc-amd64.provisioned:
 	@mkdir -p $(IMAGES)
-	provision/provision-docker.sh debian:bookworm-slim linux/amd64 "$(GLIBC_INSTALL)" bmk/linux-glibc:amd64
+	provision/provision-docker.sh debian:trixie-slim linux/amd64 "$(GLIBC_INSTALL)" bmk/linux-glibc:amd64
 	@touch $@
 
 $(IMAGES)/.linux-glibc-arm64.provisioned:
 	@mkdir -p $(IMAGES)
-	provision/provision-docker.sh debian:bookworm-slim linux/arm64 "$(GLIBC_INSTALL)" bmk/linux-glibc:arm64
+	provision/provision-docker.sh debian:trixie-slim linux/arm64 "$(GLIBC_INSTALL)" bmk/linux-glibc:arm64
 	@touch $@
 
 $(IMAGES)/.linux-musl-amd64.provisioned:
 	@mkdir -p $(IMAGES)
-	provision/provision-docker.sh alpine:latest linux/amd64 "$(MUSL_INSTALL)" bmk/linux-musl:amd64
+	provision/provision-docker.sh alpine:3.24.1 linux/amd64 "$(MUSL_INSTALL)" bmk/linux-musl:amd64
 	@touch $@
 
 $(IMAGES)/.netbsd_arm64.provisioned: $(IMAGES)/netbsd-arm64.img

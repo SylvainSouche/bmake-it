@@ -41,6 +41,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "atf-cxx-libcxx-autoptr-gap-obs": {
+    "active": true,
+    "id": "0f87-6aa9-4495-2e81",
+    "status": "recorded",
+    "type": "obs"
+  },
   "build-obj-os-arch-output": {
     "active": false,
     "id": "6f38-6a88-1836-3d88",
@@ -106,6 +112,12 @@
     "id": "6f38-6a8b-de94-3b56",
     "status": "superseded",
     "type": "req"
+  },
+  "collection-level-architecture-topic": {
+    "active": true,
+    "id": "0f87-6aa9-0adc-f17c",
+    "status": "recorded",
+    "type": "obs"
   },
   "compiler-native-dependency-tracking-req": {
     "active": true,
@@ -356,6 +368,18 @@
   "doc-pdf-docwith-explicit-grouping-req": {
     "active": true,
     "id": "0f87-6aa7-e39b-037f",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "doc-project-metadata-conventions": {
+    "active": true,
+    "id": "0f87-6aa9-038c-9749",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-project-metadata-conventions-req": {
+    "active": true,
+    "id": "0f87-6aa9-0393-f302",
     "status": "confirmed",
     "type": "req"
   },
@@ -761,6 +785,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-shared-lib-rpath": {
+    "active": true,
+    "id": "0f87-6aa9-448d-537c",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-shlib-major-minor-emission": {
     "active": true,
     "id": "0f87-6a98-76ed-e260",
@@ -947,11 +977,65 @@
     "status": "confirmed",
     "type": "req"
   },
+  "local-mk-hook-files-and-cascade-order": {
+    "active": true,
+    "id": "0f87-6aa9-0035-144b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "local-mk-hook-files-and-cascade-order-req": {
+    "active": true,
+    "id": "0f87-6aa9-003f-a123",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "macos-multi-pkgmgr-single-vm": {
+    "active": true,
+    "id": "0f87-6aa9-3edd-8119",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "macos-multi-pkgmgr-single-vm-req": {
+    "active": true,
+    "id": "0f87-6aa9-3ee5-3533",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "macos-toolchain-detection-not-deterministic": {
+    "active": true,
+    "id": "0f87-6aa9-39b8-d2f0",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "macos-toolchain-tiers": {
+    "active": true,
+    "id": "0f87-6aa9-3a88-4c34",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "macos-toolchain-tiers-req": {
+    "active": true,
+    "id": "0f87-6aa9-3a90-fa13",
+    "status": "confirmed",
+    "type": "req"
+  },
   "macos-vm-connectivity-was-expect-case-bug": {
     "active": true,
     "id": "0f87-6a97-e99b-fc2c",
     "status": "recorded",
     "type": "obs"
+  },
+  "macports-complete-container-stack": {
+    "active": true,
+    "id": "0f87-6aa9-4262-9beb",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "macports-layer-package-list-req": {
+    "active": true,
+    "id": "0f87-6aa9-426f-c1e1",
+    "status": "confirmed",
+    "type": "req"
   },
   "make-port-deferred": {
     "active": true,
@@ -1289,6 +1373,18 @@
     "status": "recorded",
     "type": "dec"
   },
+  "per-level-local-mk-directory": {
+    "active": true,
+    "id": "0f87-6aa8-fee3-e68d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "per-level-local-mk-directory-req": {
+    "active": true,
+    "id": "0f87-6aa8-fef5-54d8",
+    "status": "confirmed",
+    "type": "req"
+  },
   "per-workspace-local-mk-override-topic": {
     "active": true,
     "id": "0f87-6aa7-dd92-ede9",
@@ -1517,6 +1613,24 @@
     "status": "recorded",
     "type": "dec"
   },
+  "shared-lib-not-runtime-loadable-obs": {
+    "active": true,
+    "id": "0f87-6aa9-447f-0d48",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "shared-lib-rpath-fix-dec": {
+    "active": true,
+    "id": "0f87-6aa9-4485-ade4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "shared-lib-runtime-loadable-req": {
+    "active": true,
+    "id": "0f87-6aa9-448d-4154",
+    "status": "confirmed",
+    "type": "req"
+  },
   "shlib-major-minor-cross-platform-emission": {
     "active": true,
     "id": "6f38-6a8a-d9a5-914d",
@@ -1702,6 +1816,18 @@
     "id": "0f87-6a95-78d4-6146",
     "status": "recorded",
     "type": "dec"
+  },
+  "toolchain-detection-prefix-list-authoritative": {
+    "active": true,
+    "id": "0f87-6aa9-39c1-674b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-detection-prefix-list-authoritative-req": {
+    "active": true,
+    "id": "0f87-6aa9-39c9-34a5",
+    "status": "confirmed",
+    "type": "req"
   },
   "toolchain-in-target-key": {
     "active": true,

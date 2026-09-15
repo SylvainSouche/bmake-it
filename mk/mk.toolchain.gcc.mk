@@ -3,15 +3,19 @@
 # list of common install prefixes -- never a single hardcoded absolute path.
 # See mk.toolchain.llvm.mk for why (silently substituting a different
 # compiler is a real failure mode found on real NetBSD/pkgsrc).
+#
+# @impl 0f87-6aa9-39c9-34a5 -- _TOOL_PREFIXES checked before ambient $PATH,
+# same reasoning as mk.toolchain.llvm.mk.
 
 .if !defined(_MK_TOOLCHAIN_GCC_MK_)
 _MK_TOOLCHAIN_GCC_MK_ = 1
 
 .if empty(.MAKEOVERRIDES:MCC)
-_GCC_CC != command -v gcc 2>/dev/null || \
+_GCC_CC != _found=""; \
     for _p in ${_TOOL_PREFIXES}; do \
-        [ -x "$$_p/gcc" ] && { echo "$$_p/gcc"; break; }; \
-    done
+        if [ -x "$$_p/gcc" ]; then _found="$$_p/gcc"; break; fi; \
+    done; \
+    if [ -n "$$_found" ]; then echo "$$_found"; else command -v gcc 2>/dev/null || true; fi
 .  if !empty(_GCC_CC)
 CC  = ${_GCC_CC}
 CXX = ${_GCC_CC:S/gcc$/g++/}

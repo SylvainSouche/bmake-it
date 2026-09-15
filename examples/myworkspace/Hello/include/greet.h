@@ -8,5 +8,13 @@
 #  define GREET_EXPORT BMK_DLLIMPORT
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 GREET_EXPORT void greet(const char *name);
+
+#ifdef __cplusplus
+}
+#endif
 #endif

@@ -26,6 +26,20 @@ BMK_MKDIR = ${.CURDIR}
 .endif
 
 # ---------------------------------------------------------------------------
+# Local customization hooks (local-mk-hook-files-and-cascade-order-req)
+# Framework level sees PARENT_WS's mk/ (outermost), then the workspace's
+# own mk/, then its own -- outer to inner, all included, in that order.
+# ---------------------------------------------------------------------------
+_LOCAL_MK_DIRS =
+.for _p in ${PARENT_WS}
+_LOCAL_MK_DIRS += ${_p}/mk
+.endfor
+_LOCAL_MK_DIRS += ${.CURDIR}/../mk ${.CURDIR}/mk
+
+_LOCAL_MK_PHASE = pre
+.include "${BMK_MKDIR}/mk.local.mk"
+
+# ---------------------------------------------------------------------------
 # Auto-discover modules (*.m) and generate topological order from LIBS=
 # ---------------------------------------------------------------------------
 _GEN_SCRIPT = ${BMK_MKDIR}/../scripts/gen-mod-order.sh
@@ -144,6 +158,10 @@ add-prereq:
 
 .PHONY: all clean help copy-up add-prereq _build_modules _aggregate
 
+.include "${BMK_MKDIR}/mk.docs.mk"
+
+_LOCAL_MK_PHASE = local
+.include "${BMK_MKDIR}/mk.local.mk"
 
 BMK_HELP_ROLE = framework
 .include "${BMK_MKDIR}/mk.help.mk"
