@@ -93,8 +93,11 @@ is deferred (`REQ-app-bundle-deferred-req`).
 - `make port`'s actual generation mechanism (`REQ-make-port-deferred-req`
   — its *category*, source-recipe not binary package, is settled:
   `REQ-port-target-is-source-recipe-not-binary-package-req`)
-- Test infrastructure, documentation generation, package versioning/
-  maintainer metadata (`REQ-tests-docs-versioning-deferred-req`)
+- Package versioning/maintainer metadata
+  (`REQ-tests-docs-versioning-deferred-req`) — test infrastructure and
+  documentation generation, originally deferred by the same REQ, are now
+  implemented; see `70-documentation-generation.md` and
+  `80-unit-testing.md`
 - Cycle detection across `PREREQS`/`LIBS` dependency graphs — explicitly
   undefined behavior for now (`REQ-prereqs-misorder-no-validation-req`)
 - Cross-filesystem `make install` (`REQ-install-requires-prebuilt-target-req`)
@@ -105,4 +108,5 @@ is deferred (`REQ-app-bundle-deferred-req`).
 See `10-directory-layout.md` for the concrete tree, `20-headers-and-linking.md`
 for header/library resolution, `30-build-sequence.md` for build ordering,
 `40-cli-reference.md` for `make` usage, `50-makefile-macros.md` for the
-full macro reference.
+full macro reference, `70-documentation-generation.md` for `bmake docs`,
+and `80-unit-testing.md` for `bmake test`/`test-all`.

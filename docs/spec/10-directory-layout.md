@@ -135,3 +135,14 @@ unique to any layer survive; files present at multiple layers end up as
 the most specific version (`REQ-share-overlay-copy-order`). Unlike the
 build-output target key, the resource fallback key is **OS+arch only** —
 toolchain never affects resource variant selection.
+
+## Optional directories, not shown above
+
+- **`mk/`** at workspace, framework, or module level — local-mk
+  customization hooks (`pre.mk`/`local.mk` and their `${TOOLCHAIN}`/
+  `${TARGET}` variants), cascading outward-in. See
+  `50-makefile-macros.md`.
+- **`tests/`** at module level — `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=`
+  sources for `bmake test`. See `80-unit-testing.md`.
+- **`docs/`** — `bmake docs` output (Doxygen HTML, tag files); not
+  source, not committed. See `70-documentation-generation.md`.

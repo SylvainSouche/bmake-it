@@ -56,6 +56,9 @@ variables directly, appended via `+=` in a module's makefile:
 | `port` | **Categorically different** from the binary-package targets above: produces a source-based BSD-ports-style recipe (port `Makefile`, `distinfo`, patches, `pkg-plist`) for the ports system to fetch and build itself — no pre-built binary is staged or embedded (`REQ-port-target-is-source-recipe-not-binary-package-req`). Exact generation mechanism is deferred to a later phase (`REQ-make-port-deferred-req`) |
 | `add-prereq FW=<name>` | Convenience target: appends `<name>` to the current framework's `PREREQS=`. Pure text-editing convenience, does **not** resolve or search for anything (distinct from the rejected `mkGetPreq`/`mkCopyPreq`) (`REQ-add-prereq-add-parent-convenience-targets-req`) |
 | `add-parent WS=<abs-path>` | Convenience target: appends `<abs-path>` to the workspace's `PARENT_WS=` |
+| `docs` | Generates Doxygen documentation — just the enclosing framework from within a framework, or every framework plus a workspace aggregation page from the workspace root (`REQ-doc-generation-invocation-scope-req`). See `70-documentation-generation.md` |
+| `test` | Builds and runs this module's declared `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=` tests via Kyua; writes a JUnit XML report; exits non-zero on any failure (`REQ-unit-test-feature-for-built-software-req`). See `80-unit-testing.md` |
+| `test-all` | Same as `test`, plus a full HTML report, produced on failure too (`REQ-unit-test-full-suite-html-report-req`) |
 
 ## Discovery (no explicit listing required)
 

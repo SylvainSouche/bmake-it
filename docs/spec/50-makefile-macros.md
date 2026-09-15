@@ -43,6 +43,48 @@ same numbers into the linker's native `-compatibility_version`/
 `-current_version` flags, since that's macOS's actual ABI-compatibility
 mechanism, not just a filename convention.
 
+## Local customization (`mk/` directories)
+
+A workspace, framework, or module may carry its own `mk/` subdirectory,
+consulted for six conventionally-named hook files — `pre.mk`/`local.mk`,
+each with unconditional, `${TOOLCHAIN}`-conditional (`pre.${TOOLCHAIN}.mk`)
+and `${TARGET}`-conditional (`pre.${TARGET}.mk`) variants
+(`REQ-local-mk-hook-files-and-cascade-order-req`). `pre.mk` is included
+before a role file computes its defaults (e.g. before `mk.docs.mk` derives
+`DOC_PROJECT_NAME=` — the mechanism `70-documentation-generation.md` uses
+for project-metadata overrides); `local.mk` after.
+
+Visibility cascades outward-in, and **every** matching level is included,
+not just the most specific (`REQ-per-level-local-mk-directory-req`):
+
+| From | Sees `mk/` at |
+|---|---|
+| Workspace | its own, then every `PARENT_WS`'s |
+| Framework | workspace, then its own |
+| Module | workspace, then framework, then its own |
+
+Typical use: a module's own `mk/local.${TOOLCHAIN}.mk` appending an extra
+`CFLAGS` for one specific toolchain, without touching the shared
+`mk/*.mk` role files.
+
+## Test declarations (`.include <mk.test.mk>`, included by `mk.prog.mk`/`mk.lib.mk`)
+
+| Macro | Meaning | Status |
+|---|---|---|
+| `TESTS_CXX=<name1> <name2> ...` | atf-c++ test cases, sources at `tests/<name>.cpp`. Must be set **before** `.include`ing `mk.lib.mk`/`mk.prog.mk` — bmake evaluates macro checks in file order, so a declaration placed after the `.include` is invisible to it, same convention as `LIB=`/`PROG=` | New (`REQ-unit-test-feature-for-built-software-req`) |
+| `TESTS_C=<name1> <name2> ...` | atf-c test cases, sources at `tests/<name>.c` | New |
+| `TESTS_SH=<name1> <name2> ...` | atf-sh script tests, staged from `tests/<name>.sh` | New |
+
+Full detail, including the `test`/`test-all` targets: `80-unit-testing.md`.
+
+## Documentation-generation metadata (`.include <mk.docs.mk>`)
+
+| Macro | Meaning | Status |
+|---|---|---|
+| `DOC_PROJECT_NAME=`, `DOC_PROJECT_VERSION=`, `DOC_PROJECT_BRIEF=`, `DOC_LOGO=`, `DOC_LICENSE_NOTICE=` | Override the auto-detected Doxygen project-identity fields (from `VERSION`/`LICENSE`/`docs/logo.*`); set in a `pre.mk` (above) | New (`REQ-doc-project-metadata-conventions-req`) |
+
+Full detail: `70-documentation-generation.md`.
+
 ## Reused BSD-make-native variables (apply at any module level)
 
 | Variable | Meaning |

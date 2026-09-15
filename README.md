@@ -16,13 +16,16 @@ mk/                      # role makefiles
 ├── mk.workspace.mk       # workspace role (PARENT_WS=, framework discovery)
 ├── mk.framework.mk       # framework role (PREREQS=, module discovery+order)
 ├── mk.prog.mk            # executable module (PROG=, LIBS=)
-└── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
+├── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
+├── mk.docs.mk            # `bmake docs` — Doxygen generation + tag-file cross-linking
+├── mk.test.mk            # `bmake test`/`test-all` — ATF/Kyua unit tests
+└── mk.local.mk           # per-level mk/ hook-file cascade (pre.mk/local.mk)
 include/                 # bmk_export.h (portable dllexport/dllimport macros)
 scripts/                 # gen-mod-order.sh, gen-fw-order.sh, MSVC wrappers
 examples/myworkspace/    # worked example (System + Hello frameworks)
 tests/                   # script-driven test harness for mk/*.mk itself
 docs/
-├── spec/                 # design specification (00-overview.md … 60-*.md)
+├── spec/                 # design specification (00-overview.md … 80-*.md)
 └── manual.tex            # LaTeX package manual
 project-model/           # discovery-driven-dev project model (see below)
 ```
@@ -44,6 +47,18 @@ Run the example binary:
 LD_LIBRARY_PATH=build/linux-amd64/lib ./build/linux-amd64/bin/hello
 # → Hello, Bmake It!
 ```
+
+Generate docs and run unit tests (from a framework or module directory):
+
+```sh
+bmake docs      # Doxygen HTML for this framework (or every framework +
+                # a workspace landing page, from the workspace root)
+bmake test      # build + run this module's TESTS_CXX=/TESTS_C=/TESTS_SH=
+                # via ATF/Kyua; JUnit XML report
+bmake test-all  # same, plus a full HTML report
+```
+
+See `docs/spec/70-documentation-generation.md` and `docs/spec/80-unit-testing.md`.
 
 ## Domain model
 
@@ -89,6 +104,37 @@ Implements the design described in `docs/spec/`. Known limitations:
 skill for keeping requirements, decisions, and implementation links in durable
 files instead of conversation history. Bmake It was its first real testbed;
 link to the skill's own repo to follow once it's published.
+
+### Specs vs. implementation: three layers, one direction of truth
+
+This repo has three places a claim about the build system could live, and
+they are not peers:
+
+1. **`project-model/`** is the source of truth. Every requirement (REQ),
+   decision (DEC), observation (OBS), and implementation link (IMPL) is a
+   machine-checked object — `model.py check --strict` verifies the graph
+   is internally consistent (no dangling edges, no tampered frontmatter),
+   and `check_impl.py` cross-checks it against the actual code via
+   `@impl <IMPL-id>` markers (catching an IMPL claiming code that no
+   longer exists, or code with no corresponding model entry).
+2. **`mk/*.mk` (and other code)** is the implementation. It either carries
+   an `@impl` marker pointing at a real IMPL object, or it doesn't exist
+   in the model's eyes yet — `check_impl.py`'s "uncovered leaves" report
+   is the honest list of confirmed requirements with no implementation.
+3. **`docs/spec/*.md` and `docs/manual.tex`** are a hand-written prose
+   *synthesis* of (1), for a human reader who doesn't want to read 300+
+   individual model files. Every claim in a `docs/spec/*.md` chapter cites
+   the `REQ-`/`CON-`/`NREQ-` alias it comes from — a claim with no
+   citation is suspect. This layer is **not** auto-generated and **not**
+   authoritative: it is written by hand after a feature lands in (1) and
+   (2), which means it can and does lag behind. If `project-model/` and
+   `docs/spec/` ever disagree, `project-model/` is right.
+
+Practical discipline: when a feature is implemented and modeled, update
+its `docs/spec/*.md` chapter (or add a new one) in the same pass — don't
+let the prose synthesis silently drift, the way it did for documentation
+generation, local-mk customization, and unit testing before this note was
+written.
 
 ## License
 
