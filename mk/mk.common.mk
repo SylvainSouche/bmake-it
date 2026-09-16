@@ -193,6 +193,19 @@ LDFLAGS  += -fsanitize=${SANITIZE}
 CFLAGS   += -fno-omit-frame-pointer
 CXXFLAGS += -fno-omit-frame-pointer
 .  endif
+
+# UndefinedBehaviorSanitizer's default is to log a diagnostic and KEEP
+# RUNNING, not abort -- found empirically: a deliberate signed-integer-
+# overflow test case still reported "passed" under SANITIZE=undefined,
+# the diagnostic sitting unnoticed in stderr. That defeats the entire
+# point of a sanitizer-catch test (or `run`/`test` failing loudly on a
+# real bug), so make every undefined-behavior check fatal on first hit,
+# matching how AddressSanitizer already aborts by default. Not an MSVC
+# concern -- MSVC's /fsanitize=address has no UBSan-equivalent switch.
+.  if !empty(_SANITIZE_WORDS:Mundefined) && ${TOOLCHAIN} != "msvc"
+CFLAGS   += -fno-sanitize-recover=undefined
+CXXFLAGS += -fno-sanitize-recover=undefined
+.  endif
 .endif
 
 # Suppress man pages by default (project is userland tools/libs)

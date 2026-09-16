@@ -51,6 +51,18 @@ target needing its own sanitizer-specific logic
   requesting anything else under `TOOLCHAIN=msvc` fails loudly with the
   same discipline. mingw/Cygwin gcc support is real but patchy
   per-sanitizer; not blocked, not guaranteed.
+- **`undefined` is fatal on first hit**: UndefinedBehaviorSanitizer's own
+  default is to log a diagnostic and keep running, which would let a
+  real bug sit unnoticed in stderr while `test` reports "passed" —
+  found empirically. `SANITIZE=undefined` therefore also sets
+  `-fno-sanitize-recover=undefined`, so a violation aborts the process
+  (matching AddressSanitizer's own default behavior) rather than being
+  silently survivable.
+- **Workspace/framework scope**: `SANITIZE=` set at the workspace or
+  framework level is forwarded through the recursive `all`/`test`/
+  `test-all` targets to every module — not just when invoked directly
+  inside a module directory. See `80-unit-testing.md` for the `test`/
+  `test-all` recursion and dashboard specifically.
 
 ## Debug/release and extra compile flags
 

@@ -803,6 +803,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-test-workspace-aggregation": {
+    "active": true,
+    "id": "0f87-6aaa-6201-a430",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-vcvarsall-auto-discovery": {
     "active": true,
     "id": "0f87-6a9a-d311-f245",
@@ -1756,6 +1762,12 @@
     "id": "0f87-6a9a-d35b-6e0a",
     "status": "passing",
     "type": "test"
+  },
+  "test-workspace-aggregation-req": {
+    "active": true,
+    "id": "0f87-6aaa-6025-a8fa",
+    "status": "confirmed",
+    "type": "req"
   },
   "tests-docs-versioning-deferred": {
     "active": true,

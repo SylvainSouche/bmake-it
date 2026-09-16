@@ -88,10 +88,10 @@ _build_frameworks:
 	@echo "===> building framework ${_f}"
 	@${MAKE} -C ${_f} all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}"
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
 	@${MAKE} -C ${_f} copy-up \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}"
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
 .endfor
 
 _aggregate_ws:
@@ -218,7 +218,64 @@ docs:
 	@echo "</body></html>" >> ${.CURDIR}/${DOCS_DIR}/index.html
 	@echo "===> workspace docs complete -> ${DOCS_DIR}/index.html"
 
-.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs
+# test: recurse into every framework (which recurses into every module) but
+# build no aggregated report -- use test-all for the dashboard.
+# @impl 0f87-6aaa-6201-a430
+test:
+.for _f in ${SUBDIR_FRAMEWORKS}
+	@${MAKE} -C ${_f} test \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
+.endfor
+	@echo "===> workspace test run complete (no aggregated report -- use test-all)"
+
+TEST_REPORT_DIR ?= test-report
+
+# test-all: recurse into every framework/module, then build one workspace-
+# level dashboard linking to every module that actually produced a report
+# (test-workspace-aggregation-req). Existence-based, not a static
+# module/TESTS_* scan: mk.test.mk's no-tests branch never creates
+# test-report-html/, so walking for that directory after the recursive
+# run is simpler and more accurate than re-deriving which modules declare
+# tests. Each framework's own module list is queried the same way
+# mk.lib.mk queries a prereq framework's PREREQS= (a plain -V query, no
+# TARGET/TOOLCHAIN needed -- module discovery doesn't depend on either).
+# @impl 0f87-6aaa-6201-a430
+test-all:
+.for _f in ${SUBDIR_FRAMEWORKS}
+	@${MAKE} -C ${_f} test-all \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
+.endfor
+	@mkdir -p ${.CURDIR}/${TEST_REPORT_DIR}
+	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} test dashboard</title>" > ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@echo "<h1>${.CURDIR:T} test dashboard</h1>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Reports</th></tr>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@_total_fail=0; _total_pass=0; \
+	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		_mods=$$(${MAKE} -C $$_f -V SUBDIR_MODULES 2>/dev/null); \
+		for _m in $$_mods; do \
+			_html=$$_f/$$_m/${BUILD_ROOT}/test-report-html/index.html; \
+			_xml=$$_f/$$_m/${BUILD_ROOT}/test-results.xml; \
+			[ -f "$$_html" ] || continue; \
+			_fails=$$(grep -cE '<(failure|error)' "$$_xml" 2>/dev/null); \
+			_fails=$${_fails:-0}; \
+			if [ "$$_fails" -gt 0 ]; then \
+				_status="<span class=\"fail\">FAIL ($$_fails)</span>"; _total_fail=$$((_total_fail+1)); \
+			else \
+				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
+			fi; \
+			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../$$_html\">HTML</a> / <a href=\"../$$_xml\">JUnit XML</a></td></tr>" \
+				>> ${.CURDIR}/${TEST_REPORT_DIR}/index.html; \
+		done; \
+	done; \
+	echo "</table><p>$$_total_pass module(s) clean, $$_total_fail module(s) with failures.</p>" \
+		>> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@echo "</body></html>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
+	@echo "===> workspace test dashboard -> ${TEST_REPORT_DIR}/index.html"
+
+.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test test-all
 
 _LOCAL_MK_PHASE = local
 .include "${BMK_MKDIR}/mk.local.mk"

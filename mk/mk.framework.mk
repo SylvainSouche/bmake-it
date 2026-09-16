@@ -96,10 +96,31 @@ _build_modules:
 	@echo "===> building module ${_m}"
 	@${MAKE} -C ${_m} all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}"
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
 	@${MAKE} -C ${_m} copy-up \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}"
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
+.endfor
+
+# test/test-all: recurse into every module (test-workspace-aggregation-req).
+# A module with no TESTS_CXX=/TESTS_C=/TESTS_SH= just echoes and exits 0
+# (mk.test.mk's own no-tests branch), so looping over every module
+# unconditionally is safe. `|| true` per module so one module's genuine
+# test failure (exactly the case SANITIZE= exists to catch) doesn't abort
+# the loop before every other module has had a chance to run.
+# @impl 0f87-6aaa-6201-a430
+test:
+.for _m in ${SUBDIR_MODULES}
+	@${MAKE} -C ${_m} test \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
+.endfor
+
+test-all:
+.for _m in ${SUBDIR_MODULES}
+	@${MAKE} -C ${_m} test-all \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
 .endfor
 
 # Aggregate resources (share/ overlay) and ensure dirs exist
@@ -156,7 +177,7 @@ add-prereq:
 	fi
 	@echo "Appended ${FW} to PREREQS"
 
-.PHONY: all clean help copy-up add-prereq _build_modules _aggregate
+.PHONY: all clean help copy-up add-prereq _build_modules _aggregate test test-all
 
 .include "${BMK_MKDIR}/mk.docs.mk"
 

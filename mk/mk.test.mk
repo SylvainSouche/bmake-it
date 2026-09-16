@@ -53,19 +53,36 @@ _TEST_RPATH =
 _TEST_RPATH = -Wl,-rpath,${.CURDIR}/${BUILD_ROOT}/lib
 .endif
 
+# What the test binary links against to reach the code under test: a LIB
+# module (LIB= defined) has a real linkable library, -l${LIB} as before.
+# A PROG module has no such thing -- PROG= produces an executable, not a
+# library -- so its test instead links directly against the module's own
+# already-compiled objects (from the normal `all` build), excluding
+# main.o so the test binary supplies its own main via ATF_INIT_TEST_CASES
+# rather than colliding with the module's entry point. This was never
+# exercised until a PROG module first declared TESTS_CXX=/TESTS_C=.
+# @impl 0f87-6aa9-0267-4adc
+.if defined(LIB) && !empty(LIB)
+_TEST_LINK_LIB  = -l${LIB}
+_TEST_LINK_OBJS =
+.else
+_TEST_LINK_LIB  =
+_TEST_LINK_OBJS = ${OBJS:N*/main.o}
+.endif
+
 _build_tests:
 	@mkdir -p ${_TEST_BINDIR}
 .for _t in ${TESTS_CXX}
 	@echo "===> building test ${_t} (atf-c++)"
 	${CXX} ${CXXFLAGS} ${_ATF_CXX_CFLAGS} -I${.CURDIR}/include \
-		${.CURDIR}/tests/${_t}.cpp -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
+		${.CURDIR}/tests/${_t}.cpp ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
+		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${TESTS_C}
 	@echo "===> building test ${_t} (atf-c)"
 	${CC} ${CFLAGS} ${_ATF_C_CFLAGS} -I${.CURDIR}/include \
-		${.CURDIR}/tests/${_t}.c -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
+		${.CURDIR}/tests/${_t}.c ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
+		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${TESTS_SH}
 	@echo "===> staging test ${_t} (atf-sh)"
