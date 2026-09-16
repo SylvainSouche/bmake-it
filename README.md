@@ -38,7 +38,7 @@ on the host:
 | Host | Get `bmake` via |
 |---|---|
 | FreeBSD, NetBSD | Already the base system's own `make` — nothing to install |
-| macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — all tier 1, see `docs/spec/00-overview.md` for why MacPorts/Homebrew/pkgsrc are tiered this way and why the toolchain itself should come from one of them too, not Xcode CLT by default |
+| macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — pick whichever you already use; the toolchain itself should come from that same package manager too, not Xcode CLT by default. All three are "tier 1" (fully supported, searched first) in Bmake It's own terms — Nix is "tier 2" (still supported, lower priority); see `docs/spec/00-overview.md` for the full rationale |
 | Debian, Ubuntu, other Linux | `sudo apt install bmake` (or your distro's equivalent package) |
 | Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` also needs cl.exe already on `PATH` (launch from a Visual Studio developer prompt, or `vcvarsall.bat`) — see `mk/mk.toolchain.msvc.mk`'s own header comments; there's no dedicated spec chapter for this yet |
 
