@@ -151,6 +151,8 @@ toolchain never affects resource variant selection.
   `all` (not module-only builds); a rolling log and a failure marker for
   that one run, with `runs/latest/` always kept as a copy of the newest
   — not source, not committed. See `40-cli-reference.md`.
-- **`build-report/<RUN_ID>/`**, **`test-report/<RUN_ID>/`** at workspace
-  level (each with its own `latest/` copy) — the `REPORT=yes`
-  dashboards; not source, not committed. See `40-cli-reference.md`.
+- **`build-report/<RUN_ID>/<KEY>/`**, **`test-report/<RUN_ID>/<KEY>/`**
+  at workspace level (each with a `latest/<KEY>/` copy) — the
+  `REPORT=yes` dashboards, one per target key per run so two keys built
+  under the same `RUN_ID` don't collide; not source, not committed. See
+  `40-cli-reference.md`.

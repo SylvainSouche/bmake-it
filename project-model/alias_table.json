@@ -1625,6 +1625,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "run-history-pruning-deferred-req": {
+    "active": true,
+    "id": "0f87-6aaa-877c-68d2",
+    "status": "confirmed",
+    "type": "req"
+  },
   "run-id-identifies-logs": {
     "active": true,
     "id": "0f87-6aaa-72be-8624",

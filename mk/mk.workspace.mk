@@ -78,19 +78,23 @@ SUBDIR_FRAMEWORKS += ${_c}
 # one from still being attempted, unless FAIL_FAST=yes. REPORT=yes
 # additionally builds a workspace-level build-result dashboard
 # (build-workspace-aggregation-req-v2) from whatever happened, under
-# <BUILD_REPORT_DIR>/<RUN_ID>/ with a latest symlink
-# (run-history-not-overwritten-req).
+# <BUILD_REPORT_DIR>/<RUN_ID>/<KEY>/ with a latest/<KEY>/ copy
+# (run-history-not-overwritten-req). The <KEY> segment matters: two
+# target keys (e.g. TOOLCHAIN=llvm and TOOLCHAIN=gcc) built under the
+# same RUN_ID to correlate them as one CI pass must not overwrite each
+# other's dashboard -- found and fixed 2026-09-16, the first version had
+# exactly this collision.
 # ---------------------------------------------------------------------------
 BUILD_REPORT_DIR ?= build-report
 
 all: _build_frameworks _aggregate_ws
 	@echo "===> workspace build complete for ${OS_ARCH}"
 .if ${REPORT} == "yes"
-	@_rdir=${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}; mkdir -p "$$_rdir"
-	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} build dashboard</title>" > ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<h1>${.CURDIR:T} build dashboard <small>${RUN_ID}</small></h1>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Log</th></tr>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
+	@_rdir=${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}; mkdir -p "$$_rdir"
+	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} build dashboard</title>" > ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<h1>${.CURDIR:T} build dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Log</th></tr>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
 	@_total_fail=0; _total_pass=0; \
 	for _f in ${SUBDIR_FRAMEWORKS}; do \
 		_mods=$$(${MAKE} -C $$_f -V SUBDIR_MODULES 2>/dev/null); \
@@ -102,16 +106,16 @@ all: _build_frameworks _aggregate_ws
 			else \
 				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
 			fi; \
-			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../$$_log\">build.log</a></td></tr>" \
-				>> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html; \
+			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../../$$_log\">build.log</a></td></tr>" \
+				>> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html; \
 		done; \
 	done; \
 	echo "</table><p>$$_total_pass module(s) built clean, $$_total_fail module(s) failed.</p>" \
-		>> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "</body></html>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/index.html
-	@rm -rf ${.CURDIR}/${BUILD_REPORT_DIR}/latest
-	@cp -a ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID} ${.CURDIR}/${BUILD_REPORT_DIR}/latest
-	@echo "===> workspace build dashboard -> ${BUILD_REPORT_DIR}/${RUN_ID}/index.html (also ${BUILD_REPORT_DIR}/latest/)"
+		>> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "</body></html>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@rm -rf ${.CURDIR}/${BUILD_REPORT_DIR}/latest/${OS_ARCH}; mkdir -p ${.CURDIR}/${BUILD_REPORT_DIR}/latest
+	@cp -a ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH} ${.CURDIR}/${BUILD_REPORT_DIR}/latest/${OS_ARCH}
+	@echo "===> workspace build dashboard -> ${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html (also ${BUILD_REPORT_DIR}/latest/${OS_ARCH}/)"
 .endif
 
 .if !defined(SUBDIR_FRAMEWORKS)
@@ -158,6 +162,7 @@ _aggregate_ws:
 	@mkdir -p ${.CURDIR}/${BINDIR_LOCAL} ${.CURDIR}/${LIBDIR_LOCAL} \
 	          ${.CURDIR}/${SHAREDIR_LOCAL}
 
+# @impl 0f87-6aaa-6a6e-00d0
 clean:
 	@# frameworks: recurse without depending on generated order file
 	@for _f in */makefile; do \
@@ -170,11 +175,20 @@ clean:
 			BMK_MKDIR=${BMK_MKDIR} || true; \
 	done
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/build ${.CURDIR}/distrib
+	rm -rf ${.CURDIR}/build ${.CURDIR}/distrib ${.CURDIR}/${BUILD_REPORT_DIR} ${.CURDIR}/${TEST_REPORT_DIR}
 	@# full source-only slate: any leftover build/ or generated order files
 	@find ${.CURDIR} \( -type d -name build -o -type d -name distrib \) -prune -exec rm -rf {} + 2>/dev/null || true
 .else
 	rm -rf ${.CURDIR}/${BUILD_ROOT} ${.CURDIR}/${DISTRIB_ROOT}
+	@# dashboards are keyed by <RUN_ID-or-latest>/<KEY>/ -- remove just
+	@# this target key's data across every run (run-history-not-
+	@# overwritten-req), leaving other target keys' history alone, then
+	@# prune any run/latest dirs left empty by that removal.
+	@for _d in ${.CURDIR}/${BUILD_REPORT_DIR} ${.CURDIR}/${TEST_REPORT_DIR}; do \
+		[ -d "$$_d" ] || continue; \
+		find "$$_d" -mindepth 2 -maxdepth 2 -type d -name '${OS_ARCH}' -exec rm -rf {} + 2>/dev/null; \
+		find "$$_d" -mindepth 1 -maxdepth 1 -type d -empty -delete 2>/dev/null; \
+	done
 .endif
 	rm -f ${.CURDIR}/.gen-fw-order.mk ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend
 	@find ${.CURDIR} -name '.gen-*.mk' -delete 2>/dev/null || true
@@ -310,11 +324,11 @@ test:
 	fi
 .endfor
 .if ${REPORT} == "yes"
-	@mkdir -p ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}
-	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} test dashboard</title>" > ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<h1>${.CURDIR:T} test dashboard <small>${RUN_ID}</small></h1>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Reports</th></tr>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
+	@mkdir -p ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}
+	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} test dashboard</title>" > ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<h1>${.CURDIR:T} test dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Reports</th></tr>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
 	@_total_fail=0; _total_pass=0; \
 	for _f in ${SUBDIR_FRAMEWORKS}; do \
 		[ -z "${FW}" ] || [ "$$_f" = "${FW}" ] || continue; \
@@ -334,16 +348,16 @@ test:
 			else \
 				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
 			fi; \
-			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../$$_html\">HTML</a> / <a href=\"../../$$_xml\">JUnit XML</a></td></tr>" \
-				>> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html; \
+			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../../$$_html\">HTML</a> / <a href=\"../../../$$_xml\">JUnit XML</a></td></tr>" \
+				>> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html; \
 		done; \
 	done; \
 	echo "</table><p>$$_total_pass module(s) clean, $$_total_fail module(s) with failures.</p>" \
-		>> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
-	@echo "</body></html>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/index.html
-	@rm -rf ${.CURDIR}/${TEST_REPORT_DIR}/latest
-	@cp -a ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID} ${.CURDIR}/${TEST_REPORT_DIR}/latest
-	@echo "===> workspace test dashboard -> ${TEST_REPORT_DIR}/${RUN_ID}/index.html (also ${TEST_REPORT_DIR}/latest/)"
+		>> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "</body></html>" >> ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
+	@rm -rf ${.CURDIR}/${TEST_REPORT_DIR}/latest/${OS_ARCH}; mkdir -p ${.CURDIR}/${TEST_REPORT_DIR}/latest
+	@cp -a ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH} ${.CURDIR}/${TEST_REPORT_DIR}/latest/${OS_ARCH}
+	@echo "===> workspace test dashboard -> ${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html (also ${TEST_REPORT_DIR}/latest/${OS_ARCH}/)"
 .endif
 
 .PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test

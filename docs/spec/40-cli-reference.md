@@ -109,14 +109,19 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
 
 - **`REPORT=<yes|no>`** (default `no`): purely about the dashboard.
   `REPORT=yes` on a workspace/framework `all` builds
-  `build-report/<RUN_ID>/index.html` (`BUILD_REPORT_DIR=`, default
+  `build-report/<RUN_ID>/<KEY>/index.html` (`BUILD_REPORT_DIR=`, default
   `build-report`) listing every framework/module with PASS/FAIL and a
   link to its `build.log`; on `test`, it additionally builds each
   module's HTML report and a workspace-level
-  `test-report/<RUN_ID>/index.html` (`TEST_REPORT_DIR=`, default
-  `test-report`) — see `80-unit-testing.md`. With `REPORT` unset, the run
-  still happens and logs are still written (see below), just without the
-  dashboard step (`REQ-build-workspace-aggregation-req-v2`,
+  `test-report/<RUN_ID>/<KEY>/index.html` (`TEST_REPORT_DIR=`, default
+  `test-report`) — see `80-unit-testing.md`. The `<KEY>` segment (the
+  same compound target key as `build/<KEY>/`, `10-directory-layout.md`)
+  matters: two target keys built under the *same* `RUN_ID` to correlate
+  them as one CI pass (e.g. `TOOLCHAIN=llvm` then `TOOLCHAIN=gcc`, both
+  `RUN_ID=ci-4821`) get their own dashboards rather than the second
+  overwriting the first's. With `REPORT` unset, the run still happens
+  and logs are still written (see below), just without the dashboard
+  step (`REQ-build-workspace-aggregation-req-v2`,
   `REQ-test-workspace-aggregation-req`).
 - **`FAIL_FAST=<yes|no>`** (default `no`): whether one module's build or
   test failure stops a workspace/framework run before every other module
@@ -148,13 +153,24 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
   (`~/.kyua/store/`) also has every run's raw output. `REPORT=yes` is
   what turns those into a browsable dashboard, not what creates them in
   the first place. A `runs/latest` — and, at workspace level,
-  `<REPORT_DIR>/latest` — is always kept as a **real copy** of the
-  newest run, not a symlink: Cygwin's default symlinks are a small text
-  marker file, not something a native Windows web server or file browser
-  resolves, so a copy is what stays servable on every host this project
-  targets.
+  `<REPORT_DIR>/latest/<KEY>/` — is always kept as a **real copy** of
+  the newest run for that key, not a symlink: Cygwin's default symlinks
+  are a small text marker file, not something a native Windows web
+  server or file browser resolves, so a copy is what stays servable on
+  every host this project targets. Only the current key's `latest/<KEY>/`
+  is replaced each run -- other keys' `latest/` entries are untouched.
 - **`TEST=<name>`**, **`FW=<name>`**: narrow a `test` run to one test
   (and, at workspace level, one framework) — see `80-unit-testing.md`.
+- **`clean` removes reports too**: a plain `clean` removes the current
+  target key's dashboard data (`<REPORT_DIR>/*/<KEY>/`, across every
+  `RUN_ID` and `latest/`) alongside `build/<KEY>/`, leaving other target
+  keys' report history alone; `clean TARGET=all` removes
+  `build-report/`/`test-report/` entirely, alongside `build/`/`distrib/`.
+  Neither prunes by *age* — there is no retention/expiry mechanism yet
+  for `runs/` history, so a long-running CI setup accumulates every run
+  until something explicitly cleans it (`clean`, or by hand); a
+  time-based or "keep last N" pruning target is deferred, not yet
+  designed (`REQ-run-history-pruning-deferred-req`).
 - **What Bmake It does not do**: fetch/pull changes from version control,
   or publish/serve the generated reports anywhere. It produces
   `build-report/`, `test-report/`, and the underlying logs as plain

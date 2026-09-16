@@ -96,21 +96,25 @@ happens (`REQ-test-single-selection-req`).
 `bmake test REPORT=yes` from the workspace root builds and runs every
 declared test across every framework and module (or the `FW=`/`TEST=`-
 narrowed subset), then generates one dashboard —
-`test-report/<RUN_ID>/index.html` at the workspace root, with
-`test-report/latest/` always kept as a copy of the newest one — listing
-every module that produced a report, its framework, a PASS/FAIL status
-(with a failure count, derived from `<failure>`/`<error>` tags in that
-module's own JUnit XML — kyua uses `<error>` specifically for a
-crashed/aborted case, e.g. a sanitizer abort, not `<failure>`), and
-links to both that module's own HTML report and its JUnit XML. Built by
-walking for `test-report-html/` directories under that same `RUN_ID`
-after the run completes, rather than statically re-deriving which
-modules declare tests — since a no-tests module never creates that
-directory (and a `TEST=`/`FW=`-filtered run never touches modules
-outside its scope), existence is sufficient, and the scan itself
+`test-report/<RUN_ID>/<KEY>/index.html` at the workspace root (`<KEY>`
+being the same compound target key as `build/<KEY>/`), with
+`test-report/latest/<KEY>/` always kept as a copy of the newest one for
+that key — listing every module that produced a report, its framework,
+a PASS/FAIL status (with a failure count, derived from `<failure>`/
+`<error>` tags in that module's own JUnit XML — kyua uses `<error>`
+specifically for a crashed/aborted case, e.g. a sanitizer abort, not
+`<failure>`), and links to both that module's own HTML report and its
+JUnit XML. Built by walking for `test-report-html/` directories under
+that same `RUN_ID` after the run completes, rather than statically
+re-deriving which modules declare tests — since a no-tests module never
+creates that directory (and a `TEST=`/`FW=`-filtered run never touches
+modules outside its scope), existence is sufficient, and the scan itself
 respects the same `FW=`/`TEST=`/`RUN_ID` scoping as the run, so a
 narrowed or later run's dashboard doesn't surface stale results from a
-different run or a module it didn't touch this time
+different run or a module it didn't touch this time. The `<KEY>`
+segment matters specifically because two target keys (e.g.
+`TOOLCHAIN=llvm` and `TOOLCHAIN=gcc`) built under the same `RUN_ID` to
+correlate them as one CI pass must not overwrite each other's dashboard
 (`REQ-test-workspace-aggregation-req`, `REQ-run-history-not-overwritten-req`).
 
 `TEST_REPORT_DIR ?= test-report` is overridable — e.g. giving a
