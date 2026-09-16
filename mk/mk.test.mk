@@ -59,13 +59,13 @@ _build_tests:
 	@echo "===> building test ${_t} (atf-c++)"
 	${CXX} ${CXXFLAGS} ${_ATF_CXX_CFLAGS} -I${.CURDIR}/include \
 		${.CURDIR}/tests/${_t}.cpp -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS}
+		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${TESTS_C}
 	@echo "===> building test ${_t} (atf-c)"
 	${CC} ${CFLAGS} ${_ATF_C_CFLAGS} -I${.CURDIR}/include \
 		${.CURDIR}/tests/${_t}.c -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_C_LIBS}
+		-L${.CURDIR}/${BUILD_ROOT}/lib -l${LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${TESTS_SH}
 	@echo "===> staging test ${_t} (atf-sh)"

@@ -145,6 +145,56 @@ CXXFLAGS += -I${BMK_MKDIR}/../include
 CFLAGS   += ${DEBUG_FLAGS}
 CXXFLAGS += ${DEBUG_FLAGS}
 
+# ---------------------------------------------------------------------------
+# SANITIZE= sanitizer instrumentation (sanitizer-support-req)
+# A plain compile/link-flag concern, not test-specific -- CFLAGS/CXXFLAGS/
+# LDFLAGS are shared by every role that .includes this file, so this
+# composes with `run` and `test` automatically. gcc/clang take a single
+# -fsanitize=a,b flag directly; MSVC only supports AddressSanitizer,
+# translated by msvc-cc-wrapper.sh (which forwards the gcc-style spelling
+# to cl.exe as /fsanitize=address). mingw/Cygwin gcc support is real but
+# patchy per-sanitizer -- not blocked here, just not guaranteed.
+# ---------------------------------------------------------------------------
+SANITIZE ?=
+# @impl 0f87-6aaa-4155-c8fd
+.if !empty(SANITIZE)
+_SANITIZE_WORDS = ${SANITIZE:S/,/ /g}
+
+# address/thread/memory instrument the runtime in mutually incompatible
+# ways -- at most one of the three. undefined and leak compose with any
+# of them (leak is folded into address by default on Linux/macOS, but a
+# bare SANITIZE=leak is also valid standalone).
+.  if !empty(_SANITIZE_WORDS:Maddress) && !empty(_SANITIZE_WORDS:Mthread)
+.    error "SANITIZE=${SANITIZE}: address and thread sanitizers are mutually exclusive"
+.  endif
+.  if !empty(_SANITIZE_WORDS:Maddress) && !empty(_SANITIZE_WORDS:Mmemory)
+.    error "SANITIZE=${SANITIZE}: address and memory sanitizers are mutually exclusive"
+.  endif
+.  if !empty(_SANITIZE_WORDS:Mthread) && !empty(_SANITIZE_WORDS:Mmemory)
+.    error "SANITIZE=${SANITIZE}: thread and memory sanitizers are mutually exclusive"
+.  endif
+
+.  if ${TOOLCHAIN} == "msvc"
+.    for _s in ${_SANITIZE_WORDS}
+.      if ${_s} != "address"
+.        error "SANITIZE=${_s}: MSVC only supports AddressSanitizer (SANITIZE=address) -- see docs/spec/40-cli-reference.md for toolchain limits"
+.      endif
+.    endfor
+.  endif
+
+CFLAGS   += -fsanitize=${SANITIZE}
+CXXFLAGS += -fsanitize=${SANITIZE}
+LDFLAGS  += -fsanitize=${SANITIZE}
+.  if ${TOOLCHAIN} != "msvc"
+# Preserve frame pointers for readable sanitizer stack traces -- standard
+# companion flag, no-op cost-wise compared to what instrumentation already
+# costs. Not applicable to the MSVC line (cl.exe has no equivalent switch
+# the wrapper would need to translate).
+CFLAGS   += -fno-omit-frame-pointer
+CXXFLAGS += -fno-omit-frame-pointer
+.  endif
+.endif
+
 # Suppress man pages by default (project is userland tools/libs)
 MAN =
 

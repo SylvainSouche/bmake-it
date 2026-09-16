@@ -27,6 +27,31 @@ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
 Together these three variables determine the full compound target key
 (`10-directory-layout.md`).
 
+## Sanitizers
+
+```
+make all SANITIZE=address,undefined
+make test SANITIZE=address
+```
+
+**`SANITIZE=<name>[,<name>...]`** selects compiler/linker sanitizer
+instrumentation (`address`, `undefined`, `thread`, `memory`, `leak`) —
+a plain compile/link-flag concern via the shared `CFLAGS`/`CXXFLAGS`/
+`LDFLAGS`, so it composes with both `run` and `test` without either
+target needing its own sanitizer-specific logic
+(`REQ-sanitizer-support-req`).
+
+- **Mutual exclusion**: `address`, `thread`, and `memory` instrument the
+  runtime in incompatible ways — at most one of the three. Combining any
+  two fails loudly at parse time (`SANITIZE=address,thread` → an
+  explicit `.error`, not a cryptic compiler/linker failure). `undefined`
+  and `leak` compose freely with any of them.
+- **Toolchain limits, documented not silently degraded**: gcc/clang on
+  Linux/macOS/BSD have full support. MSVC supports `address` only —
+  requesting anything else under `TOOLCHAIN=msvc` fails loudly with the
+  same discipline. mingw/Cygwin gcc support is real but patchy
+  per-sanitizer; not blocked, not guaranteed.
+
 ## Debug/release and extra compile flags
 
 No new abstraction — everything here reuses BSD make's own native

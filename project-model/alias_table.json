@@ -779,6 +779,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-sanitize-support": {
+    "active": true,
+    "id": "0f87-6aaa-4155-c8fd",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-self-test-harness": {
     "active": true,
     "id": "0f87-6a98-7829-d674",

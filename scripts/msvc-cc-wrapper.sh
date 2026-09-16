@@ -67,6 +67,16 @@ while [ $# -gt 0 ]; do
             # opt-in the way it is on ELF; every image is relocatable by
             # default (ASLR-capable) unless explicitly disabled.
             ;;
+        -fsanitize=*)
+            # mk.common.mk already rejects any SANITIZE= value other than
+            # "address" for TOOLCHAIN=msvc (MSVC's only supported
+            # sanitizer) -- cl.exe likely accepts the gcc-style dash
+            # spelling directly, but translate explicitly rather than
+            # relying on that. Present on both the compile and the
+            # link-mode cl.exe invocation ($cflags is used in both), which
+            # is what cl.exe's single-driver ASan model expects.
+            cflags="$cflags /${arg#-}"
+            ;;
         -shared)
             building_dll=yes
             linkflags="$linkflags /DLL"

@@ -99,4 +99,5 @@ Full detail: `70-documentation-generation.md`.
 | Variable | Introduced because |
 |---|---|
 | `TOOLCHAIN=gcc\|llvm` | No BSD-make-native concept of a toolchain *bundle* (compiler+linker+archiver as one selectable unit) (`REQ-toolchain-cli-variable-req`) |
+| `SANITIZE=<name>[,<name>...]` | No BSD-make-native concept of sanitizer instrumentation as a selectable unit spanning `CFLAGS`/`CXXFLAGS`/`LDFLAGS`; see `40-cli-reference.md` (`REQ-sanitizer-support-req`) |
 | `PARENT_WS`, `PREREQS`, `PROG`, `LIB`, `LIBS`, `LIB_SHARED`, `INCL` | Domain-specific concepts (workspace parenting, framework prereqs, module identity/linking/header-promotion) that have no BSD-make equivalent at all |
