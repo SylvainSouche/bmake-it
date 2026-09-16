@@ -47,6 +47,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "bmk-mkdir-discovery-via-makesyspath": {
+    "active": true,
+    "id": "0f87-6aaa-d63e-839a",
+    "status": "recorded",
+    "type": "dec"
+  },
   "build-obj-os-arch-output": {
     "active": false,
     "id": "6f38-6a88-1836-3d88",
@@ -725,6 +731,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-install-env-script": {
+    "active": true,
+    "id": "0f87-6aaa-d6a5-b4df",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-install-requires-prebuilt": {
     "active": true,
     "id": "0f87-6a98-7755-574e",
@@ -886,6 +898,12 @@
     "id": "6f38-6a88-1836-bc1f",
     "status": "recorded",
     "type": "dec"
+  },
+  "install-env-script-req": {
+    "active": true,
+    "id": "0f87-6aaa-d65f-eeca",
+    "status": "confirmed",
+    "type": "req"
   },
   "install-requires-prebuilt-target": {
     "active": true,
@@ -1576,6 +1594,12 @@
     "id": "0f87-6a97-bd07-f29e",
     "status": "recorded",
     "type": "obs"
+  },
+  "qt": {
+    "active": false,
+    "id": "0f87-6aaa-d646-cf1d",
+    "status": "superseded",
+    "type": "req"
   },
   "qt-development-without-plumbing-req": {
     "active": true,

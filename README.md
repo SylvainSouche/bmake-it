@@ -74,6 +74,46 @@ schemes, for two separate concerns:
 All three Windows paths produce genuine `win`-target output; tier 2 here
 just means "no Cygwin host needed," not "less capable."
 
+## Using Bmake It in your own project
+
+Every `mk.*.mk` role file needs to find the rest of Bmake It's `mk/`
+directory. Inside this repo (`examples/myworkspace/`) that's automatic —
+each worked-example makefile hardcodes its own relative path back to
+`mk/`. For a project of your own, living somewhere else entirely, run
+the setup script once:
+
+```sh
+sh /path/to/bmake-it/scripts/install-env.sh
+```
+
+This appends a small, clearly-marked block to your shell's own rc file
+(`~/.zshrc`, `~/.bashrc`, `~/.config/fish/config.fish`, or `~/.profile`,
+detected from `$SHELL`) setting `MAKESYSPATH` — bmake's own native
+search path for shared, reusable make files (`.include <file>`, and the
+last-resort fallback for `.include "file"` too), not a general-purpose
+flags variable. It prints exactly what it's about to change and asks for
+confirmation first; pass `-y` to skip the prompt (e.g. in a dotfiles
+repo's own setup script). Re-running it is safe — it replaces its own
+block in place rather than duplicating it. `--uninstall` removes exactly
+what it added. `--system` (Linux only, needs root) writes
+`/etc/profile.d/bmake-it.sh` instead, so every user gets it without
+touching individual dotfiles — macOS/Windows system-level setup isn't
+designed yet, user-level covers every host in the meantime.
+
+Once that's sourced (open a new shell, or `. ~/.zshrc` etc.), any
+project's own `makefile` just needs:
+
+```makefile
+PARENT_WS=
+.include "mk.workspace.mk"
+```
+
+No `BMK_MKDIR=` needed at all — it's still supported as an explicit
+override (`BMK_MKDIR=/path/to/mk`, in the makefile or on the command
+line) if you'd rather not touch shell configuration, but every `mk.*.mk`
+file already auto-computes it correctly from wherever it was actually
+found, whether that's a local relative path or `MAKESYSPATH`.
+
 ## Quick start
 
 ```sh
