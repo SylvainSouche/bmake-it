@@ -38,12 +38,41 @@ on the host:
 | Host | Get `bmake` via |
 |---|---|
 | FreeBSD, NetBSD | Already the base system's own `make` — nothing to install |
-| macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — pick whichever you already use; the toolchain itself should come from that same package manager too, not Xcode CLT by default. All three are "tier 1" (fully supported, searched first) in Bmake It's own terms — Nix is "tier 2" (still supported, lower priority); see `docs/spec/00-overview.md` for the full rationale |
+| macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — pick whichever you already use; the toolchain itself should come from that same package manager too, not Xcode CLT by default. See Toolchain tiers below |
 | Debian, Ubuntu, other Linux | `sudo apt install bmake` (or your distro's equivalent package) |
 | Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` also needs cl.exe already on `PATH` (launch from a Visual Studio developer prompt, or `vcvarsall.bat`) — see `mk/mk.toolchain.msvc.mk`'s own header comments; there's no dedicated spec chapter for this yet |
 
 `flex`/`bison` (or `yacc`/`lex`) are only needed if a module has `.y`/
 `.l` grammar sources — optional otherwise.
+
+### Toolchain tiers
+
+"Tier 1" means fully supported and searched/preferred first; "tier 2"
+means still supported, just lower priority. Two separate tiering
+schemes, for two separate concerns:
+
+**macOS — which package manager provides the toolchain**
+(`docs/spec/00-overview.md`):
+
+| Tier | Package manager | Notes |
+|---|---|---|
+| 1 | MacPorts | `/opt/local/bin` — where Bmake It itself originated |
+| 1 | Homebrew | `/opt/homebrew/bin` (Apple Silicon) or `/usr/local/bin` (Intel) — broadest macOS adoption |
+| 1 | pkgsrc/pkgin | `/opt/pkg/bin` — consistency with the BSD ecosystem Bmake It already depends on for NetBSD |
+| 2 | Nix | `~/.nix-profile/bin` — none of the above three reasons apply |
+| *(never preferred)* | Apple's own Xcode CLT | `/usr/bin` — searched last, only as a fail-loud-beats-no-detection fallback |
+
+**Windows — which toolchain produces `win`-target output**
+(`mk/mk.toolchain.msvc.mk`, `mk/mk.toolchain.llvm.mk`):
+
+| Tier | Toolchain | Notes |
+|---|---|---|
+| 1 | MSVC (`cl.exe`/`link.exe`) | Run from a Cygwin-hosted `bmake` shell, command-line only |
+| 1 | Cygwin-native gcc/llvm | Same Cygwin-hosted workflow |
+| 2 | mingw-w64 cross-compilation | From any capable host — no Cygwin required |
+
+All three Windows paths produce genuine `win`-target output; tier 2 here
+just means "no Cygwin host needed," not "less capable."
 
 ## Quick start
 
