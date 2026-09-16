@@ -73,25 +73,77 @@ SUBDIR_FRAMEWORKS += ${_c}
 .endif
 
 # ---------------------------------------------------------------------------
-# Default target: build all frameworks in PREREQS order, then aggregate
+# Default target: build all frameworks in PREREQS order, then aggregate.
+# One framework's (or module's) build failure does NOT stop every other
+# one from still being attempted, unless FAIL_FAST=yes. REPORT=yes
+# additionally builds a workspace-level build-result dashboard
+# (build-workspace-aggregation-req) from whatever happened.
 # ---------------------------------------------------------------------------
+BUILD_REPORT_DIR ?= build-report
+
 all: _build_frameworks _aggregate_ws
 	@echo "===> workspace build complete for ${OS_ARCH}"
+.if ${REPORT} == "yes"
+	@mkdir -p ${.CURDIR}/${BUILD_REPORT_DIR}
+	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} build dashboard</title>" > ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@echo "<h1>${.CURDIR:T} build dashboard</h1>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Log</th></tr>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@_total_fail=0; _total_pass=0; \
+	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		_mods=$$(${MAKE} -C $$_f -V SUBDIR_MODULES 2>/dev/null); \
+		for _m in $$_mods; do \
+			_log=$$_f/$$_m/${BUILD_ROOT}/build.log; \
+			[ -f "$$_log" ] || continue; \
+			if [ -f "$$_f/$$_m/${BUILD_ROOT}/build.failed" ]; then \
+				_status="<span class=\"fail\">FAIL</span>"; _total_fail=$$((_total_fail+1)); \
+			else \
+				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
+			fi; \
+			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../$$_log\">build.log</a></td></tr>" \
+				>> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html; \
+		done; \
+	done; \
+	echo "</table><p>$$_total_pass module(s) built clean, $$_total_fail module(s) failed.</p>" \
+		>> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@echo "</body></html>" >> ${.CURDIR}/${BUILD_REPORT_DIR}/index.html
+	@echo "===> workspace build dashboard -> ${BUILD_REPORT_DIR}/index.html"
+.endif
 
 .if !defined(SUBDIR_FRAMEWORKS)
 SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
 .endif
 
+# Each framework's build output is always captured to a rollup log at
+# <framework>/<BUILD_ROOT>/build.log (tee'd, so console output is
+# unchanged) -- it already contains every one of that framework's own
+# modules' individually-logged output, since that's what streamed to
+# stdout/stderr during the framework's own recursive build. One
+# framework's failure does NOT stop every other one from still being
+# attempted, unless FAIL_FAST=yes (build-workspace-aggregation-req).
 # @impl 0f87-6a98-5e47-0c71
+# @impl 0f87-6aaa-6a6e-00d0
 _build_frameworks:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@echo "===> building framework ${_f}"
-	@${MAKE} -C ${_f} all \
+	@_logdir=${.CURDIR}/${_f}/${BUILD_ROOT}; mkdir -p "$$_logdir"; \
+	_rcfile=$$(mktemp); \
+	{ ${MAKE} -C ${_f} all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
-	@${MAKE} -C ${_f} copy-up \
-		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}"
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" REPORT="${REPORT}" FAIL_FAST="${FAIL_FAST}"; \
+	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_logdir/build.log"; \
+	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
+	if [ "$$_rc" -eq 0 ]; then \
+		rm -f "$$_logdir/build.failed"; \
+		${MAKE} -C ${_f} copy-up \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
+			2>&1 | tee -a "$$_logdir/build.log"; \
+	else \
+		touch "$$_logdir/build.failed"; \
+		echo "===> framework ${_f} build FAILED -- see ${_f}/${BUILD_ROOT}/build.log" >&2; \
+		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+	fi
 .endfor
 
 _aggregate_ws:
@@ -218,35 +270,35 @@ docs:
 	@echo "</body></html>" >> ${.CURDIR}/${DOCS_DIR}/index.html
 	@echo "===> workspace docs complete -> ${DOCS_DIR}/index.html"
 
-# test: recurse into every framework (which recurses into every module) but
-# build no aggregated report -- use test-all for the dashboard.
-# @impl 0f87-6aaa-6201-a430
-test:
-.for _f in ${SUBDIR_FRAMEWORKS}
-	@${MAKE} -C ${_f} test \
-		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
-.endfor
-	@echo "===> workspace test run complete (no aggregated report -- use test-all)"
-
 TEST_REPORT_DIR ?= test-report
 
-# test-all: recurse into every framework/module, then build one workspace-
-# level dashboard linking to every module that actually produced a report
-# (test-workspace-aggregation-req). Existence-based, not a static
-# module/TESTS_* scan: mk.test.mk's no-tests branch never creates
-# test-report-html/, so walking for that directory after the recursive
-# run is simpler and more accurate than re-deriving which modules declare
+# test: recurse into every framework (or just FW=<name>, if given), which
+# recurses into every module (or just the one declaring TEST=<name>, if
+# given) -- test-workspace-aggregation-req. REPORT=yes additionally
+# builds a workspace-level dashboard (test-report/index.html) linking
+# every module's own report; the dashboard scan respects the same FW=/
+# TEST= scoping as the run itself, so a filtered run doesn't surface
+# stale results from modules it didn't touch this time. Existence-based,
+# not a static TESTS_* scan: mk.test.mk's no-tests branch never creates
+# test-report-html/, so walking for that directory after the run is
+# simpler and more accurate than re-deriving which modules declare
 # tests. Each framework's own module list is queried the same way
 # mk.lib.mk queries a prereq framework's PREREQS= (a plain -V query, no
 # TARGET/TOOLCHAIN needed -- module discovery doesn't depend on either).
 # @impl 0f87-6aaa-6201-a430
-test-all:
+# @impl 0f87-6aaa-697c-4c30
+test:
 .for _f in ${SUBDIR_FRAMEWORKS}
-	@${MAKE} -C ${_f} test-all \
-		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" || true
+	@if [ -z "${FW}" ] || [ "${_f}" = "${FW}" ]; then \
+		${MAKE} -C ${_f} test \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
+			REPORT="${REPORT}" TEST="${TEST}"; \
+		_trc=$$?; \
+		if [ "$$_trc" -ne 0 ] && [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
+	fi
 .endfor
+.if ${REPORT} == "yes"
 	@mkdir -p ${.CURDIR}/${TEST_REPORT_DIR}
 	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} test dashboard</title>" > ${.CURDIR}/${TEST_REPORT_DIR}/index.html
 	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
@@ -254,8 +306,13 @@ test-all:
 	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Reports</th></tr>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
 	@_total_fail=0; _total_pass=0; \
 	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		[ -z "${FW}" ] || [ "$$_f" = "${FW}" ] || continue; \
 		_mods=$$(${MAKE} -C $$_f -V SUBDIR_MODULES 2>/dev/null); \
 		for _m in $$_mods; do \
+			if [ -n "${TEST}" ]; then \
+				_has=$$(${MAKE} -C $$_f/$$_m -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH}' 2>/dev/null); \
+				case " $$_has " in *" ${TEST} "*) ;; *) continue ;; esac; \
+			fi; \
 			_html=$$_f/$$_m/${BUILD_ROOT}/test-report-html/index.html; \
 			_xml=$$_f/$$_m/${BUILD_ROOT}/test-results.xml; \
 			[ -f "$$_html" ] || continue; \
@@ -274,8 +331,9 @@ test-all:
 		>> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
 	@echo "</body></html>" >> ${.CURDIR}/${TEST_REPORT_DIR}/index.html
 	@echo "===> workspace test dashboard -> ${TEST_REPORT_DIR}/index.html"
+.endif
 
-.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test test-all
+.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test
 
 _LOCAL_MK_PHASE = local
 .include "${BMK_MKDIR}/mk.local.mk"

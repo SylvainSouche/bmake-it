@@ -59,10 +59,11 @@ target needing its own sanitizer-specific logic
   (matching AddressSanitizer's own default behavior) rather than being
   silently survivable.
 - **Workspace/framework scope**: `SANITIZE=` set at the workspace or
-  framework level is forwarded through the recursive `all`/`test`/
-  `test-all` targets to every module — not just when invoked directly
-  inside a module directory. See `80-unit-testing.md` for the `test`/
-  `test-all` recursion and dashboard specifically.
+  framework level is forwarded through the recursive `all`/`test`
+  targets to every module — not just when invoked directly inside a
+  module directory. See `80-unit-testing.md` for the `test` recursion
+  and dashboard specifically. Note the same rebuild caveat as any other
+  flag change — see "Rebuild before testing" there.
 
 ## Debug/release and extra compile flags
 
@@ -94,8 +95,54 @@ variables directly, appended via `+=` in a module's makefile:
 | `add-prereq FW=<name>` | Convenience target: appends `<name>` to the current framework's `PREREQS=`. Pure text-editing convenience, does **not** resolve or search for anything (distinct from the rejected `mkGetPreq`/`mkCopyPreq`) (`REQ-add-prereq-add-parent-convenience-targets-req`) |
 | `add-parent WS=<abs-path>` | Convenience target: appends `<abs-path>` to the workspace's `PARENT_WS=` |
 | `docs` | Generates Doxygen documentation — just the enclosing framework from within a framework, or every framework plus a workspace aggregation page from the workspace root (`REQ-doc-generation-invocation-scope-req`). See `70-documentation-generation.md` |
-| `test` | Builds and runs this module's declared `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=` tests via Kyua; writes a JUnit XML report; exits non-zero on any failure (`REQ-unit-test-feature-for-built-software-req`). See `80-unit-testing.md` |
-| `test-all` | Same as `test`, plus a full HTML report, produced on failure too (`REQ-unit-test-full-suite-html-report-req`) |
+| `test` | Builds and runs this module's (or, at framework/workspace scope, every module's) declared `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=` tests via Kyua; writes a JUnit XML report; exits non-zero on any failure (`REQ-unit-test-feature-for-built-software-req`). See `80-unit-testing.md` |
+
+## Reports and CI integration
+
+```
+make all REPORT=yes                        # workspace build dashboard
+make test REPORT=yes                        # workspace test dashboard
+make all FAIL_FAST=yes                       # stop at the first broken module
+make test TEST=hello_test FW=Hello REPORT=yes  # one test, one dashboard
+```
+
+- **`REPORT=<yes|no>`** (default `no`): purely about the dashboard.
+  `REPORT=yes` on a workspace/framework `all` builds
+  `build-report/index.html` (`BUILD_REPORT_DIR=`, default `build-report`)
+  listing every framework/module with PASS/FAIL and a link to its
+  `build.log`; on `test`, it additionally builds each module's HTML
+  report and a workspace-level `test-report/index.html`
+  (`TEST_REPORT_DIR=`, default `test-report`) — see `80-unit-testing.md`.
+  With `REPORT` unset, the run still happens and logs are still written
+  (see below), just without the dashboard step
+  (`REQ-build-workspace-aggregation-req-v2`, `REQ-test-workspace-aggregation-req`).
+- **`FAIL_FAST=<yes|no>`** (default `no`): whether one module's build or
+  test failure stops a workspace/framework run before every other module
+  gets attempted. Default is to keep going — a build error in one module
+  must not prevent the rest of the workspace from building, and a test
+  failure must not prevent the rest of the suite from running, unless
+  `FAIL_FAST=yes` is explicitly given. Independent of `REPORT=`: whether
+  a run continues past a failure and whether a dashboard gets built from
+  what happened are two separate questions. A bare single-module `bmake
+  all`/`test` (not via workspace/framework recursion) is unaffected
+  either way — there's nothing else to continue past
+  (`fail-fast-independent-of-report`).
+- **Where logs live**: a workspace/framework `all` always writes
+  `<module>/build/<KEY>/build.log` (and a per-framework rollup at
+  `<framework>/build/<KEY>/build.log`) regardless of `REPORT=` — console
+  output is unchanged (`tee`'d, not replaced). `test` always writes
+  `<module>/build/<KEY>/test-results.xml` (JUnit) regardless of
+  `REPORT=`; Kyua's own results store (`~/.kyua/store/`) also has every
+  run's raw output. `REPORT=yes` is what turns those into a browsable
+  dashboard, not what creates them in the first place.
+- **`TEST=<name>`**, **`FW=<name>`**: narrow a `test` run to one test
+  (and, at workspace level, one framework) — see `80-unit-testing.md`.
+- **What Bmake It does not do**: fetch/pull changes from version control,
+  or publish/serve the generated reports anywhere. It produces
+  `build-report/`, `test-report/`, and the underlying logs as plain
+  files on local disk; an external integration-manager/CI process is
+  expected to own retrieving code and making those files reachable (a
+  LAN site, an artifact store, whatever fits) (`CON-ci-integration-scope-boundary`).
 
 ## Discovery (no explicit listing required)
 

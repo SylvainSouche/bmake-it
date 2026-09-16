@@ -83,11 +83,29 @@
     "status": "confirmed",
     "type": "req"
   },
+  "build-workspace-aggregation-req": {
+    "active": false,
+    "id": "0f87-6aaa-665e-fded",
+    "status": "superseded",
+    "type": "req"
+  },
+  "build-workspace-aggregation-req-v2": {
+    "active": true,
+    "id": "0f87-6aaa-6a5e-378f",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cache-mechanism-needs-empirical-check": {
     "active": true,
     "id": "6f38-6a8c-30a5-87fe",
     "status": "recorded",
     "type": "obs"
+  },
+  "ci-integration-scope-boundary": {
+    "active": true,
+    "id": "0f87-6aaa-643a-9397",
+    "status": "recorded",
+    "type": "con"
   },
   "clean-removes-all-derived-artifacts": {
     "active": true,
@@ -389,6 +407,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "fail-fast-independent-of-report": {
+    "active": true,
+    "id": "0f87-6aaa-6a4c-3725",
+    "status": "recorded",
+    "type": "dec"
+  },
   "flags-reuse-bsd-native-vars": {
     "active": true,
     "id": "6f38-6a8c-b9f4-d59f",
@@ -641,6 +665,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-build-workspace-aggregation": {
+    "active": true,
+    "id": "0f87-6aaa-6a6e-00d0",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-copy-up-diff-aware": {
     "active": true,
     "id": "0f87-6a98-8ee9-ae83",
@@ -803,6 +833,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-test-single-selection": {
+    "active": true,
+    "id": "0f87-6aaa-697c-4c30",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-test-workspace-aggregation": {
     "active": true,
     "id": "0f87-6aaa-6201-a430",
@@ -874,6 +910,12 @@
     "id": "6f38-6a8b-df45-59b4",
     "status": "confirmed",
     "type": "req"
+  },
+  "integration-manager-ci-cycle": {
+    "active": true,
+    "id": "0f87-6aaa-6432-66a7",
+    "status": "proposed",
+    "type": "uc"
   },
   "keep-simplified-prereq-and-header-model": {
     "active": true,
@@ -1547,6 +1589,18 @@
     "status": "recorded",
     "type": "dec"
   },
+  "report-flag-uniform-trigger": {
+    "active": false,
+    "id": "0f87-6aaa-661a-ada2",
+    "status": "superseded",
+    "type": "dec"
+  },
+  "report-flag-uniform-trigger-v2": {
+    "active": true,
+    "id": "0f87-6aaa-6a4c-d5f3",
+    "status": "recorded",
+    "type": "dec"
+  },
   "resource-file-definition": {
     "active": true,
     "id": "6f38-6a88-188b-2db4",
@@ -1762,6 +1816,12 @@
     "id": "0f87-6a9a-d35b-6e0a",
     "status": "passing",
     "type": "test"
+  },
+  "test-single-selection-req": {
+    "active": true,
+    "id": "0f87-6aaa-6971-23ad",
+    "status": "confirmed",
+    "type": "req"
   },
   "test-workspace-aggregation-req": {
     "active": true,

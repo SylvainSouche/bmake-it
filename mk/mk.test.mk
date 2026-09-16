@@ -16,6 +16,11 @@
 # _LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR below); and shared libs need an
 # @rpath install name plus a matching consumer-side -Wl,-rpath to be
 # loadable at all before any install step (see mk.lib.mk/mk.prog.mk).
+#
+# Extended 2026-09-16: `test-all` retired as a separate target -- REPORT=yes
+# on plain `test` now triggers the HTML report instead (report-flag-uniform-
+# trigger), and TEST=<name> narrows a run to one declared test
+# (test-single-selection-req).
 
 .if !defined(_MK_TEST_MK_)
 _MK_TEST_MK_ = 1
@@ -24,11 +29,30 @@ KYUA ?= kyua
 TESTS_CXX ?=
 TESTS_C ?=
 TESTS_SH ?=
+TEST ?=
 
 .if !empty(TESTS_CXX) || !empty(TESTS_C) || !empty(TESTS_SH)
 
 _TEST_BINDIR = ${.CURDIR}/${BUILD_ROOT}/tests
 _KYUAFILE = ${.CURDIR}/${BUILD_ROOT}/tests/Kyuafile
+
+# TEST=<name>: narrow to one declared test. Errors loudly (most likely a
+# typo) if <name> matches none of TESTS_CXX/TESTS_C/TESTS_SH -- framework/
+# workspace recursion pre-filters which modules it forwards TEST= to, so a
+# direct invocation is the only path that can hit this.
+# @impl 0f87-6aaa-697c-4c30
+.if !empty(TEST)
+.  if empty(TESTS_CXX:M${TEST}) && empty(TESTS_C:M${TEST}) && empty(TESTS_SH:M${TEST})
+.    error "TEST=${TEST}: no such test declared in ${.CURDIR:T} (TESTS_CXX=${TESTS_CXX} TESTS_C=${TESTS_C} TESTS_SH=${TESTS_SH})"
+.  endif
+_TEST_CXX_SEL = ${TESTS_CXX:M${TEST}}
+_TEST_C_SEL   = ${TESTS_C:M${TEST}}
+_TEST_SH_SEL  = ${TESTS_SH:M${TEST}}
+.else
+_TEST_CXX_SEL = ${TESTS_CXX}
+_TEST_C_SEL   = ${TESTS_C}
+_TEST_SH_SEL  = ${TESTS_SH}
+.endif
 
 # atf-c++/atf-c compile+link flags -- via pkg-config, confirmed present on
 # MacPorts (atf-c++.pc/atf-c.pc) and NetBSD/FreeBSD base; -latf-c++/-latf-c
@@ -72,19 +96,19 @@ _TEST_LINK_OBJS = ${OBJS:N*/main.o}
 
 _build_tests:
 	@mkdir -p ${_TEST_BINDIR}
-.for _t in ${TESTS_CXX}
+.for _t in ${_TEST_CXX_SEL}
 	@echo "===> building test ${_t} (atf-c++)"
 	${CXX} ${CXXFLAGS} ${_ATF_CXX_CFLAGS} -I${.CURDIR}/include \
 		${.CURDIR}/tests/${_t}.cpp ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
 		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
 .endfor
-.for _t in ${TESTS_C}
+.for _t in ${_TEST_C_SEL}
 	@echo "===> building test ${_t} (atf-c)"
 	${CC} ${CFLAGS} ${_ATF_C_CFLAGS} -I${.CURDIR}/include \
 		${.CURDIR}/tests/${_t}.c ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
 		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
 .endfor
-.for _t in ${TESTS_SH}
+.for _t in ${_TEST_SH_SEL}
 	@echo "===> staging test ${_t} (atf-sh)"
 	cp ${.CURDIR}/tests/${_t}.sh ${_TEST_BINDIR}/${_t}
 	chmod +x ${_TEST_BINDIR}/${_t}
@@ -93,41 +117,37 @@ _build_tests:
 _gen_kyuafile:
 	@echo 'syntax(2)' > ${_KYUAFILE}
 	@echo 'test_suite("${.CURDIR:T}")' >> ${_KYUAFILE}
-.for _t in ${TESTS_CXX} ${TESTS_C} ${TESTS_SH}
+.for _t in ${_TEST_CXX_SEL} ${_TEST_C_SEL} ${_TEST_SH_SEL}
 	@echo 'atf_test_program{name="${_t}"}' >> ${_KYUAFILE}
 .endfor
 
-# test: build + run this module's declared tests, report JUnit XML, and
-# exit non-zero if any test failed -- the JUnit report is still written
-# either way (a failure is exactly when you most want the report), but a
-# silently-zero exit on real failures would defeat a CI test target.
+# test: build + run this module's declared (or TEST=-selected) tests,
+# report JUnit XML, and exit non-zero if any test failed -- the JUnit
+# report is still written either way (a failure is exactly when you most
+# want the report). REPORT=yes additionally builds the HTML report
+# (report-flag-uniform-trigger) -- `test-all` no longer exists as a
+# separate target.
 # @impl 0f87-6aa9-0267-4adc
 test: _build_tests _gen_kyuafile
 	@_rc=0; \
 	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
 	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output=${.CURDIR}/${BUILD_ROOT}/test-results.xml); \
 	echo "===> test results: ${BUILD_ROOT}/test-results.xml"; \
-	exit $$_rc
-
-# test-all: same, plus a full HTML report (unit-test-full-suite-html-report-req).
-# Self-contained rather than depending on `test` -- a failing `test` target
-# would abort make before this recipe runs, and the HTML report must be
-# produced on failure too, not only on success.
-test-all: _build_tests _gen_kyuafile
-	@_rc=0; \
-	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
-	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output=${.CURDIR}/${BUILD_ROOT}/test-results.xml); \
-	(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output=${.CURDIR}/${BUILD_ROOT}/test-report-html); \
-	echo "===> test results: ${BUILD_ROOT}/test-results.xml"; \
-	echo "===> full HTML report: ${BUILD_ROOT}/test-report-html/index.html"; \
+	if [ "${REPORT}" = "yes" ]; then \
+		(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output=${.CURDIR}/${BUILD_ROOT}/test-report-html); \
+		echo "===> full HTML report: ${BUILD_ROOT}/test-report-html/index.html"; \
+	fi; \
 	exit $$_rc
 
 .else
 test:
+.if !empty(TEST)
+	@echo "error: TEST=${TEST} requested but ${.CURDIR:T} declares no tests at all" >&2; exit 1
+.else
 	@echo "no TESTS_CXX/TESTS_C/TESTS_SH declared in ${.CURDIR:T}"
-test-all: test
+.endif
 .endif
 
-.PHONY: test test-all _build_tests _gen_kyuafile
+.PHONY: test _build_tests _gen_kyuafile
 
 .endif # _MK_TEST_MK_

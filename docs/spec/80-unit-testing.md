@@ -52,35 +52,68 @@ All three kinds are registered in a generated `Kyuafile` and run via
 `kyua test`, agnostic to which kind produced the pass/fail
 (`REQ-unit-test-feature-for-built-software-req`).
 
-## `make` targets
+## `make test` — one target, not two
 
-| Target | Scope | Behavior |
-|---|---|---|
-| `test` | module | Build + run this module's declared tests; always writes a JUnit XML report (`build/<KEY>/test-results.xml`); exits non-zero if any test failed |
-| `test-all` | module | Same, plus a full HTML report (`build/<KEY>/test-report-html/index.html`) — generated on failure too, not only on success (`REQ-unit-test-full-suite-html-report-req`) |
-| `test` | framework, workspace | Recurses into every module (workspace: via every framework); a module with no tests declared just echoes and exits 0 |
-| `test-all` | framework | Same recursion, `test-all` at each module |
-| `test-all` | workspace | Same recursion, **plus** a workspace-level dashboard — see below (`REQ-test-workspace-aggregation-req`) |
+There is no separate `test-all` target. `test` always builds, runs, and
+writes JUnit XML (`build/<KEY>/test-results.xml`); `REPORT=yes`
+additionally builds the HTML report (`build/<KEY>/test-report-html/`) —
+generated on failure too, not only on success
+(`REQ-unit-test-full-suite-html-report-req`). `test` exits non-zero if
+any test failed, whether or not `REPORT=yes` was given.
 
-Both module-level targets always produce their report regardless of
-pass/fail — a failure is exactly when the report matters most. At every
-scope, one module's failure doesn't stop the others from running (each
-recursive `${MAKE} -C ... test[-all]` is `|| true`'d).
+| Scope | Behavior |
+|---|---|
+| module | Build + run this module's declared (or `TEST=`-selected) tests |
+| framework | Recurses into every module (or just the one declaring `TEST=<name>`, pre-filtered so a non-matching module is silently skipped, not an error); a module with no tests declared just echoes and exits 0 |
+| workspace | Same recursion (or just `FW=<name>`), **plus**, with `REPORT=yes`, a workspace-level dashboard — see below (`REQ-test-workspace-aggregation-req`) |
+
+One module's test failure does not stop every other module from still
+being run — `FAIL_FAST=yes` opts into stopping the recursive run at the
+first failure instead (`40-cli-reference.md`).
+
+## `TEST=` and `FW=`: running just one test
+
+```
+bmake test TEST=hello_test              # module or framework level
+bmake test FW=Hello TEST=hello_test     # workspace level, narrowed further
+```
+
+`TEST=<name>` narrows a run to one declared test. At module level, a
+name that matches none of `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=` fails
+loudly (`.error`, most likely a typo) rather than silently doing
+nothing. At framework/workspace level, `TEST=` is pre-filtered before
+recursing: each module's own declared test names are queried first (a
+plain `-V` query, same pattern as `mk.lib.mk`'s `PREREQS=` lookup), and
+only a matching module is actually invoked — so requesting a test that
+doesn't exist ANYWHERE in scope produces no output and no error, not N
+copies of the module-level error. `FW=<name>` at workspace level further
+narrows recursion to one framework before that module-level filtering
+happens (`REQ-test-single-selection-req`).
 
 ## Workspace-wide runs and the dashboard
 
-`bmake test-all` from the workspace root builds and runs every declared
-test across every framework and module, then generates one dashboard —
-`test-report/index.html` at the workspace root — listing every module
-that produced a report, its framework, a PASS/FAIL status (with a
-failure count, derived from `<failure>`/`<error>` tags in that module's
-own JUnit XML — kyua uses `<error>` specifically for a crashed/aborted
-case, e.g. a sanitizer abort, not `<failure>`), and links to both that
-module's own HTML report and its JUnit XML. Built by walking for
-`test-report-html/` directories after the recursive run completes,
-rather than statically re-deriving which modules declare tests — since a
-no-tests module's `test-all` never creates that directory, existence is
-sufficient (`REQ-test-workspace-aggregation-req`).
+`bmake test REPORT=yes` from the workspace root builds and runs every
+declared test across every framework and module (or the `FW=`/`TEST=`-
+narrowed subset), then generates one dashboard — `test-report/index.html`
+at the workspace root — listing every module that produced a report, its
+framework, a PASS/FAIL status (with a failure count, derived from
+`<failure>`/`<error>` tags in that module's own JUnit XML — kyua uses
+`<error>` specifically for a crashed/aborted case, e.g. a sanitizer
+abort, not `<failure>`), and links to both that module's own HTML report
+and its JUnit XML. Built by walking for `test-report-html/` directories
+after the run completes, rather than statically re-deriving which
+modules declare tests — since a no-tests module never creates that
+directory (and a `TEST=`/`FW=`-filtered run never touches modules
+outside its scope), existence is sufficient, and the scan itself
+respects the same `FW=`/`TEST=` scoping as the run, so a narrowed run's
+dashboard doesn't surface stale results from modules it didn't touch
+this time (`REQ-test-workspace-aggregation-req`).
+
+`TEST_REPORT_DIR ?= test-report` is overridable — e.g. giving a
+periodic sanitizing run its own `TEST_REPORT_DIR=test-report-sanitized`
+keeps it from overwriting the regular run's dashboard. See
+`40-cli-reference.md` for where build/test logs live and how this
+composes with an external CI/integration-manager process.
 
 ## Toolchain notes
 
@@ -93,11 +126,21 @@ documented, accepted toolchain-packaging gap, not a Bmake It bug.
 
 ## Sanitizer interaction
 
-`SANITIZE=` (`40-cli-reference.md`) composes with `test`/`test-all` at
-every scope via the shared `CFLAGS`/`CXXFLAGS`/`LDFLAGS` — no
-test-specific wiring needed. A sanitizer-caught test aborts (SIGABRT)
+`SANITIZE=` (`40-cli-reference.md`) composes with `test` at every scope
+via the shared `CFLAGS`/`CXXFLAGS`/`LDFLAGS` — no test-specific wiring
+needed. A sanitizer-caught test aborts (SIGABRT)
 rather than returning a normal pass/fail, which kyua reports as
 "broken"/`<error>` rather than `<failure>` — the workspace dashboard
 above treats both the same way (any non-clean result). Verified against
 a real ASan heap-buffer-overflow (library module) and a real UBSan
 signed-integer-overflow (program module) in the same run.
+
+**Rebuild before testing**: `test` does not depend on `all` and never
+rebuilds the module's own library/executable itself -- only the test
+binary is recompiled fresh each run. Running `bmake test SANITIZE=address`
+against a library that was last built *without* `SANITIZE=` links the
+test against an unsanitized library and won't catch anything. Rebuild
+with the same `SANITIZE=` first (`bmake all SANITIZE=address`) --
+plain `make` doesn't detect a flags-only change as a reason to
+recompile, so a stale `build/` from an earlier, differently-flagged
+build is a real trap, not just a sanitizer-specific one.

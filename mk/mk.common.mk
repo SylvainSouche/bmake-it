@@ -146,6 +146,35 @@ CFLAGS   += ${DEBUG_FLAGS}
 CXXFLAGS += ${DEBUG_FLAGS}
 
 # ---------------------------------------------------------------------------
+# REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
+# build-workspace-aggregation-req, test-workspace-aggregation-req)
+# One flag for build, test, and sanitizing-test runs alike -- not a
+# separate target name per action. Purely about the dashboard: REPORT=yes
+# additionally generates the workspace-level dashboard (build-report/ or
+# test-report/) from the logs/results any run -- reported or not --
+# already leaves behind; REPORT unset just skips that step. See
+# FAIL_FAST= below for whether a failure stops the run.
+# ---------------------------------------------------------------------------
+REPORT ?= no
+
+# ---------------------------------------------------------------------------
+# FAIL_FAST= whether one module's failure stops a workspace/framework
+# `all`/`test` run. Default (unset/no): a build or test failure in one
+# module does NOT prevent every other module from still being built/
+# tested -- the failure is recorded (build.failed marker; test's own
+# non-zero exit) and the run continues, matching how `test` already
+# behaved before REPORT= existed. FAIL_FAST=yes opts into the traditional
+# stop-immediately-on-first-failure behavior instead, for a quick dev
+# loop where seeing every other module's result isn't useful. Orthogonal
+# to REPORT=: whether the run continues past a failure and whether a
+# dashboard gets built from what happened are two independent questions.
+# A bare single-module `bmake all`/`test` (not via workspace/framework
+# recursion) is unaffected either way -- there's nothing else to continue
+# past.
+# ---------------------------------------------------------------------------
+FAIL_FAST ?= no
+
+# ---------------------------------------------------------------------------
 # SANITIZE= sanitizer instrumentation (sanitizer-support-req)
 # A plain compile/link-flag concern, not test-specific -- CFLAGS/CXXFLAGS/
 # LDFLAGS are shared by every role that .includes this file, so this
