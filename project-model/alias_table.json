@@ -803,6 +803,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-run-id-history": {
+    "active": true,
+    "id": "0f87-6aaa-72d2-8ffc",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-run-target": {
     "active": true,
     "id": "0f87-6a98-7946-1d85",
@@ -1612,6 +1618,18 @@
     "id": "6f38-6a89-bc24-f8a0",
     "status": "confirmed",
     "type": "req"
+  },
+  "run-history-not-overwritten-req": {
+    "active": true,
+    "id": "0f87-6aaa-72be-9e29",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-id-identifies-logs": {
+    "active": true,
+    "id": "0f87-6aaa-72be-8624",
+    "status": "recorded",
+    "type": "dec"
   },
   "run-target": {
     "active": true,

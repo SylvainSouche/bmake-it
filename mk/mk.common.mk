@@ -175,6 +175,23 @@ REPORT ?= no
 FAIL_FAST ?= no
 
 # ---------------------------------------------------------------------------
+# RUN_ID= identifies one run's logs/reports so re-running the same
+# arch-toolchain target doesn't silently overwrite the previous run's
+# build.log/test-results.xml/dashboards (run-history-not-overwritten-req).
+# Default: timestamp + PID (collision-safe across near-simultaneous runs
+# without needing a GNU-only `date` extension like %N, which macOS/BSD
+# date doesn't have). Overridable so an external CI can pass its own
+# build number or commit SHA instead -- Bmake It itself stays VCS-blind
+# (ci-integration-scope-boundary). Computed once and forwarded through
+# the same recursive calls as SANITIZE=/REPORT=/FAIL_FAST=, so every
+# module/framework touched by one run shares the same RUN_ID.
+# @impl 0f87-6aaa-72d2-8ffc
+# ---------------------------------------------------------------------------
+.if !defined(RUN_ID) || empty(RUN_ID)
+RUN_ID != date +%Y%m%d-%H%M%S-$$$$ 2>/dev/null
+.endif
+
+# ---------------------------------------------------------------------------
 # SANITIZE= sanitizer instrumentation (sanitizer-support-req)
 # A plain compile/link-flag concern, not test-specific -- CFLAGS/CXXFLAGS/
 # LDFLAGS are shared by every role that .includes this file, so this

@@ -104,18 +104,20 @@ make all REPORT=yes                        # workspace build dashboard
 make test REPORT=yes                        # workspace test dashboard
 make all FAIL_FAST=yes                       # stop at the first broken module
 make test TEST=hello_test FW=Hello REPORT=yes  # one test, one dashboard
+make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
 ```
 
 - **`REPORT=<yes|no>`** (default `no`): purely about the dashboard.
   `REPORT=yes` on a workspace/framework `all` builds
-  `build-report/index.html` (`BUILD_REPORT_DIR=`, default `build-report`)
-  listing every framework/module with PASS/FAIL and a link to its
-  `build.log`; on `test`, it additionally builds each module's HTML
-  report and a workspace-level `test-report/index.html`
-  (`TEST_REPORT_DIR=`, default `test-report`) — see `80-unit-testing.md`.
-  With `REPORT` unset, the run still happens and logs are still written
-  (see below), just without the dashboard step
-  (`REQ-build-workspace-aggregation-req-v2`, `REQ-test-workspace-aggregation-req`).
+  `build-report/<RUN_ID>/index.html` (`BUILD_REPORT_DIR=`, default
+  `build-report`) listing every framework/module with PASS/FAIL and a
+  link to its `build.log`; on `test`, it additionally builds each
+  module's HTML report and a workspace-level
+  `test-report/<RUN_ID>/index.html` (`TEST_REPORT_DIR=`, default
+  `test-report`) — see `80-unit-testing.md`. With `REPORT` unset, the run
+  still happens and logs are still written (see below), just without the
+  dashboard step (`REQ-build-workspace-aggregation-req-v2`,
+  `REQ-test-workspace-aggregation-req`).
 - **`FAIL_FAST=<yes|no>`** (default `no`): whether one module's build or
   test failure stops a workspace/framework run before every other module
   gets attempted. Default is to keep going — a build error in one module
@@ -127,14 +129,30 @@ make test TEST=hello_test FW=Hello REPORT=yes  # one test, one dashboard
   all`/`test` (not via workspace/framework recursion) is unaffected
   either way — there's nothing else to continue past
   (`fail-fast-independent-of-report`).
+- **`RUN_ID=<id>`** (default: `date +%Y%m%d-%H%M%S-$$`, timestamp + PID
+  — collision-safe across near-simultaneous runs without needing a
+  GNU-only `date` extension like `%N`, which macOS/BSD `date` lacks):
+  identifies one run's logs/reports so re-running the same arch-toolchain
+  target doesn't overwrite the previous run's. Computed once and
+  forwarded through the same recursive calls as `SANITIZE=`/`REPORT=`/
+  `FAIL_FAST=`, so every module/framework touched by one run shares the
+  same `RUN_ID`. Override it to correlate a run with an external CI's own
+  build number or commit SHA — Bmake It itself stays version-control-
+  blind either way (`run-history-not-overwritten-req`).
 - **Where logs live**: a workspace/framework `all` always writes
-  `<module>/build/<KEY>/build.log` (and a per-framework rollup at
-  `<framework>/build/<KEY>/build.log`) regardless of `REPORT=` — console
-  output is unchanged (`tee`'d, not replaced). `test` always writes
-  `<module>/build/<KEY>/test-results.xml` (JUnit) regardless of
-  `REPORT=`; Kyua's own results store (`~/.kyua/store/`) also has every
-  run's raw output. `REPORT=yes` is what turns those into a browsable
-  dashboard, not what creates them in the first place.
+  `<module>/build/<KEY>/runs/<RUN_ID>/build.log` (and a per-framework
+  rollup at `<framework>/build/<KEY>/runs/<RUN_ID>/build.log`) regardless
+  of `REPORT=` — console output is unchanged (`tee`'d, not replaced).
+  `test` always writes `<module>/build/<KEY>/runs/<RUN_ID>/test-results.xml`
+  (JUnit) regardless of `REPORT=`; Kyua's own results store
+  (`~/.kyua/store/`) also has every run's raw output. `REPORT=yes` is
+  what turns those into a browsable dashboard, not what creates them in
+  the first place. A `runs/latest` — and, at workspace level,
+  `<REPORT_DIR>/latest` — is always kept as a **real copy** of the
+  newest run, not a symlink: Cygwin's default symlinks are a small text
+  marker file, not something a native Windows web server or file browser
+  resolves, so a copy is what stays servable on every host this project
+  targets.
 - **`TEST=<name>`**, **`FW=<name>`**: narrow a `test` run to one test
   (and, at workspace level, one framework) — see `80-unit-testing.md`.
 - **What Bmake It does not do**: fetch/pull changes from version control,

@@ -146,10 +146,11 @@ toolchain never affects resource variant selection.
   sources for `bmake test`. See `80-unit-testing.md`.
 - **`docs/`** — `bmake docs` output (Doxygen HTML, tag files); not
   source, not committed. See `70-documentation-generation.md`.
-- **`build/<KEY>/build.log`**, **`build/<KEY>/build.failed`** — at
+- **`build/<KEY>/runs/<RUN_ID>/build.log`**, **`.../build.failed`** — at
   module and framework level, always written by a workspace/framework
-  `all` (not module-only builds); a rolling log and a failure marker,
-  not source, not committed. See `40-cli-reference.md`.
-- **`build-report/`**, **`test-report/`** at workspace level — the
-  `REPORT=yes` dashboards; not source, not committed. See
-  `40-cli-reference.md`.
+  `all` (not module-only builds); a rolling log and a failure marker for
+  that one run, with `runs/latest/` always kept as a copy of the newest
+  — not source, not committed. See `40-cli-reference.md`.
+- **`build-report/<RUN_ID>/`**, **`test-report/<RUN_ID>/`** at workspace
+  level (each with its own `latest/` copy) — the `REPORT=yes`
+  dashboards; not source, not committed. See `40-cli-reference.md`.

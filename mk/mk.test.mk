@@ -122,21 +122,26 @@ _gen_kyuafile:
 .endfor
 
 # test: build + run this module's declared (or TEST=-selected) tests,
-# report JUnit XML, and exit non-zero if any test failed -- the JUnit
-# report is still written either way (a failure is exactly when you most
-# want the report). REPORT=yes additionally builds the HTML report
-# (report-flag-uniform-trigger) -- `test-all` no longer exists as a
-# separate target.
+# report JUnit XML under runs/<RUN_ID>/ (runs/latest kept pointing at
+# it, run-history-not-overwritten-req), and exit non-zero if any test
+# failed -- the JUnit report is still written either way (a failure is
+# exactly when you most want the report). REPORT=yes additionally builds
+# the HTML report there too (report-flag-uniform-trigger-v2) --
+# `test-all` no longer exists as a separate target.
 # @impl 0f87-6aa9-0267-4adc
+# @impl 0f87-6aaa-72d2-8ffc
 test: _build_tests _gen_kyuafile
-	@_rc=0; \
+	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+	_rc=0; \
 	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
-	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output=${.CURDIR}/${BUILD_ROOT}/test-results.xml); \
-	echo "===> test results: ${BUILD_ROOT}/test-results.xml"; \
+	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
 	if [ "${REPORT}" = "yes" ]; then \
-		(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output=${.CURDIR}/${BUILD_ROOT}/test-report-html); \
-		echo "===> full HTML report: ${BUILD_ROOT}/test-report-html/index.html"; \
+		(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \
 	fi; \
+	rm -rf ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
+	cp -a "$$_rundir" ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
 	exit $$_rc
 
 .else

@@ -55,8 +55,9 @@ All three kinds are registered in a generated `Kyuafile` and run via
 ## `make test` — one target, not two
 
 There is no separate `test-all` target. `test` always builds, runs, and
-writes JUnit XML (`build/<KEY>/test-results.xml`); `REPORT=yes`
-additionally builds the HTML report (`build/<KEY>/test-report-html/`) —
+writes JUnit XML (`build/<KEY>/runs/<RUN_ID>/test-results.xml`, plus a
+`runs/latest` copy — `40-cli-reference.md`); `REPORT=yes` additionally
+builds the HTML report alongside it (`.../test-report-html/`) —
 generated on failure too, not only on success
 (`REQ-unit-test-full-suite-html-report-req`). `test` exits non-zero if
 any test failed, whether or not `REPORT=yes` was given.
@@ -94,20 +95,23 @@ happens (`REQ-test-single-selection-req`).
 
 `bmake test REPORT=yes` from the workspace root builds and runs every
 declared test across every framework and module (or the `FW=`/`TEST=`-
-narrowed subset), then generates one dashboard — `test-report/index.html`
-at the workspace root — listing every module that produced a report, its
-framework, a PASS/FAIL status (with a failure count, derived from
-`<failure>`/`<error>` tags in that module's own JUnit XML — kyua uses
-`<error>` specifically for a crashed/aborted case, e.g. a sanitizer
-abort, not `<failure>`), and links to both that module's own HTML report
-and its JUnit XML. Built by walking for `test-report-html/` directories
+narrowed subset), then generates one dashboard —
+`test-report/<RUN_ID>/index.html` at the workspace root, with
+`test-report/latest/` always kept as a copy of the newest one — listing
+every module that produced a report, its framework, a PASS/FAIL status
+(with a failure count, derived from `<failure>`/`<error>` tags in that
+module's own JUnit XML — kyua uses `<error>` specifically for a
+crashed/aborted case, e.g. a sanitizer abort, not `<failure>`), and
+links to both that module's own HTML report and its JUnit XML. Built by
+walking for `test-report-html/` directories under that same `RUN_ID`
 after the run completes, rather than statically re-deriving which
 modules declare tests — since a no-tests module never creates that
 directory (and a `TEST=`/`FW=`-filtered run never touches modules
 outside its scope), existence is sufficient, and the scan itself
-respects the same `FW=`/`TEST=` scoping as the run, so a narrowed run's
-dashboard doesn't surface stale results from modules it didn't touch
-this time (`REQ-test-workspace-aggregation-req`).
+respects the same `FW=`/`TEST=`/`RUN_ID` scoping as the run, so a
+narrowed or later run's dashboard doesn't surface stale results from a
+different run or a module it didn't touch this time
+(`REQ-test-workspace-aggregation-req`, `REQ-run-history-not-overwritten-req`).
 
 `TEST_REPORT_DIR ?= test-report` is overridable — e.g. giving a
 periodic sanitizing run its own `TEST_REPORT_DIR=test-report-sanitized`

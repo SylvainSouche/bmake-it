@@ -86,49 +86,54 @@ SUBDIR_MODULES != ls -d *.m 2>/dev/null || true
 
 # ---------------------------------------------------------------------------
 # Build all modules in dependency order, then copy-up. Each module's build
-# output is always captured to <module>/<BUILD_ROOT>/build.log (tee'd, so
-# console output is unchanged). One module's build failure does NOT stop
-# every other module from still being attempted -- FAIL_FAST=yes opts
-# into stop-on-first-failure instead (build-workspace-aggregation-req,
-# report-flag-uniform-trigger).
+# output is always captured to <module>/<BUILD_ROOT>/runs/<RUN_ID>/build.log
+# (tee'd, so console output is unchanged), with runs/latest kept pointing
+# at it -- re-running the same arch-toolchain target does not overwrite a
+# previous run's log (run-history-not-overwritten-req). One module's build
+# failure does NOT stop every other module from still being attempted --
+# FAIL_FAST=yes opts into stop-on-first-failure instead
+# (build-workspace-aggregation-req-v2, report-flag-uniform-trigger-v2).
 # ---------------------------------------------------------------------------
 all: _build_modules _aggregate
 	@echo "===> framework ${.CURDIR:T} complete for ${OS_ARCH}"
 
 # @impl 0f87-6a98-5e47-0c71
 # @impl 0f87-6aaa-6a6e-00d0
+# @impl 0f87-6aaa-72d2-8ffc
 _build_modules:
 .for _m in ${SUBDIR_MODULES}
 	@echo "===> building module ${_m}"
-	@_logdir=${.CURDIR}/${_m}/${BUILD_ROOT}; mkdir -p "$$_logdir"; \
+	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rcfile=$$(mktemp); \
 	{ ${MAKE} -C ${_m} all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}"; \
-	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_logdir/build.log"; \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
+	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
-		rm -f "$$_logdir/build.failed"; \
+		rm -f "$$_rundir/build.failed"; \
 		${MAKE} -C ${_m} copy-up \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			2>&1 | tee -a "$$_logdir/build.log"; \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+			2>&1 | tee -a "$$_rundir/build.log"; \
 	else \
-		touch "$$_logdir/build.failed"; \
-		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/build.log" >&2; \
+		touch "$$_rundir/build.failed"; \
+		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
 		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
-	fi
+	fi; \
+	rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
+	cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest
 .endfor
 
 # test: recurse into every module (test-workspace-aggregation-req). A
 # module with no TESTS_CXX=/TESTS_C=/TESTS_SH= just echoes and exits 0
 # (mk.test.mk's own no-tests branch). One module's genuine test failure
 # does NOT stop the loop before every other module has had a chance to
-# run, unless FAIL_FAST=yes was given. REPORT=/SANITIZE= are forwarded
-# as-is; TEST=<name> is pre-filtered here -- only modules that actually
-# declare a matching test get invoked at all, so mk.test.mk's own
-# TEST=-with-no-match case only ever fires for a genuine direct mistake,
-# not for every module TEST= wasn't meant for.
+# run, unless FAIL_FAST=yes was given. REPORT=/SANITIZE=/RUN_ID= are
+# forwarded as-is; TEST=<name> is pre-filtered here -- only modules that
+# actually declare a matching test get invoked at all, so mk.test.mk's
+# own TEST=-with-no-match case only ever fires for a genuine direct
+# mistake, not for every module TEST= wasn't meant for.
 # @impl 0f87-6aaa-6201-a430
 # @impl 0f87-6aaa-697c-4c30
 test:
@@ -146,7 +151,7 @@ test:
 		${MAKE} -C ${_m} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			REPORT="${REPORT}" TEST="${TEST}"; \
+			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}"; \
 		_trc=$$?; \
 		if [ "$$_trc" -ne 0 ] && [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
 	fi
