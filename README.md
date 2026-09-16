@@ -30,10 +30,25 @@ docs/
 project-model/           # discovery-driven-dev project model (see below)
 ```
 
+## Prerequisites
+
+`bmake` itself, plus a C/C++ toolchain. Where `bmake` comes from depends
+on the host:
+
+| Host | Get `bmake` via |
+|---|---|
+| FreeBSD, NetBSD | Already the base system's own `make` — nothing to install |
+| macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — all tier 1, see `docs/spec/00-overview.md` for why MacPorts/Homebrew/pkgsrc are tiered this way and why the toolchain itself should come from one of them too, not Xcode CLT by default |
+| Debian, Ubuntu, other Linux | `sudo apt install bmake` (or your distro's equivalent package) |
+| Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` also needs cl.exe already on `PATH` (launch from a Visual Studio developer prompt, or `vcvarsall.bat`) — see `mk/mk.toolchain.msvc.mk`'s own header comments; there's no dedicated spec chapter for this yet |
+
+`flex`/`bison` (or `yacc`/`lex`) are only needed if a module has `.y`/
+`.l` grammar sources — optional otherwise.
+
 ## Quick start
 
 ```sh
-# Requires: bmake, a C toolchain (clang or gcc), optionally flex/bison
+# See Prerequisites above for getting bmake and a toolchain installed
 cd examples/myworkspace
 bmake                          # build for host OS/arch (e.g. linux-amd64)
 bmake TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc   # select target key

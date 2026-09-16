@@ -65,7 +65,9 @@ than left open:
   (`REQ-win-target-via-cross-toolchain-req`).
 - **Default toolchain**: LLVM/clang; legacy OS-native gcc is the
   alternative (`REQ-default-toolchain-llvm`). Default build target is the
-  host's own OS/arch (`REQ-default-build-host-os-arch`).
+  host's own OS/arch (`REQ-default-build-host-os-arch`). See the
+  top-level `README.md`'s Prerequisites section for concrete per-host
+  install commands for `bmake` itself.
 - **Scope is userland only** — no kernel modules/drivers, no Darwin/XNU
   kernel development (`REQ-userland-only-scope`).
 
