@@ -2159,6 +2159,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "variant-optional-builds-topic": {
+    "active": true,
+    "id": "0f87-6aaa-93e5-324a",
+    "status": "recorded",
+    "type": "obs"
+  },
   "variant-out-of-scope-for-dirtree": {
     "active": true,
     "id": "6f38-6a89-bb05-134c",
