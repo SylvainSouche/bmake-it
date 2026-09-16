@@ -1577,6 +1577,30 @@
     "status": "recorded",
     "type": "obs"
   },
+  "qt-development-without-plumbing-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c69-4170",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "qt-mechanism-original-implementation": {
+    "active": true,
+    "id": "0f87-6aaa-8c69-f751",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "qt-mk-mechanism-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c78-02af",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "qt-progressive-test-harness-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c78-60a0",
+    "status": "confirmed",
+    "type": "req"
+  },
   "rade-inspiration": {
     "active": true,
     "id": "6f38-6a88-1836-f6c4",

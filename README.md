@@ -25,7 +25,7 @@ scripts/                 # gen-mod-order.sh, gen-fw-order.sh, MSVC wrappers
 examples/myworkspace/    # worked example (System + Hello frameworks)
 tests/                   # script-driven test harness for mk/*.mk itself
 docs/
-├── spec/                 # design specification (00-overview.md … 80-*.md)
+├── spec/                 # design specification (00-overview.md … 90-*.md)
 └── manual.tex            # LaTeX package manual
 project-model/           # discovery-driven-dev project model (see below)
 ```

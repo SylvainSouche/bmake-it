@@ -109,4 +109,5 @@ See `10-directory-layout.md` for the concrete tree, `20-headers-and-linking.md`
 for header/library resolution, `30-build-sequence.md` for build ordering,
 `40-cli-reference.md` for `make` usage, `50-makefile-macros.md` for the
 full macro reference, `70-documentation-generation.md` for `bmake docs`,
-and `80-unit-testing.md` for `bmake test`/`test-all`.
+`80-unit-testing.md` for `bmake test`, and `90-qt-development.md` for
+Qt application support (spec-only, not yet implemented).
