@@ -857,6 +857,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-local-mk-arch-variant": {
+    "active": true,
+    "id": "0f87-6ab5-88d0-e665",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-mingw-cross-toolchain": {
     "active": true,
     "id": "0f87-6a98-96de-785b",
