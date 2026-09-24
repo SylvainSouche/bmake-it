@@ -809,6 +809,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-import-libraries": {
+    "active": true,
+    "id": "0f87-6ab5-8aa6-c2d0",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
