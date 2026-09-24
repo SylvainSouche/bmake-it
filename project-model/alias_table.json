@@ -23,6 +23,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "aggregation-failure-summary-and-exit-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8184-e593",
+    "status": "recorded",
+    "type": "dec"
+  },
   "aggregation-step-copies-outputs": {
     "active": true,
     "id": "6f38-6a89-baec-3053",
