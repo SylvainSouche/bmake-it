@@ -995,6 +995,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "import-staging-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a9c-1d21",
+    "status": "confirmed",
+    "type": "req"
+  },
   "imported-libraries-are-ordinary-modules-req": {
     "active": true,
     "id": "0f87-6ab5-8a4d-be9a",
