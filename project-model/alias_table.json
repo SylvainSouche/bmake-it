@@ -677,6 +677,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "header-dependency-tracking-mechanism-dec": {
+    "active": true,
+    "id": "0f87-6ab5-83f1-fa08",
+    "status": "recorded",
+    "type": "dec"
+  },
   "header-dependency-tracking-not-wired-for-real": {
     "active": true,
     "id": "0f87-6ab5-83dc-9fe1",
