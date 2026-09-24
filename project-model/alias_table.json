@@ -557,6 +557,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "gen-mod-order-correct-curdir-req": {
+    "active": true,
+    "id": "0f87-6ab5-8d2d-2bbc",
+    "status": "confirmed",
+    "type": "req"
+  },
   "gen-mod-order-wrong-curdir-bug": {
     "active": true,
     "id": "0f87-6ab5-8d15-98e8",
