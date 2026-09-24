@@ -860,7 +860,7 @@
   "impl-local-mk-arch-variant": {
     "active": true,
     "id": "0f87-6ab5-88d0-e665",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-mingw-cross-toolchain": {
