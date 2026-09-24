@@ -71,10 +71,18 @@ diverges deliberately: `PROG_CXX=` means "use this name instead of
 ## Local customization (`mk/` directories)
 
 A workspace, framework, or module may carry its own `mk/` subdirectory,
-consulted for six conventionally-named hook files — `pre.mk`/`local.mk`,
-each with unconditional, `${TOOLCHAIN}`-conditional (`pre.${TOOLCHAIN}.mk`)
-and `${TARGET}`-conditional (`pre.${TARGET}.mk`) variants
-(`REQ-local-mk-hook-files-and-cascade-order-req`). `pre.mk` is included
+consulted for eight conventionally-named hook files — `pre.mk`/`local.mk`,
+each with unconditional, `${TOOLCHAIN}`-conditional (`pre.${TOOLCHAIN}.mk`),
+`${TARGET}`-conditional (`pre.${TARGET}.mk`), and
+`${TARGET}_${TARGET_ARCH}`-conditional (`pre.${TARGET}_${TARGET_ARCH}.mk`,
+same naming as `share/<os>_<arch>` — for a path that differs by arch on
+one OS, e.g. Homebrew's `/opt/homebrew` on arm64 vs `/usr/local` on
+amd64, which `${TARGET}` alone can't express) variants
+(`REQ-local-mk-hook-files-and-cascade-order-req`,
+`REQ-local-mk-arch-variant-req`). No combined toolchain+target_arch
+filename — the realistic need is covered by target_arch alone, and the
+separate `${TOOLCHAIN}`-conditional variant already covers toolchain
+overrides independently. `pre.mk` is included
 before a role file computes its defaults (e.g. before `mk.docs.mk` derives
 `DOC_PROJECT_NAME=` — the mechanism `70-documentation-generation.md` uses
 for project-metadata overrides); `local.mk` after.

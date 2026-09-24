@@ -857,6 +857,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-local-mk-arch-variant": {
+    "active": true,
+    "id": "0f87-6ab5-88d0-e665",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-mingw-cross-toolchain": {
     "active": true,
     "id": "0f87-6a98-96de-785b",
@@ -1157,6 +1163,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "local-mk-arch-variant-dec": {
+    "active": true,
+    "id": "0f87-6ab5-88b9-bab5",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "local-mk-arch-variant-req": {
+    "active": true,
+    "id": "0f87-6ab5-88c5-743f",
+    "status": "confirmed",
+    "type": "req"
+  },
   "local-mk-hook-files-and-cascade-order": {
     "active": true,
     "id": "0f87-6aa9-0035-144b",
@@ -1168,6 +1186,12 @@
     "id": "0f87-6aa9-003f-a123",
     "status": "confirmed",
     "type": "req"
+  },
+  "local-mk-hooks-no-arch-variant": {
+    "active": true,
+    "id": "0f87-6ab5-88ad-6aed",
+    "status": "recorded",
+    "type": "obs"
   },
   "macos-multi-pkgmgr-single-vm": {
     "active": true,
