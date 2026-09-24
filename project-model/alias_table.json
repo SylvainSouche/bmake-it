@@ -710,7 +710,7 @@
   "impl-aggregation-failure-exit-code": {
     "active": true,
     "id": "0f87-6ab5-81a2-7bb0",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-build-workspace-aggregation": {
