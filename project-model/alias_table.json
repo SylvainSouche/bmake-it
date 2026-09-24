@@ -1199,6 +1199,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "link-transitivity-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8e32-0225",
+    "status": "recorded",
+    "type": "dec"
+  },
   "linux-glibc-musl-arch-tiering": {
     "active": true,
     "id": "0f87-6aa1-04c6-2551",
