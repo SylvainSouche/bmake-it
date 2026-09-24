@@ -461,6 +461,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "flags-only-change-does-not-trigger-rebuild": {
+    "active": true,
+    "id": "0f87-6ab5-8658-434b",
+    "status": "recorded",
+    "type": "obs"
+  },
   "flags-reuse-bsd-native-vars": {
     "active": true,
     "id": "6f38-6a8c-b9f4-d59f",
