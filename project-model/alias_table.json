@@ -983,6 +983,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "inputs-hash-rebuild-req": {
+    "active": true,
+    "id": "0f87-6ab5-8674-7a71",
+    "status": "confirmed",
+    "type": "req"
+  },
   "inputs-hash-stamp-file-dec": {
     "active": true,
     "id": "0f87-6ab5-8669-5878",
