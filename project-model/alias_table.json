@@ -23,6 +23,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "aggregation-failure-exit-code-req": {
+    "active": true,
+    "id": "0f87-6ab5-8197-16bf",
+    "status": "confirmed",
+    "type": "req"
+  },
   "aggregation-failure-summary-and-exit-dec": {
     "active": true,
     "id": "0f87-6ab5-8184-e593",
