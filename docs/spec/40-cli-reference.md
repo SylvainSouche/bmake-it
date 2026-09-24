@@ -134,6 +134,14 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
   all`/`test` (not via workspace/framework recursion) is unaffected
   either way — there's nothing else to continue past
   (`fail-fast-independent-of-report`).
+  A workspace/framework `all`/`test` run's own final exit code reflects
+  every failure it saw, not just the last one attempted — with
+  `FAIL_FAST=no`, the run still keeps going, but the overall exit is
+  non-zero if *any* module/framework failed, and a summary line names
+  each one (`<name> -- see <path>/build.log` or `.../test-results.xml`)
+  right before the final `Stop.` With `FAIL_FAST=yes`, the run stops
+  at the first failure as before, and that failure alone determines the
+  exit code (`aggregation-failure-exit-code-req`).
 - **`RUN_ID=<id>`** (default: `date +%Y%m%d-%H%M%S-$$`, timestamp + PID
   — collision-safe across near-simultaneous runs without needing a
   GNU-only `date` extension like `%N`, which macOS/BSD `date` lacks):

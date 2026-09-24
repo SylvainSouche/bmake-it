@@ -94,8 +94,32 @@ SUBDIR_MODULES != ls -d *.m 2>/dev/null || true
 # FAIL_FAST=yes opts into stop-on-first-failure instead
 # (build-workspace-aggregation-req-v2, report-flag-uniform-trigger-v2).
 # ---------------------------------------------------------------------------
-all: _build_modules _aggregate
+all: _build_modules _aggregate _check_build_failures
 	@echo "===> framework ${.CURDIR:T} complete for ${OS_ARCH}"
+
+# aggregation-failure-exit-code-req: FAIL_FAST=no already lets every
+# module build regardless of an earlier failure (_build_modules: never
+# exits early for that reason) -- but each .for iteration is its own
+# shell command ending in a `cp -a` that always succeeds, so the module's
+# real failure was invisible to bmake's own recipe-line exit tracking.
+# This step runs last (after _aggregate, so whatever DID succeed is still
+# copied up/aggregated) and turns the build.failed markers _build_modules:
+# already writes into the framework's own real exit code.
+# @impl 0f87-6ab5-81a2-7bb0
+_check_build_failures:
+	@_failed=""; \
+	for _m in ${SUBDIR_MODULES}; do \
+		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+			_failed="$$_failed $$_m"; \
+		fi; \
+	done; \
+	if [ -n "$$_failed" ]; then \
+		echo "===> framework ${.CURDIR:T} BUILD FAILED:$$_failed" >&2; \
+		for _m in $$_failed; do \
+			echo "     $$_m -- see $$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		done; \
+		exit 1; \
+	fi
 
 # @impl 0f87-6a98-5e47-0c71
 # @impl 0f87-6aaa-6a6e-00d0
@@ -136,7 +160,10 @@ _build_modules:
 # mistake, not for every module TEST= wasn't meant for.
 # @impl 0f87-6aaa-6201-a430
 # @impl 0f87-6aaa-697c-4c30
-test:
+# @impl 0f87-6ab5-81a2-7bb0
+test: _run_tests _check_test_failures
+
+_run_tests:
 .for _m in ${SUBDIR_MODULES}
 	@if [ -n "${TEST}" ]; then \
 		_has=$$(${MAKE} -C ${_m} -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH}' 2>/dev/null); \
@@ -148,14 +175,39 @@ test:
 		_run=yes; \
 	fi; \
 	if [ "$$_run" = yes ]; then \
+		_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 		${MAKE} -C ${_m} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
 			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}"; \
 		_trc=$$?; \
-		if [ "$$_trc" -ne 0 ] && [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
+		if [ "$$_trc" -ne 0 ]; then \
+			touch "$$_rundir/test.failed"; \
+			if [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
+		else \
+			rm -f "$$_rundir/test.failed"; \
+		fi; \
 	fi
 .endfor
+
+# aggregation-failure-exit-code-req: same reasoning as _check_build_failures
+# -- $$_trc above is already correct per iteration, but each iteration is
+# its own shell command, so the marker is what survives to this final step.
+# @impl 0f87-6ab5-81a2-7bb0
+_check_test_failures:
+	@_failed=""; \
+	for _m in ${SUBDIR_MODULES}; do \
+		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/test.failed" ]; then \
+			_failed="$$_failed $$_m"; \
+		fi; \
+	done; \
+	if [ -n "$$_failed" ]; then \
+		echo "===> framework ${.CURDIR:T} TEST FAILED:$$_failed" >&2; \
+		for _m in $$_failed; do \
+			echo "     $$_m -- see $$_m/${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml" >&2; \
+		done; \
+		exit 1; \
+	fi
 
 # Aggregate resources (share/ overlay) and ensure dirs exist
 _aggregate:
@@ -211,7 +263,7 @@ add-prereq:
 	fi
 	@echo "Appended ${FW} to PREREQS"
 
-.PHONY: all clean help copy-up add-prereq _build_modules _aggregate test
+.PHONY: all clean help copy-up add-prereq _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
 
 .include "${BMK_MKDIR}/mk.docs.mk"
 

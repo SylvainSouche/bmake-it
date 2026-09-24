@@ -17,6 +17,24 @@
     "status": "recorded",
     "type": "dec"
   },
+  "aggregation-exit-code-masked-bug": {
+    "active": true,
+    "id": "0f87-6ab5-8175-e29c",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "aggregation-failure-exit-code-req": {
+    "active": true,
+    "id": "0f87-6ab5-8197-16bf",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "aggregation-failure-summary-and-exit-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8184-e593",
+    "status": "recorded",
+    "type": "dec"
+  },
   "aggregation-step-copies-outputs": {
     "active": true,
     "id": "6f38-6a89-baec-3053",
@@ -687,6 +705,12 @@
     "active": true,
     "id": "0f87-6a98-7918-e195",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-aggregation-failure-exit-code": {
+    "active": true,
+    "id": "0f87-6ab5-81a2-7bb0",
+    "status": "verified",
     "type": "impl"
   },
   "impl-build-workspace-aggregation": {
