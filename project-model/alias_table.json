@@ -161,6 +161,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "compiler-native-dependency-tracking-inapplicable-to-own-recipes": {
+    "active": true,
+    "id": "0f87-6ab5-841f-3f9a",
+    "status": "proposed",
+    "type": "req"
+  },
   "compiler-native-dependency-tracking-req": {
     "active": true,
     "id": "6f38-6a91-4c89-ba40",
