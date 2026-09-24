@@ -23,6 +23,7 @@ BSD-make-native equivalent, introduced by this project.
 |---|---|---|
 | `PROG=<name>` | Output executable name. Defaults to the module directory name (`.m` stripped) if unset | New (`REQ-prog-lib-default-to-module-name-req`) |
 | `LIBS=<lib1> <lib2> ...` | Space-delimited libraries to link against (dev and/or system). **Link-time only** — has no effect on header visibility | New, replaces an earlier `LINK_WITH=` design (`REQ-libs-macro-link-only-headers-via-prereqs-req`) |
+| `LINK_CXX=yes` | Force the final link to use `${CXX}` even though `SRCS` is all-C. See below | New (`REQ-cxx-link-driver-selection-req`) |
 
 ## Module makefile — library (`.include <mk.lib.mk>`)
 
@@ -31,6 +32,7 @@ BSD-make-native equivalent, introduced by this project.
 | `LIB=<name>` | Output library base name. Defaults to the module directory name if unset | New (`REQ-prog-lib-default-to-module-name-req`) |
 | `LIB_SHARED=YES\|NO` | `YES` (default): shared library. `NO`: static/archive | New (`REQ-lib-shared-defaults-yes-req`, `REQ-lib-shared-no-is-static-req`) |
 | `LIBS=<lib1> <lib2> ...` | Same as above — link-time only | New |
+| `LINK_CXX=yes` | Same as above — forces `${CXX}` for the shared-library link | New (`REQ-cxx-link-driver-selection-req`) |
 | `INCL=<header1> <header2> ...` | Names which of this module's *generated* headers get promoted to public (copied to the framework's `build/<KEY>/include/`). Unlisted generated headers stay module-private | New (`REQ-incl-macro-promotes-generated-headers-req`) |
 | `SHLIB_MAJOR=<n>` | Major version for the shared library. Reused directly from real BSD `bsd.lib.mk` | Reused native (`REQ-shlib-major-minor-cross-platform-emission-req`) |
 | `SHLIB_MINOR=<n>` | Optional minor version | Reused native |
@@ -42,6 +44,29 @@ produces `libfoo.MAJOR.dylib` with a matching symlink **and** feeds the
 same numbers into the linker's native `-compatibility_version`/
 `-current_version` flags, since that's macOS's actual ABI-compatibility
 mechanism, not just a filename convention.
+
+## Link driver selection (`mk.prog.mk`/`mk.lib.mk`)
+
+The final link step uses `${CXX}` — not `${CC}` — whenever `SRCS`
+contains a `.cc`/`.cpp`/`.cxx` source, or `LINK_CXX=yes` is set
+explicitly; otherwise it uses `${CC}` (`REQ-cxx-link-driver-selection-req`).
+Per-source compilation was already language-correct; only the *final*
+link (and, for a library, the shared-object link) previously always used
+`${CC}` regardless of language, which left C++ runtime support symbols
+(exception handling, RTTI, etc.) undefined for any C++ program or shared
+library. `LINK_CXX=yes` is the explicit override for the one case
+auto-detection can't see: a module whose own `SRCS` is entirely C, but
+that links a static C++ library (`LIBS=`) and therefore still needs the
+C++ runtime pulled in at link time. Like `TESTS_CXX=`/`LIB=`/`PROG=`,
+`LINK_CXX=` must be set **before** `.include`ing `mk.prog.mk`/`mk.lib.mk`.
+
+Mirrors real `bsd.init.mk`'s own `_CCLINK` mechanism (auto-detect from
+`SRCS`, explicit `PROG_CXX=` override) without including any of its code
+— Bmake It's `mk.prog.mk`/`mk.lib.mk` never `.include` a real `bsd.*.mk`
+file at all, only Bmake It's own `mk.*.mk` role files, so the logic is
+reimplemented as Bmake It's own internal `_CCLINK` variable. The naming
+diverges deliberately: `PROG_CXX=` means "use this name instead of
+`PROG=`", a different concept from `LINK_CXX=yes`.
 
 ## Local customization (`mk/` directories)
 

@@ -44,6 +44,22 @@ PROG := ${PROG}.exe
 SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
 .endif
 
+# Link driver selection (cxx-link-driver-selection-req): ${CXX} when SRCS
+# contains a C++ source or LINK_CXX=yes overrides it explicitly (e.g. a
+# C-sources-only module linking a static C++ library), ${CC} otherwise.
+# @impl 0f87-6ab5-7f76-0dcf
+_HAS_CXX_SRCS = no
+.for _e in ${_CXX_EXTS}
+.  if !empty(SRCS:M*.${_e})
+_HAS_CXX_SRCS = yes
+.  endif
+.endfor
+.if (defined(LINK_CXX) && ${LINK_CXX} == "yes") || ${_HAS_CXX_SRCS} == "yes"
+_CCLINK = ${CXX}
+.else
+_CCLINK = ${CC}
+.endif
+
 .if exists(${.CURDIR}/include)
 CFLAGS   += -I${.CURDIR}/include
 CXXFLAGS += -I${.CURDIR}/include
@@ -134,7 +150,7 @@ _create_dirs:
 .  if ${_s:E} == "c"
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
 	${CC} ${CFLAGS} -c ${.ALLSRC} -o ${.TARGET}
-.  elif ${_s:E} == "cc" || ${_s:E} == "cpp" || ${_s:E} == "cxx"
+.  elif !empty(_CXX_EXTS:M${_s:E})
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
 	${CXX} ${CXXFLAGS} -c ${.ALLSRC} -o ${.TARGET}
 .  elif ${_s:E} == "y"
@@ -168,7 +184,7 @@ ${_BINOUT}: ${OBJS}
 		exit 1; \
 	fi
 .endfor
-	${CC} -o ${.TARGET} ${OBJS} ${LDFLAGS}
+	${_CCLINK} -o ${.TARGET} ${OBJS} ${LDFLAGS}
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all

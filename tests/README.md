@@ -95,6 +95,9 @@ sh tests/harness/pack-cases.sh
 | 36 | Two frameworks independently producing a same-named `share/` artifact at workspace-level copy-up: byte-identical content copies silently, differing content warns but still overwrites (build succeeds, last-copied-wins) |
 | 37 | The `share/common → share/<os> → share/<os>_<arch>` overlay cascade across every layer-presence combination: a file unique to any one layer survives; where two-plus layers define the same file, the most specific present layer wins |
 | 38 | A framework present in both the current workspace and a `PARENT_WS`, where only the *parent's* copy has a more-specific `share/<os>` override: the local copy is used in its entirety (its own `share/common` only) — no cross-workspace layer fallback, mirroring case 29's shadow principle applied to `share/` |
+| 39 | A C++ program (`SRCS` has `.cpp`) links with `${CXX}`, not `${CC}` — exercises real C++ runtime support (exceptions) at link time |
+| 40 | A C++ shared library *and* the C++ program consuming it both link with `${CXX}`; the exception is thrown from inside the `.so` itself |
+| 41 | `LINK_CXX=yes`: a pure-C module linking a static C++ library fails to link (undefined C++ runtime symbols) without it, and links/runs correctly with it |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

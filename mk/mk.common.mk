@@ -146,6 +146,19 @@ CFLAGS   += ${DEBUG_FLAGS}
 CXXFLAGS += ${DEBUG_FLAGS}
 
 # ---------------------------------------------------------------------------
+# C++ source extensions (cxx-link-driver-selection-req) -- the single shared
+# list mk.prog.mk/mk.lib.mk use both to dispatch a source file to ${CXX} at
+# compile time and to decide whether a module's final link needs ${CXX}
+# instead of ${CC} (mk.common.mk's own _CCLINK, computed per-role after SRCS
+# is known). Deliberately NOT sys.mk's own CXX_SUFFIXES (.C .cc .cpp .cxx,
+# free on every bmake invocation with zero .include) -- reusing it would
+# silently widen SRCS auto-discovery to a fourth extension (.C) neither
+# mk.prog.mk's nor mk.lib.mk's `find src ...` looks for today.
+# @impl 0f87-6ab5-7f76-0dcf
+# ---------------------------------------------------------------------------
+_CXX_EXTS = cc cpp cxx
+
+# ---------------------------------------------------------------------------
 # REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
 # build-workspace-aggregation-req, test-workspace-aggregation-req)
 # One flag for build, test, and sanitizing-test runs alike -- not a

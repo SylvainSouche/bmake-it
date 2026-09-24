@@ -251,6 +251,24 @@
     "status": "confirmed",
     "type": "req"
   },
+  "cxx-link-driver-selection-dec": {
+    "active": true,
+    "id": "0f87-6ab5-7f61-a52e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cxx-link-driver-selection-req": {
+    "active": true,
+    "id": "0f87-6ab5-7f6d-4ef5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cxx-modules-link-with-cc-bug": {
+    "active": true,
+    "id": "0f87-6ab5-7f50-7430",
+    "status": "recorded",
+    "type": "obs"
+  },
   "cygwin-native-vs-mingw-cross-are-separate-packages": {
     "active": true,
     "id": "6f38-6a8a-085d-2587",
@@ -705,6 +723,12 @@
     "active": true,
     "id": "0f87-6a98-5de3-c340",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cxx-link-driver-selection": {
+    "active": true,
+    "id": "0f87-6ab5-7f76-0dcf",
+    "status": "verified",
     "type": "impl"
   },
   "impl-flags-reuse-native-vars": {

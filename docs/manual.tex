@@ -115,14 +115,22 @@ equivalent.} This shows up consistently:
   \verb|DEBUG_FLAGS|, not a new \verb!MODE=debug|release! abstraction\reqfoot{REQ-debug-release-via-native-bsd-flags-req}.
 \item Shared-library versioning reuses \verb|SHLIB_MAJOR|/\verb|SHLIB_MINOR|
   directly from real \verb|bsd.lib.mk|\reqfoot{REQ-shlib-major-minor-cross-platform-emission-req}.
+\item The final link driver is chosen the same way real
+  \verb|bsd.init.mk| chooses its internal \verb|_CCLINK| — \verb|${CXX}|
+  when the module has a C++ source, \verb|${CC}| otherwise — reimplemented
+  as Bmake It's own \verb|_CCLINK|, since \verb|mk.prog.mk|/\verb|mk.lib.mk|
+  never \verb|.include| any real \verb|bsd.*.mk| file to inherit it
+  from\reqfoot{REQ-cxx-link-driver-selection-req}.
 \end{itemize}
 
 New, project-specific concepts (\verb|PARENT_WS|, \verb|PREREQS|,
 \verb|PROG|, \verb|LIB|, \verb|LIBS|, \verb|LIB_SHARED|, \verb|INCL|,
-\verb|TOOLCHAIN|) exist only for domain concepts BSD make has no
-native equivalent for at all — workspace parenting, framework
-prerequisites, module identity, linking, header promotion, and
-toolchain bundle selection\reqfoot{REQ-uniform-makefile-filename-req}.
+\verb|TOOLCHAIN|, \verb|LINK_CXX|) exist only for domain concepts BSD
+make has no native equivalent for at all — workspace parenting,
+framework prerequisites, module identity, linking, header promotion,
+toolchain bundle selection, and the one link-driver case
+\verb|SRCS|-based auto-detection cannot see (a C-only module linking a
+static C++ library)\reqfoot{REQ-uniform-makefile-filename-req}.
 
 \textbf{This reuse-first philosophy has real, tested limits.} An
 empirical validation pass against real FreeBSD \verb|share/mk| and a
