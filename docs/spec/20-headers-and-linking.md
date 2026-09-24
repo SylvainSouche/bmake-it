@@ -68,6 +68,17 @@ same framework. A module's private `include/` stays private regardless
 of who links against it. Header visibility is driven **exclusively** by
 the containing framework's `PREREQS=`.
 
+## Imported libraries
+
+A library module may import a prebuilt library instead of compiling one
+(`IMPORT=`) — see `25-imported-libraries.md` for the full resolution and
+staging mechanism. From this chapter's point of view there is nothing
+new to say: an imported library's staged headers land in the same
+`fw/build/<KEY>/include/` promoted-header slot described above, and its
+staged `lib<LIB>.*` lands in the same `build/<KEY>/lib/` a compiled
+library would produce, so `PREREQS=`/`LIBS=` resolve it identically to a
+compiled one (`REQ-imported-libraries-are-ordinary-modules-req`).
+
 ## Build ordering implications
 
 Because generated+promoted headers and linked libraries are both genuine

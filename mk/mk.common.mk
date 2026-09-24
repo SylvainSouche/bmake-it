@@ -210,6 +210,16 @@ _check_inputs_hash:
 	fi
 
 # ---------------------------------------------------------------------------
+# IMPORT= support (import-resolution-ladder-req): extra pkg-config search
+# directories per host, mirroring _TOOL_PREFIXES's own per-OS extension
+# point in mk.paths.<os>.mk. Empty by default -- no real per-OS entry is
+# populated here (a concrete need, e.g. lasviewer's own PROJ-via-GDAL
+# case, is project-specific to that acceptance target, not a generic
+# Bmake It default, and couldn't be verified from this host anyway).
+# ---------------------------------------------------------------------------
+_PKG_CONFIG_EXTRA_DIRS ?=
+
+# ---------------------------------------------------------------------------
 # REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
 # build-workspace-aggregation-req, test-workspace-aggregation-req)
 # One flag for build, test, and sanitizing-test runs alike -- not a

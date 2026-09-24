@@ -551,6 +551,24 @@
     "status": "confirmed",
     "type": "req"
   },
+  "gen-mod-order-cd-into-module-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8d20-17c3",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "gen-mod-order-correct-curdir-req": {
+    "active": true,
+    "id": "0f87-6ab5-8d2d-2bbc",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "gen-mod-order-wrong-curdir-bug": {
+    "active": true,
+    "id": "0f87-6ab5-8d15-98e8",
+    "status": "recorded",
+    "type": "obs"
+  },
   "generated-headers-in-build-tree": {
     "active": true,
     "id": "6f38-6a8a-9a77-b1a2",
@@ -797,6 +815,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-gen-mod-order-correct-curdir": {
+    "active": true,
+    "id": "0f87-6ab5-8d38-83ac",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-header-dependency-tracking": {
     "active": true,
     "id": "0f87-6ab5-8442-b2dc",
@@ -807,6 +831,12 @@
     "active": true,
     "id": "0f87-6a98-7829-4019",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-import-libraries": {
+    "active": true,
+    "id": "0f87-6ab5-8aa6-c2d0",
+    "status": "verified",
     "type": "impl"
   },
   "impl-incl-promotes-generated-headers": {
@@ -976,6 +1006,42 @@
     "id": "0f87-6a98-96de-331e",
     "status": "asserted",
     "type": "impl"
+  },
+  "import-resolution-ladder-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8a7a-14c3",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "import-resolution-ladder-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a85-7d76",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "import-staging-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8a92-7746",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "import-staging-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a9c-1d21",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "imported-libraries-are-ordinary-modules-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a4d-be9a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "imported-libraries-ordinary-modules-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8a61-4349",
+    "status": "recorded",
+    "type": "dec"
   },
   "incl-macro-promotes-generated-headers": {
     "active": true,

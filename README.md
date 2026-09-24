@@ -185,6 +185,12 @@ Implements the design described in `docs/spec/`. Known limitations:
   has no equivalent yet (`cl.exe`'s own mechanism, `/showIncludes`, is
   stdout-based rather than a generated file, and needs wrapper-side
   parsing not built yet).
+- Imported libraries (`IMPORT=`, see `docs/spec/25-imported-libraries.md`)
+  re-resolve (including a `pkg-config` call) on every invocation rather
+  than caching the resolution itself — only re-*staging* is skipped when
+  nothing changed. Link transitivity (a static library's own `LIBS=`
+  automatically following it into a consumer) is not implemented yet,
+  for compiled or imported libraries alike.
 
 ## Methodology
 

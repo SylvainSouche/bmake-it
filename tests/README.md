@@ -103,6 +103,8 @@ sh tests/harness/pack-cases.sh
 | 44 | Header dependency tracking (gcc/clang `-MMD -MP`): a no-op rebuild recompiles nothing; a module-private header change and a framework-public header reached only via `PREREQS=` (not the consumer's own `src/`) both trigger exactly the affected object to recompile |
 | 45 | `bmake` then `bmake SANITIZE=address` actually recompiles (not just relinks stale objects), and the resulting binary genuinely crashes under ASan on a real heap-buffer-overflow; a repeated `bmake SANITIZE=address` recompiles nothing, and dropping back to plain `bmake` recompiles again |
 | 46 | `mk.local.mk`'s hook cascade: all four conventional names (`pre.mk`, `pre.${TOOLCHAIN}.mk`, `pre.${TARGET}.mk`, `pre.${TARGET}_${TARGET_ARCH}.mk`) fire when they match (values queried from the real running bmake, not hardcoded), and a hook keyed to a different OS does not |
+| 47 | `IMPORT=pkg:<name>` end to end against a real (self-contained, fake) pkg-config `.pc` file: header+lib staging, a plain `LIBS=`-consuming module needs no IMPORT-specific change, only `IMPORT_HEADERS=` is visible (a sibling header in the same prefix is not), and an unresolvable import fails loudly naming what was tried |
+| 48 | `IMPORT=` resolution precedence: each ladder step (env/CLI, `mk/` hook, pkg-config, probing) proven individually reachable, then proven to lose to the next higher-precedence step once both are available |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

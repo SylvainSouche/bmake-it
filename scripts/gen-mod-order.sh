@@ -17,35 +17,54 @@ case "$BMAKE" in
         ;;
 esac
 
+# .CURDIR must be the MODULE's own directory, not the framework's --
+# a plain `-f <moduledir>/makefile` from the framework's cwd leaves
+# .CURDIR pointing at the framework instead (bmake's .CURDIR is the
+# process's actual working directory, not wherever -f's argument
+# happens to live). This was harmless as long as LIB=/LIBS=/PROG= were
+# simple literal assignments unaffected by .CURDIR being wrong -- but
+# IMPORT='s own resolution (mk.lib.mk) both depends on .CURDIR-relative
+# mk/ hook lookup and can genuinely .error on an unresolvable import,
+# and a .error anywhere during a -V query's full-file parse aborts the
+# whole query, poisoning even the unrelated LIB=/LIBS=/PROG= values this
+# script actually wants. cd into the module directory first so .CURDIR
+# is correct, exactly as a real recursive ${MAKE} -C <moduledir> build
+# would see it.
+# @impl 0f87-6ab5-8d38-83ac
 _bmake_q() {
     _mf=$1
     _var=$2
-    if [ -n "${BMK_MKDIR:-}" ]; then
-        _sys="${BMK_SYS_MK:-}"
-        if [ -z "$_sys" ]; then
-            for d in /opt/local/share/mk /usr/share/mk /usr/local/share/mk; do
-                if [ -f "$d/sys.mk" ]; then _sys=$d; break; fi
-            done
-        fi
-        if [ -n "$_sys" ]; then
-            env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                MAKESYSPATH="${BMK_MKDIR}:${_sys}" \
-                BMK_MKDIR="$BMK_MKDIR" \
-                "$BMAKE" -m "$BMK_MKDIR" -m "$_sys" \
-                BMK_MKDIR="$BMK_MKDIR" \
-                -f "$_mf" -V "$_var" 2>/dev/null || true
+    _dir=$(dirname "$_mf")
+    _file=$(basename "$_mf")
+    (
+        cd "$_dir" && \
+        if [ -n "${BMK_MKDIR:-}" ]; then
+            _sys="${BMK_SYS_MK:-}"
+            if [ -z "$_sys" ]; then
+                for d in /opt/local/share/mk /usr/share/mk /usr/local/share/mk; do
+                    if [ -f "$d/sys.mk" ]; then _sys=$d; break; fi
+                done
+            fi
+            if [ -n "$_sys" ]; then
+                env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
+                    MAKESYSPATH="${BMK_MKDIR}:${_sys}" \
+                    BMK_MKDIR="$BMK_MKDIR" \
+                    "$BMAKE" -m "$BMK_MKDIR" -m "$_sys" \
+                    BMK_MKDIR="$BMK_MKDIR" \
+                    -f "$_file" -V "$_var" 2>/dev/null
+            else
+                env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
+                    MAKESYSPATH="$BMK_MKDIR" \
+                    BMK_MKDIR="$BMK_MKDIR" \
+                    "$BMAKE" -m "$BMK_MKDIR" \
+                    BMK_MKDIR="$BMK_MKDIR" \
+                    -f "$_file" -V "$_var" 2>/dev/null
+            fi
         else
             env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                MAKESYSPATH="$BMK_MKDIR" \
-                BMK_MKDIR="$BMK_MKDIR" \
-                "$BMAKE" -m "$BMK_MKDIR" \
-                BMK_MKDIR="$BMK_MKDIR" \
-                -f "$_mf" -V "$_var" 2>/dev/null || true
+                "$BMAKE" -f "$_file" -V "$_var" 2>/dev/null
         fi
-    else
-        env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-            "$BMAKE" -f "$_mf" -V "$_var" 2>/dev/null || true
-    fi
+    ) || true
 }
 
 mods=""

@@ -152,6 +152,115 @@ LDFLAGS += -l${_l}
 _OBJDIR = ${.CURDIR}/${OBJDIR}
 _LIBOUT_DIR = ${.CURDIR}/${LIBDIR_LOCAL}
 
+# ---------------------------------------------------------------------------
+# IMPORT= -- this module imports a prebuilt library instead of compiling
+# SRCS (imported-libraries-are-ordinary-modules-req). LIB_SHARED= is
+# ignored for an import: whatever lib${LIB}.{a,so*,dylib} files the
+# resolved source actually has are staged, not a choice this project
+# makes. Resolution is a four-step ladder, first match wins
+# (import-resolution-ladder-req):
+#   1. env/CLI: ${LIB:tu}_PREFIX, or ${LIB:tu}_CFLAGS + ${LIB:tu}_LIBS
+#   2. mk/ hooks: IMPORT_PREFIX, or IMPORT_CFLAGS + IMPORT_LIBS
+#   3. IMPORT=pkg:<name> via pkg-config, or IMPORT=prefix:<dir> directly
+#   4. probing mk.paths.<os>.mk's own _TOOL_PREFIXES for lib${LIB}.*
+# An unresolved import is a parse-time .error naming what was tried.
+# Neither _IMPORT_CFLAGS nor _IMPORT_LIBS is added to this module's own
+# CFLAGS/CXXFLAGS/LDFLAGS -- there is no compile/link step for an import,
+# only header/library staging; _IMPORT_CFLAGS' -I dirs are where
+# IMPORT_HEADERS= is searched, _IMPORT_LIBDIR is where lib${LIB}.* is
+# copied from, and _IMPORT_LIBS is recorded for the link-transitivity
+# mechanism (import-link-transitivity-req) to consume, not used here.
+# @impl 0f87-6ab5-8aa6-c2d0
+# ---------------------------------------------------------------------------
+IMPORT ?=
+IMPORT_HEADERS ?=
+
+.if !empty(IMPORT)
+_IMP_VAR = ${LIB:tu}
+
+.  if defined(${_IMP_VAR}_PREFIX) && !empty(${_IMP_VAR}_PREFIX)
+_IMPORT_SOURCE  = env:${_IMP_VAR}_PREFIX=${${_IMP_VAR}_PREFIX}
+_IMPORT_CFLAGS  = -I${${_IMP_VAR}_PREFIX}/include
+_IMPORT_LIBS    = -L${${_IMP_VAR}_PREFIX}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${${_IMP_VAR}_PREFIX}/lib
+.  elif defined(${_IMP_VAR}_CFLAGS) || defined(${_IMP_VAR}_LIBS)
+_IMPORT_SOURCE  = env:${_IMP_VAR}_CFLAGS/${_IMP_VAR}_LIBS
+_IMPORT_CFLAGS  = ${${_IMP_VAR}_CFLAGS}
+_IMPORT_LIBS    = ${${_IMP_VAR}_LIBS}
+_IMPORT_LIBDIR  =
+.  elif defined(IMPORT_PREFIX) && !empty(IMPORT_PREFIX)
+_IMPORT_SOURCE  = hook:IMPORT_PREFIX=${IMPORT_PREFIX}
+_IMPORT_CFLAGS  = -I${IMPORT_PREFIX}/include
+_IMPORT_LIBS    = -L${IMPORT_PREFIX}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${IMPORT_PREFIX}/lib
+.  elif (defined(IMPORT_CFLAGS) && !empty(IMPORT_CFLAGS)) || (defined(IMPORT_LIBS) && !empty(IMPORT_LIBS))
+_IMPORT_SOURCE  = hook:IMPORT_CFLAGS/IMPORT_LIBS
+_IMPORT_CFLAGS  = ${IMPORT_CFLAGS}
+_IMPORT_LIBS    = ${IMPORT_LIBS}
+_IMPORT_LIBDIR  =
+.  elif ${IMPORT:C/:.*//} == "pkg"
+_IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
+# Cross-compilation: never read host .pc files; sysroot-aware per
+# BMK_<OS>_SYSROOT= (the same variable mk.toolchain.llvm.mk's own cross
+# branches already require) -- implemented per the brief's own explicit
+# requirement, not empirically verified end-to-end (no foreign sysroot
+# with real .pc files available from this host; cross-compilation itself
+# is out of scope this round beyond keeping this behavior correct).
+.    if ${TARGET} != ${_HOST_OS_LABEL}
+_IMPORT_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT}
+_IMPORT_PC_ENV  = env PKG_CONFIG_SYSROOT_DIR="${_IMPORT_SYSROOT}" PKG_CONFIG_LIBDIR="${_IMPORT_SYSROOT}/usr/lib/pkgconfig:${_IMPORT_SYSROOT}/usr/share/pkgconfig" PKG_CONFIG_PATH=
+.    else
+# Additive, not replacing: a real install found via pkg-config's own
+# built-in default search paths (e.g. MacPorts pkg-config already
+# defaulting to /opt/local/lib/pkgconfig) must keep working with zero
+# Bmake It configuration -- PKG_CONFIG_LIBDIR (which REPLACES the
+# built-in defaults, unlike PKG_CONFIG_PATH) is deliberately left alone
+# here; only the cross-compiling branch above sets it. The caller's own
+# inherited PKG_CONFIG_PATH (if any) is kept and extended, not discarded
+# -- converted to a bmake word list and back so the join is correct
+# whether or not either half is empty.
+_IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
+_IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
+.    endif
+_IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
+.    if ${_IMPORT_PC_FOUND} == "yes"
+_IMPORT_VERSION != ${_IMPORT_PC_ENV} pkg-config --modversion ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
+_IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/dev/null
+# --static also pulls in Libs.private -- the transitive link deps this
+# module's own consumers need (D2, import-link-transitivity-req).
+_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+.    endif
+.  elif ${IMPORT:C/:.*//} == "prefix"
+_IMPORT_PREFIX_VAL = ${IMPORT:C/^[^:]*://}
+_IMPORT_SOURCE  = prefix:${_IMPORT_PREFIX_VAL}
+_IMPORT_CFLAGS  = -I${_IMPORT_PREFIX_VAL}/include
+_IMPORT_LIBS    = -L${_IMPORT_PREFIX_VAL}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
+.  endif
+
+# Step 4: probing, only if still unresolved by any of the above.
+.  if !defined(_IMPORT_SOURCE)
+.    for _p in ${_TOOL_PREFIXES:H:O:u}
+.      if !defined(_IMPORT_SOURCE) && (exists(${_p}/lib/lib${LIB}.a) || exists(${_p}/lib/lib${LIB}.so) || exists(${_p}/lib/lib${LIB}.dylib))
+_IMPORT_SOURCE  = probe:${_p}
+_IMPORT_CFLAGS  = -I${_p}/include
+_IMPORT_LIBS    = -L${_p}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${_p}/lib
+.      endif
+.    endfor
+.  endif
+
+.  if !defined(_IMPORT_SOURCE)
+.error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), pkg-config, and probing ${_TOOL_PREFIXES:H:O:u} -- install the library via your host's package manager (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
+.  endif
+
+# import-staging-req: re-stage whenever the resolved inputs change,
+# reusing item 4's own mechanism rather than inventing a second cache.
+INPUTS_HASH_EXTRA += IMPORT=${_IMPORT_SOURCE} IMPORT_CFLAGS=${_IMPORT_CFLAGS} IMPORT_LIBS=${_IMPORT_LIBS}
+.endif
+
 # @impl 0f87-6a98-76ed-e260
 .if ${TARGET} == "macos"
 SHLIB_NAME     = lib${LIB}.${SHLIB_MAJOR}.dylib
@@ -216,13 +325,58 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 .  endif
 .endfor
 
-.if ${LIB_SHARED} == "YES"
+.if !empty(IMPORT)
+all: _check_inputs_hash _create_dirs _stage_import
+	@echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
+.elif ${LIB_SHARED} == "YES"
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl
 	@echo "===> built shared ${SHLIB_NAME}"
 .else
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl
 	@echo "===> built static ${STATIC_NAME}"
 .endif
+
+# import-staging-req: only IMPORT_HEADERS= is staged (never the whole
+# resolved include dir -- that would leak every unrelated package under
+# it and defeat PREREQS=-based visibility), copied (not symlinked, D6)
+# into the same destination promoted generated headers already use.
+# lib${LIB}.* is copied into this module's own build/<KEY>/lib/, exactly
+# where a compiled library's own AR/link recipe would have written it --
+# so LIBS=<lib> in a consumer needs no changes at all (import-staging-req).
+# @impl 0f87-6ab5-8aa6-c2d0
+_stage_import:
+	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}
+	@echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"
+.for _h in ${IMPORT_HEADERS}
+	@_found=no; \
+	for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//}; do \
+		if [ -e "$$_d/${_h}" ]; then \
+			cp -a "$$_d/${_h}" ${_FWDIR}/${BUILD_ROOT}/include/; \
+			echo "===> staged header ${_h} from $$_d"; \
+			_found=yes; \
+			break; \
+		fi; \
+	done; \
+	if [ "$$_found" = no ]; then \
+		echo "error: IMPORT_HEADERS=${_h}: not found under any resolved include dir (${_IMPORT_CFLAGS})" >&2; \
+		exit 1; \
+	fi
+.endfor
+	@if [ -z "${_IMPORT_LIBDIR}" ]; then \
+		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
+	else \
+		_found=no; \
+		for _ext in a so dylib; do \
+			if [ -f "${_IMPORT_LIBDIR}/lib${LIB}.$$_ext" ]; then \
+				cp -a "${_IMPORT_LIBDIR}"/lib${LIB}.$$_ext* ${_LIBOUT_DIR}/; \
+				_found=yes; \
+			fi; \
+		done; \
+		if [ "$$_found" = no ]; then \
+			echo "error: IMPORT=${IMPORT}: lib${LIB}.{a,so,dylib} not found in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
+			exit 1; \
+		fi; \
+	fi
 
 # @impl 0f87-6a98-8b7f-9215
 ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS}
@@ -291,6 +445,6 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs _promote_incl help
+.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import help
 .endif
 
