@@ -41,6 +41,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "atf-cxx-libcxx-autoptr-gap-obs": {
+    "active": true,
+    "id": "0f87-6aa9-4495-2e81",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "bmk-mkdir-discovery-via-makesyspath": {
+    "active": true,
+    "id": "0f87-6aaa-d63e-839a",
+    "status": "recorded",
+    "type": "dec"
+  },
   "build-obj-os-arch-output": {
     "active": false,
     "id": "6f38-6a88-1836-3d88",
@@ -77,11 +89,29 @@
     "status": "confirmed",
     "type": "req"
   },
+  "build-workspace-aggregation-req": {
+    "active": false,
+    "id": "0f87-6aaa-665e-fded",
+    "status": "superseded",
+    "type": "req"
+  },
+  "build-workspace-aggregation-req-v2": {
+    "active": true,
+    "id": "0f87-6aaa-6a5e-378f",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cache-mechanism-needs-empirical-check": {
     "active": true,
     "id": "6f38-6a8c-30a5-87fe",
     "status": "recorded",
     "type": "obs"
+  },
+  "ci-integration-scope-boundary": {
+    "active": true,
+    "id": "0f87-6aaa-643a-9397",
+    "status": "recorded",
+    "type": "con"
   },
   "clean-removes-all-derived-artifacts": {
     "active": true,
@@ -106,6 +136,12 @@
     "id": "6f38-6a8b-de94-3b56",
     "status": "superseded",
     "type": "req"
+  },
+  "collection-level-architecture-topic": {
+    "active": true,
+    "id": "0f87-6aa9-0adc-f17c",
+    "status": "recorded",
+    "type": "obs"
   },
   "compiler-native-dependency-tracking-req": {
     "active": true,
@@ -214,6 +250,12 @@
     "id": "0f87-6aa7-c8a9-216c",
     "status": "confirmed",
     "type": "req"
+  },
+  "cxx-modules-link-with-cc-bug": {
+    "active": true,
+    "id": "0f87-6ab5-7f50-7430",
+    "status": "recorded",
+    "type": "obs"
   },
   "cygwin-native-vs-mingw-cross-are-separate-packages": {
     "active": true,
@@ -359,11 +401,29 @@
     "status": "confirmed",
     "type": "req"
   },
+  "doc-project-metadata-conventions": {
+    "active": true,
+    "id": "0f87-6aa9-038c-9749",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "doc-project-metadata-conventions-req": {
+    "active": true,
+    "id": "0f87-6aa9-0393-f302",
+    "status": "confirmed",
+    "type": "req"
+  },
   "external-tool-generation-config-topic": {
     "active": true,
     "id": "0f87-6aa7-dd89-04d6",
     "status": "recorded",
     "type": "obs"
+  },
+  "fail-fast-independent-of-report": {
+    "active": true,
+    "id": "0f87-6aaa-6a4c-3725",
+    "status": "recorded",
+    "type": "dec"
   },
   "flags-reuse-bsd-native-vars": {
     "active": true,
@@ -617,6 +677,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-build-workspace-aggregation": {
+    "active": true,
+    "id": "0f87-6aaa-6a6e-00d0",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-copy-up-diff-aware": {
     "active": true,
     "id": "0f87-6a98-8ee9-ae83",
@@ -668,6 +734,12 @@
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-install-env-script": {
+    "active": true,
+    "id": "0f87-6aaa-d6a5-b4df",
     "status": "asserted",
     "type": "impl"
   },
@@ -749,9 +821,21 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-run-id-history": {
+    "active": true,
+    "id": "0f87-6aaa-72d2-8ffc",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-run-target": {
     "active": true,
     "id": "0f87-6a98-7946-1d85",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-sanitize-support": {
+    "active": true,
+    "id": "0f87-6aaa-4155-c8fd",
     "status": "asserted",
     "type": "impl"
   },
@@ -761,9 +845,27 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-shared-lib-rpath": {
+    "active": true,
+    "id": "0f87-6aa9-448d-537c",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-shlib-major-minor-emission": {
     "active": true,
     "id": "0f87-6a98-76ed-e260",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-test-single-selection": {
+    "active": true,
+    "id": "0f87-6aaa-697c-4c30",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-test-workspace-aggregation": {
+    "active": true,
+    "id": "0f87-6aaa-6201-a430",
     "status": "asserted",
     "type": "impl"
   },
@@ -803,6 +905,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "install-env-script-req": {
+    "active": true,
+    "id": "0f87-6aaa-d65f-eeca",
+    "status": "confirmed",
+    "type": "req"
+  },
   "install-requires-prebuilt-target": {
     "active": true,
     "id": "6f38-6a8c-0d67-5fcc",
@@ -832,6 +940,12 @@
     "id": "6f38-6a8b-df45-59b4",
     "status": "confirmed",
     "type": "req"
+  },
+  "integration-manager-ci-cycle": {
+    "active": true,
+    "id": "0f87-6aaa-6432-66a7",
+    "status": "proposed",
+    "type": "uc"
   },
   "keep-simplified-prereq-and-header-model": {
     "active": true,
@@ -947,11 +1061,65 @@
     "status": "confirmed",
     "type": "req"
   },
+  "local-mk-hook-files-and-cascade-order": {
+    "active": true,
+    "id": "0f87-6aa9-0035-144b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "local-mk-hook-files-and-cascade-order-req": {
+    "active": true,
+    "id": "0f87-6aa9-003f-a123",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "macos-multi-pkgmgr-single-vm": {
+    "active": true,
+    "id": "0f87-6aa9-3edd-8119",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "macos-multi-pkgmgr-single-vm-req": {
+    "active": true,
+    "id": "0f87-6aa9-3ee5-3533",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "macos-toolchain-detection-not-deterministic": {
+    "active": true,
+    "id": "0f87-6aa9-39b8-d2f0",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "macos-toolchain-tiers": {
+    "active": true,
+    "id": "0f87-6aa9-3a88-4c34",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "macos-toolchain-tiers-req": {
+    "active": true,
+    "id": "0f87-6aa9-3a90-fa13",
+    "status": "confirmed",
+    "type": "req"
+  },
   "macos-vm-connectivity-was-expect-case-bug": {
     "active": true,
     "id": "0f87-6a97-e99b-fc2c",
     "status": "recorded",
     "type": "obs"
+  },
+  "macports-complete-container-stack": {
+    "active": true,
+    "id": "0f87-6aa9-4262-9beb",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "macports-layer-package-list-req": {
+    "active": true,
+    "id": "0f87-6aa9-426f-c1e1",
+    "status": "confirmed",
+    "type": "req"
   },
   "make-port-deferred": {
     "active": true,
@@ -1289,6 +1457,18 @@
     "status": "recorded",
     "type": "dec"
   },
+  "per-level-local-mk-directory": {
+    "active": true,
+    "id": "0f87-6aa8-fee3-e68d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "per-level-local-mk-directory-req": {
+    "active": true,
+    "id": "0f87-6aa8-fef5-54d8",
+    "status": "confirmed",
+    "type": "req"
+  },
   "per-workspace-local-mk-override-topic": {
     "active": true,
     "id": "0f87-6aa7-dd92-ede9",
@@ -1421,6 +1601,36 @@
     "status": "recorded",
     "type": "obs"
   },
+  "qt": {
+    "active": false,
+    "id": "0f87-6aaa-d646-cf1d",
+    "status": "superseded",
+    "type": "req"
+  },
+  "qt-development-without-plumbing-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c69-4170",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "qt-mechanism-original-implementation": {
+    "active": true,
+    "id": "0f87-6aaa-8c69-f751",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "qt-mk-mechanism-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c78-02af",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "qt-progressive-test-harness-req": {
+    "active": true,
+    "id": "0f87-6aaa-8c78-60a0",
+    "status": "confirmed",
+    "type": "req"
+  },
   "rade-inspiration": {
     "active": true,
     "id": "6f38-6a88-1836-f6c4",
@@ -1439,6 +1649,18 @@
     "status": "recorded",
     "type": "dec"
   },
+  "report-flag-uniform-trigger": {
+    "active": false,
+    "id": "0f87-6aaa-661a-ada2",
+    "status": "superseded",
+    "type": "dec"
+  },
+  "report-flag-uniform-trigger-v2": {
+    "active": true,
+    "id": "0f87-6aaa-6a4c-d5f3",
+    "status": "recorded",
+    "type": "dec"
+  },
   "resource-file-definition": {
     "active": true,
     "id": "6f38-6a88-188b-2db4",
@@ -1450,6 +1672,24 @@
     "id": "6f38-6a89-bc24-f8a0",
     "status": "confirmed",
     "type": "req"
+  },
+  "run-history-not-overwritten-req": {
+    "active": true,
+    "id": "0f87-6aaa-72be-9e29",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-history-pruning-deferred-req": {
+    "active": true,
+    "id": "0f87-6aaa-877c-68d2",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "run-id-identifies-logs": {
+    "active": true,
+    "id": "0f87-6aaa-72be-8624",
+    "status": "recorded",
+    "type": "dec"
   },
   "run-target": {
     "active": true,
@@ -1516,6 +1756,24 @@
     "id": "6f38-6a89-bcf2-135b",
     "status": "recorded",
     "type": "dec"
+  },
+  "shared-lib-not-runtime-loadable-obs": {
+    "active": true,
+    "id": "0f87-6aa9-447f-0d48",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "shared-lib-rpath-fix-dec": {
+    "active": true,
+    "id": "0f87-6aa9-4485-ade4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "shared-lib-runtime-loadable-req": {
+    "active": true,
+    "id": "0f87-6aa9-448d-4154",
+    "status": "confirmed",
+    "type": "req"
   },
   "shlib-major-minor-cross-platform-emission": {
     "active": true,
@@ -1637,6 +1895,18 @@
     "status": "passing",
     "type": "test"
   },
+  "test-single-selection-req": {
+    "active": true,
+    "id": "0f87-6aaa-6971-23ad",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "test-workspace-aggregation-req": {
+    "active": true,
+    "id": "0f87-6aaa-6025-a8fa",
+    "status": "confirmed",
+    "type": "req"
+  },
   "tests-docs-versioning-deferred": {
     "active": true,
     "id": "6f38-6a8c-beda-010d",
@@ -1702,6 +1972,18 @@
     "id": "0f87-6a95-78d4-6146",
     "status": "recorded",
     "type": "dec"
+  },
+  "toolchain-detection-prefix-list-authoritative": {
+    "active": true,
+    "id": "0f87-6aa9-39c1-674b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "toolchain-detection-prefix-list-authoritative-req": {
+    "active": true,
+    "id": "0f87-6aa9-39c9-34a5",
+    "status": "confirmed",
+    "type": "req"
   },
   "toolchain-in-target-key": {
     "active": true,
@@ -1906,6 +2188,12 @@
     "id": "6f38-6a89-baf8-79fb",
     "status": "recorded",
     "type": "dec"
+  },
+  "variant-optional-builds-topic": {
+    "active": true,
+    "id": "0f87-6aaa-93e5-324a",
+    "status": "recorded",
+    "type": "obs"
   },
   "variant-out-of-scope-for-dirtree": {
     "active": true,
