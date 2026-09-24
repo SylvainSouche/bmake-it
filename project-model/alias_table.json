@@ -257,6 +257,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "cxx-link-driver-selection-req": {
+    "active": true,
+    "id": "0f87-6ab5-7f6d-4ef5",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cxx-modules-link-with-cc-bug": {
     "active": true,
     "id": "0f87-6ab5-7f50-7430",
