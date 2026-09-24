@@ -1169,6 +1169,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "local-mk-hooks-no-arch-variant": {
+    "active": true,
+    "id": "0f87-6ab5-88ad-6aed",
+    "status": "recorded",
+    "type": "obs"
+  },
   "macos-multi-pkgmgr-single-vm": {
     "active": true,
     "id": "0f87-6aa9-3edd-8119",
