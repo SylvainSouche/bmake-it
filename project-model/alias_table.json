@@ -1157,6 +1157,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "local-mk-arch-variant-dec": {
+    "active": true,
+    "id": "0f87-6ab5-88b9-bab5",
+    "status": "recorded",
+    "type": "dec"
+  },
   "local-mk-hook-files-and-cascade-order": {
     "active": true,
     "id": "0f87-6aa9-0035-144b",
