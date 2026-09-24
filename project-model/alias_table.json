@@ -1361,6 +1361,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "msvc-header-dependency-tracking-deferred": {
+    "active": true,
+    "id": "0f87-6ab5-83fe-dbd1",
+    "status": "recorded",
+    "type": "obs"
+  },
   "msvc-no-manual-vcvarsall-req": {
     "active": true,
     "id": "0f87-6a9a-d35b-a3ed",
