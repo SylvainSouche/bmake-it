@@ -818,7 +818,7 @@
   "impl-gen-mod-order-correct-curdir": {
     "active": true,
     "id": "0f87-6ab5-8d38-83ac",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-header-dependency-tracking": {
