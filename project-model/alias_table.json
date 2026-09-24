@@ -839,6 +839,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-link-transitivity": {
+    "active": true,
+    "id": "0f87-6ab5-8e46-cfb1",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
