@@ -725,6 +725,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-cxx-link-driver-selection": {
+    "active": true,
+    "id": "0f87-6ab5-7f76-0dcf",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-flags-reuse-native-vars": {
     "active": true,
     "id": "0f87-6a98-5ff4-5d24",
