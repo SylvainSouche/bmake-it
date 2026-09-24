@@ -116,6 +116,7 @@ fully regenerable from source.
 | Makefile filename (every level) | `makefile` | `REQ-uniform-makefile-filename-req` |
 | Build output root | `build/<os>-<arch>[-<toolchain>][-<abi>]/` | `REQ-build-output-tree-structure` |
 | Build output subdirs | `obj/` (module only), `bin/`, `lib/`, `share/` at every level; `include/` (generated only, module+framework) | `REQ-build-output-mirrors-prefix-layout`, `REQ-module-level-build-subdirs-req` |
+| `obj/*.d` | Per-source header dependency file (gcc/clang `-MMD -MP`), `.include`d automatically on the next build; not produced under `TOOLCHAIN=msvc` | `REQ-header-dependency-tracking-req` |
 | Packaging staging root | `distrib/<KEY>/{bin,lib,share}/`, same key scheme as `build/` | `REQ-distrib-dir-for-packaging-staging-req` |
 | Program/library naming | `NAME`/`libNAME.*`; versioned via `SHLIB_MAJOR`/`SHLIB_MINOR`, platform-native emission | `REQ-shlib-major-minor-cross-platform-emission-req` |
 | Resource source | `share/{common,<os>,<os>_<arch>}/`, 3-layer overlay copy | `REQ-share-dir-fallback-hierarchy`, `REQ-share-overlay-copy-order` |

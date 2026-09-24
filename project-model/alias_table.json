@@ -161,10 +161,16 @@
     "status": "recorded",
     "type": "obs"
   },
-  "compiler-native-dependency-tracking-req": {
+  "compiler-native-dependency-tracking-inapplicable-to-own-recipes": {
     "active": true,
-    "id": "6f38-6a91-4c89-ba40",
+    "id": "0f87-6ab5-841f-3f9a",
     "status": "confirmed",
+    "type": "req"
+  },
+  "compiler-native-dependency-tracking-req": {
+    "active": false,
+    "id": "6f38-6a91-4c89-ba40",
+    "status": "superseded",
     "type": "req"
   },
   "copy-up-collision-diff-aware": {
@@ -677,6 +683,24 @@
     "status": "confirmed",
     "type": "req"
   },
+  "header-dependency-tracking-mechanism-dec": {
+    "active": true,
+    "id": "0f87-6ab5-83f1-fa08",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "header-dependency-tracking-not-wired-for-real": {
+    "active": true,
+    "id": "0f87-6ab5-83dc-9fe1",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "header-dependency-tracking-req": {
+    "active": true,
+    "id": "0f87-6ab5-840b-56ae",
+    "status": "confirmed",
+    "type": "req"
+  },
   "headers-resolved-from-source-not-build": {
     "active": true,
     "id": "6f38-6a8a-967a-a54e",
@@ -765,6 +789,12 @@
     "active": true,
     "id": "0f87-6a98-77f0-fa5a",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-header-dependency-tracking": {
+    "active": true,
+    "id": "0f87-6ab5-8442-b2dc",
+    "status": "verified",
     "type": "impl"
   },
   "impl-help-target": {
@@ -1346,6 +1376,12 @@
   "msvc-dll-needs-explicit-exports": {
     "active": true,
     "id": "0f87-6a9a-b50f-e8d7",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "msvc-header-dependency-tracking-deferred": {
+    "active": true,
+    "id": "0f87-6ab5-83fe-dbd1",
     "status": "recorded",
     "type": "obs"
   },

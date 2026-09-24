@@ -192,10 +192,10 @@ _create_dirs:
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
-	${CC} ${CFLAGS} -fPIC -c ${.ALLSRC} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
-	${CXX} ${CXXFLAGS} -fPIC -c ${.ALLSRC} -o ${.TARGET}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
@@ -203,12 +203,16 @@ ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	@mkdir -p ${.CURDIR}/${INCDIR_LOCAL}
 	@if [ -f ${_OBJDIR}/${_s:R}.h ]; then cp -f ${_OBJDIR}/${_s:R}.h ${.CURDIR}/${INCDIR_LOCAL}/; fi
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
-	${CC} ${CFLAGS} -fPIC -c ${.ALLSRC} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
-	${CC} ${CFLAGS} -fPIC -c ${.ALLSRC} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+.  endif
+# header-dependency-tracking-req: see mk.prog.mk's identical comment.
+.  if exists(${_OBJDIR}/${_s:R}.d)
+.    include "${_OBJDIR}/${_s:R}.d"
 .  endif
 .endfor
 

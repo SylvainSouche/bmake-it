@@ -100,6 +100,7 @@ sh tests/harness/pack-cases.sh
 | 41 | `LINK_CXX=yes`: a pure-C module linking a static C++ library fails to link (undefined C++ runtime symbols) without it, and links/runs correctly with it |
 | 42 | A broken module + a good module: `bmake` (build) exits non-zero and names the broken module at both framework and workspace level, but the good module still builds (`FAIL_FAST=no`, the default); `FAIL_FAST=yes` stops before the good module is even attempted |
 | 43 | Same as 42, for `bmake test`: a genuinely failing atf-c test + a genuinely passing one |
+| 44 | Header dependency tracking (gcc/clang `-MMD -MP`): a no-op rebuild recompiles nothing; a module-private header change and a framework-public header reached only via `PREREQS=` (not the consumer's own `src/`) both trigger exactly the affected object to recompile |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

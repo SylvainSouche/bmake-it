@@ -180,7 +180,11 @@ Implements the design described in `docs/spec/`. Known limitations:
   behaviour).
 - Packaging targets (`pkg`, `port`, …) and full `share/` overlay testing
   are structural placeholders.
-- `.depend` / mkdep-style header dependency tracking not yet wired.
+- Header dependency tracking (`-MMD -MP`, a header change rebuilds
+  exactly the affected objects) works for `TOOLCHAIN=gcc`/`llvm`; MSVC
+  has no equivalent yet (`cl.exe`'s own mechanism, `/showIncludes`, is
+  stdout-based rather than a generated file, and needs wrapper-side
+  parsing not built yet).
 
 ## Methodology
 

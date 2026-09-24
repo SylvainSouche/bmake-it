@@ -779,10 +779,31 @@ changed. So the working mechanism is real, but specific to FreeBSD's
 own actual \verb|bsd.sys.mk|, not a general BSD-make-family property.
 Since macOS (via MacPorts) is a phase-1 host and MacPorts' own
 \verb|bsdmake| could not be tested in this pass, whether it includes
-equivalent wiring is genuinely unknown\reqfoot{REQ-md-dependency-tracking-freebsd-specific-req}
-— though the fallback is simple either way: \verb|mk.prog.mk|/\verb|mk.lib.mk|
-can add the same \verb|-MD| flags themselves if MacPorts turns out to
-lack them.
+equivalent wiring was left genuinely unknown\reqfoot{REQ-md-dependency-tracking-freebsd-specific-req}
+at the time.
+
+\textbf{Resolved 2026-09-24, and the MacPorts question turned out to be
+moot.} Read directly (on a real MacPorts host this time): \verb|mk.prog.mk|/
+\verb|mk.lib.mk| never \verb|.include| \verb|bsd.sys.mk|, \verb|bsd.prog.mk|,
+\verb|bsd.lib.mk|, or any other real \verb|bsd.*.mk| file at all — only
+Bmake It's own \verb|mk.*.mk| role files, each defining fully explicit
+\verb|target: source| compile rules with hand-written recipes. So real
+\verb|bsd.sys.mk|'s own \verb|-MD| wiring, confirmed or not on any given
+host, was never reachable from Bmake It's own compiled objects in the
+first place — the question wasn't "does MacPorts have it," it was "does
+Bmake It's architecture ever ask." It doesn't. The fallback mentioned
+above (add the flags directly) is what was actually built: every gcc/clang
+compile recipe now passes \verb|-MMD -MP -MF <obj>.d| itself, and each
+object's own \verb|.d| file is conditionally \verb|.include|d on the next
+build\reqfoot{REQ-header-dependency-tracking-req}. This is new,
+project-owned wiring, not reused \verb|bsd.sys.mk| behavior — confirmed
+end-to-end on this MacPorts host: a private header, and a framework-public
+header reached only via \verb|PREREQS=| (not the consuming module's own
+\verb|src/|), each correctly trigger exactly the affected object to
+recompile, and a no-op rebuild recompiles nothing. \verb|TOOLCHAIN=msvc|
+has no equivalent yet — \verb|cl.exe|'s own mechanism, \verb|/showIncludes|,
+writes to stdout rather than a file, and needs wrapper-side parsing not
+built this round.
 
 Exact generated filenames, staleness-detection mechanisms, and
 regeneration triggers for the \verb|PARENT_WS|/\verb|PREREQS| cache
@@ -819,7 +840,7 @@ Dynamic \verb|SUBDIR!=| population & Confirmed working — the whole auto-discov
 \verb!LIB_SHARED=YES|NO! & \textbf{Not native} — real \verb|bsd.lib.mk| has no such toggle \\
 \verb|TARGET|/\verb|TARGET_ARCH| & \textbf{Inert} without FreeBSD base-system machinery \\
 \verb|PREFIX| & \textbf{Not native} — does not exist in \verb|bsd.prog.mk|/\verb|bsd.lib.mk| \\
-Per-object \verb|-MD| header dependency tracking & Confirmed genuinely working — but specific to FreeBSD's own \verb|bsd.sys.mk|; absent from NetBSD's bundled set; MacPorts status unknown \\
+Per-object \verb|-MD| header dependency tracking via \verb|bsd.sys.mk| & \textbf{Inapplicable} — Bmake It's own \verb|mk.prog.mk|/\verb|mk.lib.mk| never \verb|.include| any real \verb|bsd.*.mk| file, so this never applied regardless of host; project now adds \verb|-MMD -MP| itself (gcc/clang only), confirmed working end-to-end \\
 \bottomrule
 \end{longtable}
 \end{center}

@@ -159,6 +159,24 @@ CXXFLAGS += ${DEBUG_FLAGS}
 _CXX_EXTS = cc cpp cxx
 
 # ---------------------------------------------------------------------------
+# Header dependency tracking (header-dependency-tracking-req): gcc/clang
+# only -- -MMD -MP alongside -MF <obj>.d, per source, added by each compile
+# recipe in mk.prog.mk/mk.lib.mk (the -MF path is per-source, so it can't
+# live here). Left genuinely UNDEFINED (not merely empty) for TOOLCHAIN=msvc
+# so ${_DEP_CFLAGS:D...} at each call site expands to nothing there --
+# msvc-cc-wrapper.sh forwards any flag it doesn't recognize straight to
+# cl.exe, and -MMD/-MP/-MF are exactly that (msvc-header-dependency-
+# tracking-deferred: cl.exe's own equivalent, /showIncludes, is stdout-
+# based, not a generated file, and needs wrapper-side parsing not built
+# yet). ${_OBJDIR} already lives under ${BUILD_ROOT}, which clean: already
+# removes entirely -- no separate cleanup needed for the .d files.
+# @impl 0f87-6ab5-8442-b2dc
+# ---------------------------------------------------------------------------
+.if ${TOOLCHAIN} != "msvc"
+_DEP_CFLAGS = -MMD -MP
+.endif
+
+# ---------------------------------------------------------------------------
 # REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
 # build-workspace-aggregation-req, test-workspace-aggregation-req)
 # One flag for build, test, and sanitizing-test runs alike -- not a
