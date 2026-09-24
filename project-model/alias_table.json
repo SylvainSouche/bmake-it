@@ -168,9 +168,9 @@
     "type": "req"
   },
   "compiler-native-dependency-tracking-req": {
-    "active": true,
+    "active": false,
     "id": "6f38-6a91-4c89-ba40",
-    "status": "confirmed",
+    "status": "superseded",
     "type": "req"
   },
   "copy-up-collision-diff-aware": {
