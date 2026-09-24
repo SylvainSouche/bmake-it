@@ -728,7 +728,7 @@
   "impl-cxx-link-driver-selection": {
     "active": true,
     "id": "0f87-6ab5-7f76-0dcf",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-flags-reuse-native-vars": {
