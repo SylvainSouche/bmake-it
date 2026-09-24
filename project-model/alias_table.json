@@ -983,6 +983,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "import-resolution-ladder-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a85-7d76",
+    "status": "confirmed",
+    "type": "req"
+  },
   "imported-libraries-are-ordinary-modules-req": {
     "active": true,
     "id": "0f87-6ab5-8a4d-be9a",
