@@ -17,6 +17,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "aggregation-exit-code-masked-bug": {
+    "active": true,
+    "id": "0f87-6ab5-8175-e29c",
+    "status": "recorded",
+    "type": "obs"
+  },
   "aggregation-step-copies-outputs": {
     "active": true,
     "id": "6f38-6a89-baec-3053",
