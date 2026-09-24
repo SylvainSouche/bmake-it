@@ -1007,6 +1007,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "import-link-transitivity-req": {
+    "active": true,
+    "id": "0f87-6ab5-8e3d-a85e",
+    "status": "confirmed",
+    "type": "req"
+  },
   "import-resolution-ladder-dec": {
     "active": true,
     "id": "0f87-6ab5-8a7a-14c3",
