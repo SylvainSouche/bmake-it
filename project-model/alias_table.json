@@ -689,6 +689,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "header-dependency-tracking-req": {
+    "active": true,
+    "id": "0f87-6ab5-840b-56ae",
+    "status": "confirmed",
+    "type": "req"
+  },
   "headers-resolved-from-source-not-build": {
     "active": true,
     "id": "6f38-6a8a-967a-a54e",
