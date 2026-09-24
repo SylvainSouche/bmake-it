@@ -977,6 +977,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "imported-libraries-are-ordinary-modules-req": {
+    "active": true,
+    "id": "0f87-6ab5-8a4d-be9a",
+    "status": "confirmed",
+    "type": "req"
+  },
   "incl-macro-promotes-generated-headers": {
     "active": true,
     "id": "6f38-6a8a-9b1e-0a47",
