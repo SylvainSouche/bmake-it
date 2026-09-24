@@ -1907,6 +1907,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "sys-mk-cflags-defaults-to-o2": {
+    "active": true,
+    "id": "0f87-6ab5-87f0-dd36",
+    "status": "recorded",
+    "type": "obs"
+  },
   "target-arch-toolchain-selection-is-custom-req": {
     "active": false,
     "id": "6f38-6a8d-75c1-0ba0",
