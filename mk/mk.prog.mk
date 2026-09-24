@@ -148,21 +148,21 @@ _create_dirs:
 
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
+${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
+${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
 	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
+${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
+${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: absent on the first build of this
@@ -175,7 +175,7 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
 .  endif
 .endfor
 
-all: _create_dirs ${_BINOUT}
+all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
 # @impl 0f87-6a98-8b7f-9215

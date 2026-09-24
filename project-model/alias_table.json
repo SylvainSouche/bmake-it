@@ -461,6 +461,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "flags-only-change-does-not-trigger-rebuild": {
+    "active": true,
+    "id": "0f87-6ab5-8658-434b",
+    "status": "recorded",
+    "type": "obs"
+  },
   "flags-reuse-bsd-native-vars": {
     "active": true,
     "id": "6f38-6a8c-b9f4-d59f",
@@ -809,6 +815,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-inputs-hash-rebuild": {
+    "active": true,
+    "id": "0f87-6ab5-867f-373b",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-install-env-script": {
     "active": true,
     "id": "0f87-6aaa-d6a5-b4df",
@@ -974,6 +986,18 @@
   "initial-domain-model": {
     "active": true,
     "id": "6f38-6a88-1836-bc1f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "inputs-hash-rebuild-req": {
+    "active": true,
+    "id": "0f87-6ab5-8674-7a71",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "inputs-hash-stamp-file-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8669-5878",
     "status": "recorded",
     "type": "dec"
   },
@@ -1882,6 +1906,12 @@
     "id": "6f38-6a89-b79d-c3c3",
     "status": "confirmed",
     "type": "req"
+  },
+  "sys-mk-cflags-defaults-to-o2": {
+    "active": true,
+    "id": "0f87-6ab5-87f0-dd36",
+    "status": "recorded",
+    "type": "obs"
   },
   "target-arch-toolchain-selection-is-custom-req": {
     "active": false,

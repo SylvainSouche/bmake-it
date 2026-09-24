@@ -177,6 +177,39 @@ _DEP_CFLAGS = -MMD -MP
 .endif
 
 # ---------------------------------------------------------------------------
+# Inputs-hash rebuild (inputs-hash-rebuild-req): bmake's staleness model is
+# purely file-timestamp based -- it has no notion that a .o was compiled
+# with different flags than requested this time. `bmake` then `bmake
+# SANITIZE=address` leaves every already-built .o untouched (no source
+# changed), so the final binary silently links stale, non-instrumented
+# objects -- SANITIZE=address requested and never actually applied, with
+# no error. INPUTS_HASH_EXTRA= (empty by default) lets any future
+# mechanism needing the same "rebuild when this input changes" guarantee
+# (e.g. IMPORT= resolution) append its own value instead of inventing a
+# second stamp-file mechanism.
+#
+# _INPUTS_HASH_FILE is a real file every compiled .o depends on
+# (mk.prog.mk/mk.lib.mk add it as an extra prerequisite); _check_inputs_
+# hash: is .PHONY (always runs, a phony target is never "up to date" by
+# file existence) and rewrites the file ONLY when the fingerprint
+# actually changed -- an unconditional rewrite every build would bump the
+# file's mtime every time and defeat incremental compilation entirely.
+# cksum (POSIX, present identically on every phase-1 target) rather than
+# md5/md5sum, whose binary NAME differs across macOS/Linux/BSD.
+# @impl 0f87-6ab5-867f-373b
+# ---------------------------------------------------------------------------
+INPUTS_HASH_EXTRA ?=
+_INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
+
+.PHONY: _check_inputs_hash
+_check_inputs_hash:
+	@mkdir -p ${.CURDIR}/${BUILD_ROOT}
+	@_new=$$(printf '%s' "CC=${CC} CXX=${CXX} CFLAGS=${CFLAGS} CXXFLAGS=${CXXFLAGS} LDFLAGS=${LDFLAGS} SANITIZE=${SANITIZE} TOOLCHAIN=${TOOLCHAIN} EXTRA=${INPUTS_HASH_EXTRA}" | cksum); \
+	if [ ! -f ${_INPUTS_HASH_FILE} ] || [ "$$(cat ${_INPUTS_HASH_FILE} 2>/dev/null)" != "$$_new" ]; then \
+		echo "$$_new" > ${_INPUTS_HASH_FILE}; \
+	fi
+
+# ---------------------------------------------------------------------------
 # REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
 # build-workspace-aggregation-req, test-workspace-aggregation-req)
 # One flag for build, test, and sanitizing-test runs alike -- not a

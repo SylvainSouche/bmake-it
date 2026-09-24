@@ -101,6 +101,7 @@ sh tests/harness/pack-cases.sh
 | 42 | A broken module + a good module: `bmake` (build) exits non-zero and names the broken module at both framework and workspace level, but the good module still builds (`FAIL_FAST=no`, the default); `FAIL_FAST=yes` stops before the good module is even attempted |
 | 43 | Same as 42, for `bmake test`: a genuinely failing atf-c test + a genuinely passing one |
 | 44 | Header dependency tracking (gcc/clang `-MMD -MP`): a no-op rebuild recompiles nothing; a module-private header change and a framework-public header reached only via `PREREQS=` (not the consumer's own `src/`) both trigger exactly the affected object to recompile |
+| 45 | `bmake` then `bmake SANITIZE=address` actually recompiles (not just relinks stale objects), and the resulting binary genuinely crashes under ASan on a real heap-buffer-overflow; a repeated `bmake SANITIZE=address` recompiles nothing, and dropping back to plain `bmake` recompiles again |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 
