@@ -983,6 +983,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "inputs-hash-stamp-file-dec": {
+    "active": true,
+    "id": "0f87-6ab5-8669-5878",
+    "status": "recorded",
+    "type": "dec"
+  },
   "install-env-script-req": {
     "active": true,
     "id": "0f87-6aaa-d65f-eeca",
