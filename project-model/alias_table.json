@@ -485,6 +485,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "fetch-import-design-dec": {
+    "active": true,
+    "id": "0f87-6ab6-4de8-ae31",
+    "status": "recorded",
+    "type": "dec"
+  },
   "flags-only-change-does-not-trigger-rebuild": {
     "active": true,
     "id": "0f87-6ab5-8658-434b",
