@@ -479,6 +479,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "fetch-based-external-modules-topic": {
+    "active": true,
+    "id": "0f87-6ab6-4dd0-0c4f",
+    "status": "recorded",
+    "type": "obs"
+  },
   "flags-only-change-does-not-trigger-rebuild": {
     "active": true,
     "id": "0f87-6ab5-8658-434b",
