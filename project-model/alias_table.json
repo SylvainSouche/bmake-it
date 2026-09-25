@@ -815,6 +815,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-cxxstd-openmp": {
+    "active": true,
+    "id": "0f87-6ab6-00e8-b2f8",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-flags-reuse-native-vars": {
     "active": true,
     "id": "0f87-6a98-5ff4-5d24",
