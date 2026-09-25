@@ -485,6 +485,18 @@
     "status": "recorded",
     "type": "obs"
   },
+  "fetch-build-delegation-dec": {
+    "active": true,
+    "id": "0f87-6ab6-6520-f718",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "fetch-build-req": {
+    "active": true,
+    "id": "0f87-6ab6-654d-0fde",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-cache-never-committed-req": {
     "active": true,
     "id": "0f87-6ab6-4e33-9d3b",
@@ -510,8 +522,14 @@
     "type": "dec"
   },
   "fetch-import-source-req": {
-    "active": true,
+    "active": false,
     "id": "0f87-6ab6-4e12-3429",
+    "status": "superseded",
+    "type": "req"
+  },
+  "fetch-import-source-req-v2": {
+    "active": true,
+    "id": "0f87-6ab6-6543-b0d4",
     "status": "confirmed",
     "type": "req"
   },
@@ -860,6 +878,12 @@
   "impl-cxxstd-openmp": {
     "active": true,
     "id": "0f87-6ab6-00e8-b2f8",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-fetch-build": {
+    "active": true,
+    "id": "0f87-6ab6-6562-0f89",
     "status": "verified",
     "type": "impl"
   },

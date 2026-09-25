@@ -169,17 +169,16 @@ and is never touched by `clean`.
 
 (`REQ-fetch-import-source-req`)
 
-After patching, the resolved `SRCS=` entries (relative to the work-tree
-root) are compiled through Bmake It's **own existing compile pipeline**
-— `CFLAGS`/`CXXFLAGS`/`WARN=`/`CXXSTD=`/`SANITIZE=`/header-dependency
-tracking, all of it, unchanged. No delegation to the upstream project's
-own build system (no `./configure`, no `cmake`) — the fetched, patched
-files are treated exactly like a `.y`/`.l` grammar's generated `.c`
-already is: an ordinary compiled source this project's own toolchain
-invocation handles directly. Same "no third-party build-system
-plumbing" stance already established for Qt
-(`qt-development-without-plumbing-req`), now consistent across every
-external-code mechanism in the project, not just Qt's.
+By default, after patching, the resolved `SRCS=` entries (relative to
+the work-tree root) are compiled through Bmake It's **own existing
+compile pipeline** — `CFLAGS`/`CXXFLAGS`/`WARN=`/`CXXSTD=`/`SANITIZE=`/
+header-dependency tracking, all of it, unchanged. No delegation to the
+upstream project's own build system (no `./configure`, no `cmake`) —
+the fetched, patched files are treated exactly like a `.y`/`.l`
+grammar's generated `.c` already is: an ordinary compiled source this
+project's own toolchain invocation handles directly. Same "no
+third-party build-system plumbing" stance already established for Qt
+(`qt-development-without-plumbing-req`).
 
 Once compiled, the result is an **ordinary library module** for every
 other purpose: `LIB_SHARED=`, `LIBS=` transitivity (its own
@@ -188,6 +187,84 @@ module's, `import-link-transitivity-req`), `INPUTS_HASH_EXTRA=`-driven
 rebuild-on-change (the resolved checksum and patch set feed into it, so
 a changed `FETCH_URL=`/`distinfo`/patch set triggers a real rebuild),
 copy-up, everything.
+
+A hand-picked `SRCS=` list only works for small, simple sources. A real
+project (PDAL, GDAL, GLFW, ...) needs its own build system — see
+`FETCH_BUILD=` below.
+
+## Build delegation (`FETCH_BUILD=`)
+
+(`REQ-fetch-build-req`)
+
+Set on a `fetch:` module, `FETCH_BUILD=` switches away from `SRCS=`
+compilation entirely: the extracted (+patched) source is built by its
+own upstream build system instead, installed into a module-local
+prefix (`work/_install/`), and the result is then staged **exactly
+like a `fetch-bin:` import** — the same `_stage_import:` mechanism
+`pkg:`/`prefix:`/`fetch-bin:` already use, just pointed at that local
+prefix instead of a system prefix or the raw extracted tree.
+
+```makefile
+LIB=pdal
+IMPORT=fetch:pdal
+FETCH_URL=https://github.com/PDAL/PDAL/releases/download/2.6.0/PDAL-2.6.0-src.tar.gz
+FETCH_BUILD=cmake
+FETCH_BUILD_ARGS=-DWITH_TESTS=OFF -DBUILD_PLUGIN_PYTHON=OFF
+IMPORT_HEADERS=pdal
+.include <mk.lib.mk>
+```
+
+- **`FETCH_BUILD=autotools|cmake|meson`** — a named preset runs a
+  sensible default recipe:
+  - `autotools`: `./configure --prefix=<local prefix> [--host=<cross
+    triple>] $FETCH_BUILD_ARGS && make && make install`, run from the
+    resolved work tree (in-tree build — the common case; VPATH
+    out-of-tree builds are not attempted).
+  - `cmake`: `cmake -S <work tree> -B <scratch build dir>
+    -DCMAKE_INSTALL_PREFIX=<local prefix> $FETCH_BUILD_ARGS && cmake
+    --build <build dir> && cmake --install <build dir>`.
+  - `meson`: `meson setup <build dir> <work tree> --prefix=<local
+    prefix> $FETCH_BUILD_ARGS && meson compile -C <build dir> && meson
+    install -C <build dir>`.
+- **`FETCH_BUILD=custom`** — for anything else (SCons, a hand-rolled
+  script, a second-tier build tool): `FETCH_BUILD_CMD=` is run verbatim,
+  cwd the resolved work tree, with `BMK_FETCH_SRCDIR`,
+  `BMK_FETCH_BUILD_DIR`, and `BMK_FETCH_INSTALL_PREFIX` exported so the
+  command knows where to read from, build into, and install to.
+- **`FETCH_BUILD_ARGS=`** — extra arguments appended to a named
+  preset's own configure/setup step (e.g. `-DWITH_TESTS=OFF`,
+  `--disable-shared`). Not used by `custom`.
+
+**Toolchain forwarding**: `CC`/`CXX`/`CFLAGS`/`CXXFLAGS`/`LDFLAGS` are
+exported as environment variables into the build invocation, so the
+upstream project builds with the same compiler Bmake It is using — all
+three presets (and any sane `custom` command) honor these natively for
+a *native* build. For a cross build under `TOOLCHAIN=llvm`, `CC`/`CXX`
+already carry clang's `--target=`/`--sysroot=` flags
+(`mk.toolchain.llvm.mk`'s own cross machinery), which autotools handles
+correctly (`--host=<triple>`, derived from the same cross flags, plus a
+flags-laden `CC` autotools already knows how to use as-is) — but CMake's
+`-DCMAKE_C_COMPILER=`/Meson's compiler detection both expect a *bare*
+executable path, not a flags-laden string, so a cross build under
+`FETCH_BUILD=cmake`/`meson` does not error but silently loses the cross
+flags. A `CMAKE_TOOLCHAIN_FILE`/Meson cross-file generator is **not
+implemented** — deferred, see below.
+
+`MAKEFLAGS`/`MAKELEVEL`/`MFLAGS`/`MAKE` are explicitly unset before
+delegating: inherited from the outer `bmake` process otherwise, and
+confirmed (empirically, while building this feature) to silently break
+CMake's own internal `make`/ninja invocation — `cmake --build` would run,
+print nothing, and produce no build output at all. Same lesson this
+project's own test harness already applies when launching a nested
+`bmake`.
+
+**Caching**: a separate fingerprint (`work/.build-fp`, covering
+`FETCH_BUILD=`/`FETCH_BUILD_ARGS=`/`FETCH_BUILD_CMD=`/`CC`/`CXX`/
+`CFLAGS`/`CXXFLAGS`/`LDFLAGS`, and the extraction fingerprint itself)
+skips re-running the upstream build when nothing relevant changed —
+`./configure`+`make` or a CMake/Meson full build can be genuinely slow,
+and a source or toolchain change already forces re-extraction (and so,
+transitively, a rebuild) via the extraction fingerprint it folds in.
 
 ## Binary kind (`fetch-bin:`)
 
@@ -231,6 +308,18 @@ list already set:
 - `tests/cases/62-fetch-import-binary`: `fetch-bin:` stages a prebuilt
   library and header without compiling anything, and a consumer links
   and runs against it.
+- `tests/cases/64-fetch-build-cmake`: `FETCH_BUILD=cmake` builds a
+  genuinely fetched+patched fixture project with a real `CMakeLists.txt`
+  (`cmake -S/-B`, `--build`, `--install`, actually invoked, not skipped
+  — the MAKEFLAGS-leak bug above was caught by this test going from a
+  silent, empty "success" to a genuine build), installs into the local
+  prefix, and a consumer links and runs against it; an unchanged second
+  build does not re-invoke `cmake` (build-level cache hit).
+- `tests/cases/65-fetch-build-custom`: `FETCH_BUILD=custom` runs a
+  hand-rolled `FETCH_BUILD_CMD=` that itself depends on the forwarded
+  `CC` and `BMK_FETCH_INSTALL_PREFIX` env vars being real and usable;
+  `FETCH_BUILD=custom` with no `FETCH_BUILD_CMD=` fails cleanly, naming
+  the missing macro.
 
 ## Not yet decided / deferred
 
@@ -239,6 +328,15 @@ list already set:
   case; not designed further here.
 - `FETCH_PATCH_ARGS=` (an escape hatch for a patch set that needs
   something other than `-p1`) — deferred until a real case needs it.
+- Cross-compilation via `FETCH_BUILD=cmake`/`meson` (a
+  `CMAKE_TOOLCHAIN_FILE`/Meson cross-file generator) — `autotools`
+  already cross-compiles correctly (`--host=<triple>` plus a
+  flags-laden `CC`); CMake/Meson need a genuinely different mechanism,
+  not designed further here. A native build works fully under every
+  preset.
+- Autotools out-of-tree (VPATH) builds — the preset always builds
+  in-tree, matching the common case; not needed until a real project
+  requires it.
 - Mirror-list indirection (`FETCH_SITES=` + a separate filename macro,
   matching real `MASTER_SITES`/`DISTFILES` more closely, so several
   distfiles could share one site list) — v1's `FETCH_URL=` already
