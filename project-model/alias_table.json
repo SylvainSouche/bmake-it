@@ -1022,7 +1022,7 @@
   "impl-warn-and-public-headers-system": {
     "active": true,
     "id": "0f87-6ab6-02b1-4336",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-win-host-detection": {
