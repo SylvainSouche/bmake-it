@@ -71,6 +71,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "brief-test-coverage-gaps-found": {
+    "active": true,
+    "id": "0f87-6ab6-0d3e-afe3",
+    "status": "recorded",
+    "type": "obs"
+  },
   "build-obj-os-arch-output": {
     "active": false,
     "id": "6f38-6a88-1836-3d88",
