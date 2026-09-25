@@ -39,6 +39,9 @@ BSD-make-native equivalent, introduced by this project.
 | `IMPORT_HEADERS=<name1> <name2> ...` | Exactly which headers/subdirectories to stage from the resolved import — never the whole prefix | New (`REQ-import-staging-req`) |
 | `FETCH_URL=<url> [<url> ...]` | One or more full URLs to the same distfile, tried in order until one succeeds. Only meaningful with `IMPORT=fetch:`/`fetch-bin:`. See `26-fetched-external-sources.md` | New (`REQ-fetch-import-source-req`) |
 | `FETCH_PATCHES=<name> [<name> ...]` | Files under this module's own `patches/`, applied in order via `patch -p1` against the extracted work tree. Only meaningful with `IMPORT=fetch:`/`fetch-bin:` | New (`REQ-fetch-import-source-req`) |
+| `FETCH_BUILD=autotools\|cmake\|meson\|custom` | On an `IMPORT=fetch:` module, delegates the extracted+patched source to its own upstream build system instead of `SRCS=`, installing into a local prefix and staging the result like `fetch-bin:`. See `26-fetched-external-sources.md` | New (`REQ-fetch-build-req`) |
+| `FETCH_BUILD_ARGS=<arg> [<arg> ...]` | Extra arguments appended to a `FETCH_BUILD=` preset's own configure/setup step. Not used by `custom` | New (`REQ-fetch-build-req`) |
+| `FETCH_BUILD_CMD=<shell command>` | Required when `FETCH_BUILD=custom`; run verbatim, cwd the resolved work tree, with `BMK_FETCH_SRCDIR`/`BMK_FETCH_BUILD_DIR`/`BMK_FETCH_INSTALL_PREFIX` exported | New (`REQ-fetch-build-req`) |
 | `SHLIB_MAJOR=<n>` | Major version for the shared library. Reused directly from real BSD `bsd.lib.mk` | Reused native (`REQ-shlib-major-minor-cross-platform-emission-req`) |
 | `SHLIB_MINOR=<n>` | Optional minor version | Reused native |
 

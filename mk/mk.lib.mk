@@ -54,11 +54,15 @@ SHLIB_MAJOR = 1
 # fetch-import-source-req: SRCS is REQUIRED, not auto-discovered, for
 # IMPORT=fetch: -- paths relative to the resolved work tree, not src/.
 # Auto-discovering an arbitrary upstream source tree would just as
-# easily pull in its own tests/examples/tools.
-.if ${IMPORT:Uno:C/:.*//} == "fetch"
+# easily pull in its own tests/examples/tools. Not required (and
+# irrelevant) when FETCH_BUILD= delegates to the upstream project's own
+# build system instead of Bmake It's own SRCS= pipeline
+# (fetch-build-req).
+.if ${IMPORT:Uno:C/:.*//} == "fetch" && (!defined(FETCH_BUILD) || empty(FETCH_BUILD))
 .  if !defined(SRCS) || empty(SRCS)
-.    error "IMPORT=${IMPORT}: SRCS= is required (paths relative to the fetched work tree) -- it is not auto-discovered for a fetched source, unlike an ordinary module's src/"
+.    error "IMPORT=${IMPORT}: SRCS= is required (paths relative to the fetched work tree) -- it is not auto-discovered for a fetched source, unlike an ordinary module's src/. Set FETCH_BUILD=autotools|cmake|meson|custom instead if this source builds with its own build system."
 .  endif
+.elif ${IMPORT:Uno:C/:.*//} == "fetch"
 .elif !defined(SRCS) || empty(SRCS)
 SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
 .endif
@@ -211,6 +215,17 @@ IMPORT_HEADERS ?=
 # this module's own patches/, applied in order (source kind only).
 FETCH_URL ?=
 FETCH_PATCHES ?=
+# fetch-build-req: when set on an IMPORT=fetch: module, the extracted
+# (+patched) source is built with its OWN upstream build system instead
+# of SRCS=/Bmake It's compile pipeline -- see 26-fetched-external-
+# sources.md. FETCH_BUILD=autotools|cmake|meson runs a built-in default
+# recipe installing into a module-local prefix; FETCH_BUILD=custom runs
+# FETCH_BUILD_CMD= verbatim instead. Only meaningful together with
+# IMPORT=fetch: (source kind) -- fetch-bin: already stages a prebuilt
+# artifact directly, nothing to build.
+FETCH_BUILD ?=
+FETCH_BUILD_ARGS ?=
+FETCH_BUILD_CMD ?=
 
 .if !empty(IMPORT)
 _IMP_VAR = ${LIB:tu}
@@ -235,7 +250,7 @@ _IMPORT_SOURCE  = hook:IMPORT_CFLAGS/IMPORT_LIBS
 _IMPORT_CFLAGS  = ${IMPORT_CFLAGS}
 _IMPORT_LIBS    = ${IMPORT_LIBS}
 _IMPORT_LIBDIR  =
-.  elif ${IMPORT:C/:.*//} == "fetch"
+.  elif ${IMPORT:C/:.*//} == "fetch" && (!defined(FETCH_BUILD) || empty(FETCH_BUILD))
 # fetch-import-source-req: extracted (+patched) source becomes this
 # module's own SRCS, compiled through the ordinary pipeline below --
 # no _IMPORT_CFLAGS/_IMPORT_LIBS/_IMPORT_LIBDIR of its own (there is no
@@ -245,6 +260,24 @@ _IMPORT_FETCH_LABEL = ${IMPORT:C/^[^:]*://}
 _IMPORT_SOURCE  = fetch:${_IMPORT_FETCH_LABEL}
 _IMPORT_KIND    = source
 _IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
+.  elif ${IMPORT:C/:.*//} == "fetch"
+# fetch-build-req: FETCH_BUILD= delegates the extracted (+patched)
+# source to its OWN upstream build system (autotools/cmake/meson/
+# custom) instead of SRCS=, installing into a module-local prefix
+# (work/_install) -- then treated exactly like a fetch-bin: import for
+# every purpose past this point (_IMPORT_CFLAGS/_IMPORT_LIBS/_IMPORT_LIBDIR
+# point at that local prefix, staged via the SAME _stage_import: pkg:/
+# prefix:/fetch-bin: already use). See 26-fetched-external-sources.md.
+# @impl 0f87-6ab6-6562-0f89
+_IMPORT_FETCH_LABEL = ${IMPORT:C/^[^:]*://}
+_IMPORT_SOURCE  = fetch:${_IMPORT_FETCH_LABEL}
+_IMPORT_KIND    = source-build
+_IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
+_FETCH_INSTALL_PREFIX = ${.CURDIR}/work/_install
+_FETCH_BUILD_DIR = ${.CURDIR}/work/_build
+_IMPORT_CFLAGS  = -I${_FETCH_INSTALL_PREFIX}/include
+_IMPORT_LIBS    = -L${_FETCH_INSTALL_PREFIX}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${_FETCH_INSTALL_PREFIX}/lib
 .  elif ${IMPORT:C/:.*//} == "fetch-bin"
 # fetch-import-binary-req: same fetch/verify/extract/patch pipeline,
 # but the resolved work tree is treated as a conventional prefix
@@ -454,6 +487,13 @@ all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_h
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
 	@echo "===> built static ${STATIC_NAME} (fetched: ${_IMPORT_SOURCE})"
 .  endif
+.elif ${_IMPORT_KIND:Uno} == "source-build"
+# fetch-build-req: the extracted (+patched) source is built by its OWN
+# upstream build system (_fetch_build:, after _fetch_import:) and
+# installed into a module-local prefix, then staged exactly like a
+# fetch-bin: import -- no SRCS=/OBJS=/compile step of Bmake It's own.
+all: _check_inputs_hash _create_dirs _fetch_import _fetch_build _stage_import _write_linkdeps
+	@echo "===> imported ${LIB} (${_IMPORT_SOURCE}, built via FETCH_BUILD=${FETCH_BUILD})"
 .elif !empty(IMPORT)
 all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
 	@echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
@@ -588,7 +628,7 @@ _stage_import:
 # distfile's own (possibly old) embedded timestamps.
 # @impl 0f87-6ab6-4fe1-98d2
 _fetch_import:
-.if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary"
+.if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
 .else
 	@mkdir -p ${.CURDIR}/distfiles ${.CURDIR}/work
@@ -660,6 +700,126 @@ _fetch_import:
 	mkdir -p ${_OBJDIR}; \
 	echo "$$_fp" > ${.CURDIR}/work/.extract-fp; \
 	echo "===> fetched+extracted $$_basename (${IMPORT})"
+.endif
+
+# fetch-build-req: when FETCH_BUILD= is set on an IMPORT=fetch: module,
+# the extracted (+patched) source (_fetch_import: already ran as an
+# earlier prerequisite) is built with its OWN upstream build system
+# instead of Bmake It's SRCS= pipeline -- a hand-picked source list
+# can't cope with a real autotools/CMake/Meson project. Named presets
+# run a sensible default recipe into a module-local prefix
+# (work/_install, via a scratch work/_build build directory for the
+# out-of-tree cmake/meson presets); FETCH_BUILD=custom runs
+# FETCH_BUILD_CMD= verbatim for anything else, with the source dir/
+# build dir/install prefix exported as BMK_FETCH_SRCDIR/
+# BMK_FETCH_BUILD_DIR/BMK_FETCH_INSTALL_PREFIX. Bmake It's own CC/CXX/
+# CFLAGS/CXXFLAGS/LDFLAGS are forwarded as environment variables, so the
+# upstream build uses the SAME compiler Bmake It is building with --
+# correct for a native build under any preset; correct for a CROSS
+# build only under autotools (CC/CXX already carry clang's --target=/
+# --sysroot=, and --host=<triple> is derived from the same
+# mk.toolchain.llvm.mk _CROSS_FLAGS) -- CMake's -DCMAKE_C_COMPILER=/
+# Meson's compiler detection both want a bare executable path, so a
+# cross build under FETCH_BUILD=cmake/meson silently loses the cross
+# flags rather than erroring; a CMAKE_TOOLCHAIN_FILE/Meson cross-file
+# generator is deferred, not implemented (26-fetched-external-sources.md).
+# Cached via a fingerprint (work/.build-fp) over FETCH_BUILD=/
+# FETCH_BUILD_ARGS=/FETCH_BUILD_CMD=/CC/CXX/CFLAGS/CXXFLAGS/LDFLAGS AND
+# the extraction fingerprint itself, so a source or toolchain change
+# forces a real rebuild but nothing else does -- upstream configure+
+# build+install can be genuinely slow. Every -I/-L/-Wl,-rpath, path in
+# CFLAGS/CXXFLAGS/LDFLAGS is realpath-normalized before hashing: confirmed
+# (empirically) that a bare .CURDIR-derived path can be textually
+# /var/folders/... in one bmake invocation and /private/var/folders/...
+# (same real directory -- macOS's /tmp and /var are themselves symlinks
+# into /private) in another, which otherwise made this fingerprint flap
+# between two different values across the SAME unchanged build under a
+# tmpdir-based test harness, defeating the cache. MAKEFLAGS/MAKELEVEL/MFLAGS/MAKE
+# are unset before delegating -- inherited from the OUTER bmake process
+# otherwise, and confirmed (empirically) to silently break CMake's own
+# internal make/ninja invocation: `cmake --build` ran, printed nothing,
+# and produced no build output at all, exactly the class of bug this
+# project's own run-tests.sh harness already clears these same
+# variables for when launching a nested bmake.
+# @impl 0f87-6ab6-6562-0f89
+_fetch_build:
+.if ${_IMPORT_KIND:Uno} != "source-build"
+	@:
+.else
+	@_ct="${_CROSS_FLAGS:U:M--target=*:C/--target=//}"; \
+	_normflags() { \
+		_out=""; \
+		for _t in $$1; do \
+			case "$$_t" in \
+				-I/*|-L/*) \
+					_p=$${_t#-?}; \
+					_r=$$(realpath "$$_p" 2>/dev/null || printf '%s' "$$_p"); \
+					_out="$$_out $${_t%%/*}$$_r" ;; \
+				-Wl,-rpath,/*) \
+					_p=$${_t#-Wl,-rpath,}; \
+					_r=$$(realpath "$$_p" 2>/dev/null || printf '%s' "$$_p"); \
+					_out="$$_out -Wl,-rpath,$$_r" ;; \
+				*) _out="$$_out $$_t" ;; \
+			esac; \
+		done; \
+		printf '%s' "$$_out"; \
+	}; \
+	_ncflags=$$(_normflags "${CFLAGS}"); \
+	_ncxxflags=$$(_normflags "${CXXFLAGS}"); \
+	_nldflags=$$(_normflags "${LDFLAGS}"); \
+	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=${CC} CXX=${CXX} CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_nldflags EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
+	if [ -f ${.CURDIR}/work/.build-fp ] && [ "$$(cat ${.CURDIR}/work/.build-fp)" = "$$_bfp" ]; then \
+		exit 0; \
+	fi; \
+	_prefix=${_FETCH_INSTALL_PREFIX}; \
+	_builddir=${_FETCH_BUILD_DIR}; \
+	rm -rf "$$_prefix" "$$_builddir"; \
+	mkdir -p "$$_prefix" "$$_builddir"; \
+	_njobs=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); \
+	unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true; \
+	export CC="${CC}" CXX="${CXX}" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"; \
+	case "${FETCH_BUILD}" in \
+		autotools) \
+			echo "===> FETCH_BUILD=autotools: configure && make && make install"; \
+			_host=""; \
+			[ -n "$$_ct" ] && _host="--host=$$_ct"; \
+			( cd ${_IMPORT_WRKSRC} && \
+			  ./configure --prefix="$$_prefix" $$_host ${FETCH_BUILD_ARGS} && \
+			  make -j"$$_njobs" && \
+			  make install ) || { echo "error: IMPORT=${IMPORT}: autotools build failed" >&2; exit 1; }; \
+			;; \
+		cmake) \
+			command -v cmake >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=cmake but cmake not found on PATH" >&2; exit 1; }; \
+			echo "===> FETCH_BUILD=cmake: configure && build && install"; \
+			( cmake -S ${_IMPORT_WRKSRC} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
+				-DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}" \
+				${FETCH_BUILD_ARGS} && \
+			  cmake --build "$$_builddir" -j"$$_njobs" && \
+			  cmake --install "$$_builddir" ) || { echo "error: IMPORT=${IMPORT}: cmake build failed" >&2; exit 1; }; \
+			;; \
+		meson) \
+			command -v meson >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=meson but meson not found on PATH" >&2; exit 1; }; \
+			echo "===> FETCH_BUILD=meson: setup && compile && install"; \
+			( meson setup "$$_builddir" ${_IMPORT_WRKSRC} --prefix="$$_prefix" ${FETCH_BUILD_ARGS} && \
+			  meson compile -C "$$_builddir" && \
+			  meson install -C "$$_builddir" ) || { echo "error: IMPORT=${IMPORT}: meson build failed" >&2; exit 1; }; \
+			;; \
+		custom) \
+			if [ -z "${FETCH_BUILD_CMD}" ]; then \
+				echo "error: IMPORT=${IMPORT}: FETCH_BUILD=custom requires FETCH_BUILD_CMD=" >&2; exit 1; \
+			fi; \
+			echo "===> FETCH_BUILD=custom: ${FETCH_BUILD_CMD}"; \
+			( cd ${_IMPORT_WRKSRC} && \
+			  BMK_FETCH_SRCDIR=${_IMPORT_WRKSRC} BMK_FETCH_BUILD_DIR="$$_builddir" BMK_FETCH_INSTALL_PREFIX="$$_prefix" \
+			  sh -c '${FETCH_BUILD_CMD}' ) || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD_CMD failed" >&2; exit 1; }; \
+			;; \
+		*) \
+			echo "error: IMPORT=${IMPORT}: unknown FETCH_BUILD=${FETCH_BUILD} (expected autotools, cmake, meson, or custom)" >&2; \
+			exit 1; \
+			;; \
+	esac; \
+	echo "$$_bfp" > ${.CURDIR}/work/.build-fp; \
+	echo "===> built via FETCH_BUILD=${FETCH_BUILD}, installed to $$_prefix"
 .endif
 
 # fetch-import-source-req: header staging for the SOURCE kind, reusing
@@ -767,6 +927,6 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _fetch_import _stage_fetch_headers _write_linkdeps help
+.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _fetch_import _fetch_build _stage_fetch_headers _write_linkdeps help
 .endif
 
