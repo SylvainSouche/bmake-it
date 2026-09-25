@@ -196,6 +196,13 @@ Implements the design described in `docs/spec/`. Known limitations:
   (own and imported libraries alike) is implemented; header transitivity
   is not — a framework must list every framework whose headers it
   actually `#include`s, not just its direct one.
+- `IMPORT=fetch:`/`fetch-bin:` (see
+  `docs/spec/26-fetched-external-sources.md`) fetches, verifies
+  (SHA-256), extracts, and optionally patches a public library's source
+  or a prebuilt release at build time, BSD-ports style. `WRKSRC=`
+  override for a multi-top-level-directory archive, `FETCH_PATCH_ARGS=`,
+  and `MASTER_SITES=`-style mirror-list indirection are not implemented;
+  `install`/`distrib` interaction is parked with the rest of that work.
 
 ## Methodology
 

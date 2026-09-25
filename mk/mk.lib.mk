@@ -51,7 +51,15 @@ LIB_SHARED = YES
 SHLIB_MAJOR = 1
 .endif
 
-.if !defined(SRCS) || empty(SRCS)
+# fetch-import-source-req: SRCS is REQUIRED, not auto-discovered, for
+# IMPORT=fetch: -- paths relative to the resolved work tree, not src/.
+# Auto-discovering an arbitrary upstream source tree would just as
+# easily pull in its own tests/examples/tools.
+.if ${IMPORT:Uno:C/:.*//} == "fetch"
+.  if !defined(SRCS) || empty(SRCS)
+.    error "IMPORT=${IMPORT}: SRCS= is required (paths relative to the fetched work tree) -- it is not auto-discovered for a fetched source, unlike an ordinary module's src/"
+.  endif
+.elif !defined(SRCS) || empty(SRCS)
 SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
 .endif
 
@@ -196,6 +204,13 @@ _LIBOUT_DIR = ${.CURDIR}/${LIBDIR_LOCAL}
 # ---------------------------------------------------------------------------
 IMPORT ?=
 IMPORT_HEADERS ?=
+# fetch-import-source-req/fetch-import-binary-req: IMPORT=fetch:<label>
+# (source) / fetch-bin:<label> (prebuilt release) -- see
+# 26-fetched-external-sources.md. FETCH_URL= is one or more full URLs to
+# the SAME distfile, tried in order; FETCH_PATCHES= names files under
+# this module's own patches/, applied in order (source kind only).
+FETCH_URL ?=
+FETCH_PATCHES ?=
 
 .if !empty(IMPORT)
 _IMP_VAR = ${LIB:tu}
@@ -220,6 +235,29 @@ _IMPORT_SOURCE  = hook:IMPORT_CFLAGS/IMPORT_LIBS
 _IMPORT_CFLAGS  = ${IMPORT_CFLAGS}
 _IMPORT_LIBS    = ${IMPORT_LIBS}
 _IMPORT_LIBDIR  =
+.  elif ${IMPORT:C/:.*//} == "fetch"
+# fetch-import-source-req: extracted (+patched) source becomes this
+# module's own SRCS, compiled through the ordinary pipeline below --
+# no _IMPORT_CFLAGS/_IMPORT_LIBS/_IMPORT_LIBDIR of its own (there is no
+# prebuilt artifact to point at), only the resolved work-tree root.
+# @impl 0f87-6ab6-4fe1-98d2
+_IMPORT_FETCH_LABEL = ${IMPORT:C/^[^:]*://}
+_IMPORT_SOURCE  = fetch:${_IMPORT_FETCH_LABEL}
+_IMPORT_KIND    = source
+_IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
+.  elif ${IMPORT:C/:.*//} == "fetch-bin"
+# fetch-import-binary-req: same fetch/verify/extract/patch pipeline,
+# but the resolved work tree is treated as a conventional prefix
+# (include/, lib/) and staged via the SAME _stage_import: mechanism
+# pkg:/prefix: already use -- no compiling.
+# @impl 0f87-6ab6-4fe1-98d2
+_IMPORT_FETCH_LABEL = ${IMPORT:C/^[^:]*://}
+_IMPORT_SOURCE  = fetch-bin:${_IMPORT_FETCH_LABEL}
+_IMPORT_KIND    = binary
+_IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
+_IMPORT_CFLAGS  = -I${_IMPORT_WRKSRC}/include
+_IMPORT_LIBS    = -L${_IMPORT_WRKSRC}/lib -l${LIB}
+_IMPORT_LIBDIR  = ${_IMPORT_WRKSRC}/lib
 .  elif ${IMPORT:C/:.*//} == "pkg"
 _IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
 # Cross-compilation: never read host .pc files; sysroot-aware per
@@ -325,6 +363,21 @@ _IMPORT_LIBDIR  = ${_p}/lib
 INPUTS_HASH_EXTRA += IMPORT=${_IMPORT_SOURCE} IMPORT_CFLAGS=${_IMPORT_CFLAGS} IMPORT_LIBS=${_IMPORT_LIBS}
 .endif
 
+# fetch-import-source-req: an IMPORT=fetch: module's SRCS= are relative
+# to the resolved work tree, not src/ -- _fetch_import: (below) makes
+# ${_IMPORT_WRKSRC} real before anything tries to read from it, and re-
+# extraction there also clears ${_OBJDIR} so a changed fetch always
+# forces a real recompile (not left to a source-mtime race against a
+# distfile's own, possibly old, embedded timestamps).
+# @impl 0f87-6ab6-4fe1-98d2
+.if ${_IMPORT_KIND:Uno} == "source"
+_SRC_BASE = ${_IMPORT_WRKSRC}
+_FETCH_PREREQ = _fetch_import
+.else
+_SRC_BASE = ${.CURDIR}/src
+_FETCH_PREREQ =
+.endif
+
 # @impl 0f87-6a98-76ed-e260
 .if ${TARGET} == "macos"
 SHLIB_NAME     = lib${LIB}.${SHLIB_MAJOR}.dylib
@@ -364,22 +417,22 @@ _create_dirs:
 
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
-	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
-	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
+${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+	${YACC} ${YFLAGS} -d -o ${.TARGET} ${_SRC_BASE}/${_s}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
 	@mkdir -p ${.CURDIR}/${INCDIR_LOCAL}
 	@if [ -f ${_OBJDIR}/${_s:R}.h ]; then cp -f ${_OBJDIR}/${_s:R}.h ${.CURDIR}/${INCDIR_LOCAL}/; fi
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
-	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
+${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+	${LEX} ${LFLAGS} -o ${.TARGET} ${_SRC_BASE}/${_s}
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
@@ -389,8 +442,20 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 .  endif
 .endfor
 
-.if !empty(IMPORT)
-all: _check_inputs_hash _create_dirs _stage_import _write_linkdeps
+.if ${_IMPORT_KIND:Uno} == "source"
+# fetch-import-source-req: an ordinary compiled-library build (SHLIB_NAME/
+# STATIC_NAME from OBJS, exactly like a non-IMPORT= module), plus header
+# staging from the resolved fetched tree instead of INCL=/generated
+# headers. _fetch_import already ran as a prerequisite of each .o: above.
+.  if ${LIB_SHARED} == "YES"
+all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
+	@echo "===> built shared ${SHLIB_NAME} (fetched: ${_IMPORT_SOURCE})"
+.  else
+all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
+	@echo "===> built static ${STATIC_NAME} (fetched: ${_IMPORT_SOURCE})"
+.  endif
+.elif !empty(IMPORT)
+all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
 	@echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
 .elif ${LIB_SHARED} == "YES"
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl _write_linkdeps
@@ -410,7 +475,11 @@ all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl
 # recursive by construction: build order guarantees a dependency's own
 # .linkdeps already exists by the time this runs.
 # @impl 0f87-6ab5-8e46-cfb1
-.if !empty(IMPORT)
+# fetch-import-source-req: a source-fetched (compiled) module is an
+# ORDINARY compiled module for linkdeps purposes too -- its own LIBS=
+# (unchanged mechanism), not _IMPORT_LIBS (undefined for the source
+# kind; there is no prebuilt artifact to derive link flags from).
+.if !empty(IMPORT) && ${_IMPORT_KIND:Uno} != "source"
 _OWN_LINKDEPS = ${_IMPORT_LIBS:N-l${LIB}:N-L${_IMPORT_LIBDIR}}
 .else
 _OWN_LINKDEPS =
@@ -434,7 +503,20 @@ _write_linkdeps:
 # lib${LIB}.* is copied into this module's own build/<KEY>/lib/, exactly
 # where a compiled library's own AR/link recipe would have written it --
 # so LIBS=<lib> in a consumer needs no changes at all (import-staging-req).
+# Every lib${LIB}.* entry is classified by its OWN basename (not by the
+# search extension, since macOS puts the version before the extension --
+# libfoo.34.dylib -- while ELF puts it after -- libfoo.so.34 -- so an
+# extension-anchored glob misses the macOS form entirely): a symlink is
+# followed to its real underlying file (relative or absolute target,
+# possibly multiple hops) and recreated fresh as a same-directory
+# relative symlink pointing at that file's basename, never copied
+# verbatim -- copying a real prefix's symlink as-is either goes dangling
+# (its target's name doesn't match the glob that found it) or leaks an
+# absolute path back into the original install, both observed producing
+# broken dylib symlinks in staged builds against real macOS packages
+# (PDAL/GDAL/GLFW) before this fix (import-staging-broken-dylib-symlinks-obs).
 # @impl 0f87-6ab5-8aa6-c2d0
+# @impl 0f87-6ab6-60c6-d25a
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}
 	@echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"
@@ -457,10 +539,28 @@ _stage_import:
 		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
 	else \
 		_found=no; \
-		for _ext in a so dylib; do \
-			if [ -f "${_IMPORT_LIBDIR}/lib${LIB}.$$_ext" ]; then \
-				cp -a "${_IMPORT_LIBDIR}"/lib${LIB}.$$_ext* ${_LIBOUT_DIR}/; \
-				_found=yes; \
+		for _f in "${_IMPORT_LIBDIR}"/lib${LIB}.*; do \
+			[ -e "$$_f" ] || continue; \
+			_base=$$(basename "$$_f"); \
+			case "$$_base" in \
+				*.a|*.so|*.so.*|*.dylib) ;; \
+				*) continue ;; \
+			esac; \
+			_found=yes; \
+			if [ -L "$$_f" ]; then \
+				_real=$$_f; \
+				while [ -L "$$_real" ]; do \
+					_target=$$(readlink "$$_real"); \
+					case "$$_target" in \
+						/*) _real=$$_target ;; \
+						*) _real=$$(dirname "$$_real")/$$_target ;; \
+					esac; \
+				done; \
+				if [ -f "$$_real" ]; then \
+					ln -sf "$$(basename "$$_real")" "${_LIBOUT_DIR}/$$_base"; \
+				fi; \
+			else \
+				cp -a "$$_f" "${_LIBOUT_DIR}/$$_base"; \
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
@@ -468,6 +568,126 @@ _stage_import:
 			exit 1; \
 		fi; \
 	fi
+
+# fetch-import-source-req/fetch-import-binary-req/fetch-distinfo-
+# checksum-req/fetch-cache-never-committed-req (26-fetched-external-
+# sources.md): fetch, verify (SHA-256 against the committed distinfo,
+# not this project's own cksum -- a materially weaker guarantee, wrong
+# tool for verifying untrusted downloaded content), extract, and patch
+# a distfile. distfiles/ (the raw download) and work/ (the extraction,
+# including the fixed work/_resolved/ this module's own SRCS=/staging
+# read from) are per-module, gitignored, never committed -- only this
+# recipe, FETCH_URL=/FETCH_PATCHES=, and the committed distinfo/patches/
+# themselves are. A no-op for every IMPORT= kind except fetch:/fetch-bin:
+# (always a prerequisite of all: regardless of kind, simplest to keep
+# one shared entry point rather than conditionally omitting it).
+# Idempotent via a fingerprint marker (work/.extract-fp): re-fetches/
+# re-extracts/re-patches only when FETCH_URL=/FETCH_PATCHES= actually
+# changed, and clears ${_OBJDIR} on a genuine re-extraction so a stale
+# .o can never survive a source change via an mtime race against a
+# distfile's own (possibly old) embedded timestamps.
+# @impl 0f87-6ab6-4fe1-98d2
+_fetch_import:
+.if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary"
+	@:
+.else
+	@mkdir -p ${.CURDIR}/distfiles ${.CURDIR}/work
+	@_fp=$$(printf '%s' "URL=${FETCH_URL} PATCHES=${FETCH_PATCHES}" | cksum); \
+	if [ -f ${.CURDIR}/work/.extract-fp ] && [ "$$(cat ${.CURDIR}/work/.extract-fp)" = "$$_fp" ]; then \
+		exit 0; \
+	fi; \
+	_basename=""; \
+	for _url in ${FETCH_URL}; do \
+		_base=$$(basename "$$_url"); \
+		_dist=${.CURDIR}/distfiles/$$_base; \
+		if [ ! -f "$$_dist" ]; then \
+			echo "===> fetching $$_url"; \
+			if command -v curl >/dev/null 2>&1; then \
+				curl -fsSL -o "$$_dist.tmp" "$$_url" 2>/dev/null || { rm -f "$$_dist.tmp"; continue; }; \
+			elif command -v wget >/dev/null 2>&1; then \
+				wget -q -O "$$_dist.tmp" "$$_url" 2>/dev/null || { rm -f "$$_dist.tmp"; continue; }; \
+			else \
+				echo "error: IMPORT=${IMPORT}: neither curl nor wget found on PATH -- cannot fetch $$_url" >&2; exit 1; \
+			fi; \
+			mv "$$_dist.tmp" "$$_dist"; \
+		fi; \
+		_basename=$$_base; \
+		break; \
+	done; \
+	if [ -z "$$_basename" ]; then \
+		echo "error: IMPORT=${IMPORT}: could not fetch any of: ${FETCH_URL}" >&2; \
+		exit 1; \
+	fi; \
+	_dist=${.CURDIR}/distfiles/$$_basename; \
+	_distinfo=${.CURDIR}/distinfo; \
+	if [ ! -f "$$_distinfo" ]; then \
+		echo "error: IMPORT=${IMPORT}: no distinfo file at $$_distinfo -- run whatever generates it (see 26-fetched-external-sources.md) before fetching" >&2; \
+		exit 1; \
+	fi; \
+	_expected=$$(awk -v f="$$_basename" '$$1=="SHA256" && $$2=="(" f ")" {print $$4}' "$$_distinfo"); \
+	if [ -z "$$_expected" ]; then \
+		echo "error: IMPORT=${IMPORT}: no SHA256 entry for $$_basename in $$_distinfo" >&2; \
+		exit 1; \
+	fi; \
+	_actual=$$( (sha256sum "$$_dist" 2>/dev/null || shasum -a 256 "$$_dist" 2>/dev/null) | awk '{print $$1}'); \
+	if [ "$$_actual" != "$$_expected" ]; then \
+		echo "error: IMPORT=${IMPORT}: checksum mismatch for $$_basename -- expected $$_expected, got $$_actual (corrupted download or distinfo out of date)" >&2; \
+		rm -f "$$_dist"; \
+		exit 1; \
+	fi; \
+	echo "===> verified $$_basename (sha256 ok)"; \
+	rm -rf ${.CURDIR}/work/_extracted ${.CURDIR}/work/_resolved; \
+	mkdir -p ${.CURDIR}/work/_extracted; \
+	case "$$_basename" in \
+		*.zip) unzip -q "$$_dist" -d ${.CURDIR}/work/_extracted ;; \
+		*) tar xf "$$_dist" -C ${.CURDIR}/work/_extracted ;; \
+	esac; \
+	_n=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1 | wc -l | tr -d ' '); \
+	_only=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1); \
+	if [ "$$_n" = "1" ] && [ -d "$$_only" ]; then \
+		_wrksrc=$$_only; \
+	else \
+		_wrksrc=${.CURDIR}/work/_extracted; \
+	fi; \
+	cp -a "$$_wrksrc" ${.CURDIR}/work/_resolved; \
+	for _p in ${FETCH_PATCHES}; do \
+		echo "===> applying patch $$_p"; \
+		patch -p1 -d ${.CURDIR}/work/_resolved < ${.CURDIR}/patches/$$_p || { \
+			echo "error: IMPORT=${IMPORT}: patch $$_p failed to apply" >&2; exit 1; \
+		}; \
+	done; \
+	rm -rf ${_OBJDIR}; \
+	mkdir -p ${_OBJDIR}; \
+	echo "$$_fp" > ${.CURDIR}/work/.extract-fp; \
+	echo "===> fetched+extracted $$_basename (${IMPORT})"
+.endif
+
+# fetch-import-source-req: header staging for the SOURCE kind, reusing
+# IMPORT_HEADERS= and the SAME search-and-copy shell logic _stage_import:
+# already uses -- just against the fetched work tree instead of a
+# resolved prefix, and without the lib${LIB}.* half (compiling produces
+# that, via the ordinary ${_LIBOUT_DIR}/${SHLIB_NAME}/${STATIC_NAME}
+# recipes below).
+# @impl 0f87-6ab6-4fe1-98d2
+_stage_fetch_headers:
+.if !empty(IMPORT_HEADERS)
+	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include
+.for _h in ${IMPORT_HEADERS}
+	@_found=no; \
+	for _d in ${_IMPORT_WRKSRC} ${_IMPORT_WRKSRC}/include; do \
+		if [ -e "$$_d/${_h}" ]; then \
+			cp -a "$$_d/${_h}" ${_FWDIR}/${BUILD_ROOT}/include/; \
+			echo "===> staged header ${_h} from $$_d"; \
+			_found=yes; \
+			break; \
+		fi; \
+	done; \
+	if [ "$$_found" = no ]; then \
+		echo "error: IMPORT_HEADERS=${_h}: not found under the fetched work tree (${_IMPORT_WRKSRC} or its include/)" >&2; \
+		exit 1; \
+	fi
+.endfor
+.endif
 
 # @impl 0f87-6a98-8b7f-9215
 ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS}
@@ -526,6 +746,17 @@ clean:
 .endif
 	rm -f *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.dll 2>/dev/null || true
 	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
+	# fetch-cache-never-committed-req: work/ (extraction scratch) is
+	# build-output-like -- always removed. distfiles/ (the downloaded
+	# archive itself) is a cache that's expensive to refetch, so it's
+	# only dropped under CLEAN_ALL_TARGETS=yes, mirroring real ports'
+	# own clean/distclean split. patches/ is committed source, never
+	# touched by clean.
+	# @impl 0f87-6ab6-4fe1-98d2
+	rm -rf ${.CURDIR}/work
+.if ${CLEAN_ALL_TARGETS} == "yes"
+	rm -rf ${.CURDIR}/distfiles
+.endif
 
 
 .include "${BMK_MKDIR}/mk.test.mk"
@@ -536,6 +767,6 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _write_linkdeps help
+.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _fetch_import _stage_fetch_headers _write_linkdeps help
 .endif
 

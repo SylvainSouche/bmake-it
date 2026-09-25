@@ -479,6 +479,42 @@
     "status": "recorded",
     "type": "dec"
   },
+  "fetch-based-external-modules-topic": {
+    "active": true,
+    "id": "0f87-6ab6-4dd0-0c4f",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "fetch-cache-never-committed-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e33-9d3b",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-distinfo-checksum-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e2d-fb96",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-import-binary-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e1e-2778",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-import-design-dec": {
+    "active": true,
+    "id": "0f87-6ab6-4de8-ae31",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "fetch-import-source-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e12-3429",
+    "status": "confirmed",
+    "type": "req"
+  },
   "flags-only-change-does-not-trigger-rebuild": {
     "active": true,
     "id": "0f87-6ab5-8658-434b",
@@ -827,6 +863,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-fetch-import": {
+    "active": true,
+    "id": "0f87-6ab6-4fe1-98d2",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-flags-reuse-native-vars": {
     "active": true,
     "id": "0f87-6a98-5ff4-5d24",
@@ -872,6 +914,12 @@
   "impl-import-resolution-cache": {
     "active": true,
     "id": "0f87-6ab6-0d63-eb19",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-import-staging-symlink-fix": {
+    "active": true,
+    "id": "0f87-6ab6-60c6-d25a",
     "status": "verified",
     "type": "impl"
   },
@@ -1084,6 +1132,12 @@
     "id": "0f87-6ab5-8a85-7d76",
     "status": "confirmed",
     "type": "req"
+  },
+  "import-staging-broken-dylib-symlinks-obs": {
+    "active": true,
+    "id": "0f87-6ab6-60ac-12e8",
+    "status": "recorded",
+    "type": "obs"
   },
   "import-staging-dec": {
     "active": true,

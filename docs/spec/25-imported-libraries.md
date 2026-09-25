@@ -93,11 +93,31 @@ list.
   own* `build/<KEY>/lib/`, exactly where a compiled library's own
   `ar`/link recipe would have written them — so `LIBS=<lib>` in a
   consumer needs no changes at all.
-- **Copy, not symlink** — matches this project's own established
-  precedent (the `RUN_ID=`/`latest` mechanism was deliberately switched
-  from symlinks to real copies earlier in this project's history,
-  specifically because Cygwin's default symlinks are a text-marker
-  file, not resolvable by a native Windows file browser or web server).
+- **Real files are copied; the resolved prefix's own symlink chain is
+  recreated, never copied verbatim.** A shared library's on-disk layout
+  is routinely more than one file: an unversioned name a linker's
+  `-l<lib>` resolves at *link* time (`libfoo.dylib`, `libfoo.so`), and a
+  separately-named, more specific file the runtime loader actually opens
+  via the library's own embedded `install_name`/`SONAME` (`libfoo.34.dylib`
+  on macOS, `libfoo.so.34` on ELF — note macOS puts the version *before*
+  the extension, ELF *after*). The unversioned name is usually a symlink
+  to the versioned one. Copying that symlink byte-for-byte (`cp -a`)
+  either leaves it dangling (its real target's own name was never staged
+  alongside it) or, for an absolute-target symlink as MacPorts/Homebrew
+  commonly produce, silently points back into the original host prefix
+  instead of the staged, portable build tree — both observed producing a
+  library that links but fails to *load* at runtime, against real macOS
+  packages (`import-staging-broken-dylib-symlinks-obs`). Staging instead
+  resolves every `lib<LIB>.*` entry to its real underlying file (copied
+  for real) and recreates each symlinked name it found as a fresh,
+  same-directory relative symlink pointing at that file — self-contained
+  within the staged tree, matching this project's own established "copy,
+  not symlink *across* the build tree" precedent (the `RUN_ID=`/`latest`
+  mechanism was deliberately switched from symlinks to real copies
+  earlier in this project's history, specifically because Cygwin's
+  default symlinks are a text-marker file, not resolvable by a native
+  Windows file browser or web server) without losing the version-symlink
+  chain a shared library's own link/load model actually needs.
 - **Re-staging** is driven by the existing inputs-hash mechanism
   (`REQ-inputs-hash-rebuild-req`): the resolved source, `IMPORT_CFLAGS`,
   and `IMPORT_LIBS` are folded into `INPUTS_HASH_EXTRA=`, so a changed
