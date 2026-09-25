@@ -842,7 +842,7 @@
   "impl-import-link-transitivity": {
     "active": true,
     "id": "0f87-6ab5-8e46-cfb1",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-incl-promotes-generated-headers": {
