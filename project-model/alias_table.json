@@ -1049,6 +1049,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "import-resolution-cache-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0d4a-8a15",
+    "status": "recorded",
+    "type": "dec"
+  },
   "import-resolution-ladder-dec": {
     "active": true,
     "id": "0f87-6ab5-8a7a-14c3",
