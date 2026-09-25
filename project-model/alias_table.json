@@ -1109,6 +1109,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "install-distrib-rewriting-deferred-topic": {
+    "active": true,
+    "id": "0f87-6ab6-08ec-2598",
+    "status": "recorded",
+    "type": "obs"
+  },
   "install-env-script-req": {
     "active": true,
     "id": "0f87-6aaa-d65f-eeca",
