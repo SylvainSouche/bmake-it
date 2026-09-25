@@ -863,6 +863,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-fetch-import": {
+    "active": true,
+    "id": "0f87-6ab6-4fe1-98d2",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-flags-reuse-native-vars": {
     "active": true,
     "id": "0f87-6a98-5ff4-5d24",

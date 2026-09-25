@@ -112,7 +112,7 @@ for header/library resolution, `25-imported-libraries.md` for `IMPORT=`
 (a library module importing a prebuilt library instead of compiling one),
 `26-fetched-external-sources.md` for `IMPORT=fetch:`/`fetch-bin:` (fetching
 a public library's source or a prebuilt release at build time, BSD-ports
-style — spec-only, not yet implemented), `30-build-sequence.md` for build
+style), `30-build-sequence.md` for build
 ordering, `40-cli-reference.md` for `make` usage, `50-makefile-macros.md`
 for the full macro reference, `70-documentation-generation.md` for
 `bmake docs`, `80-unit-testing.md` for `bmake test`, and

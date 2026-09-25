@@ -35,8 +35,10 @@ BSD-make-native equivalent, introduced by this project.
 | `LIBS=<lib1> <lib2> ...` | Same as above — link-time only | New |
 | `LINK_CXX=yes` | Same as above — forces `${CXX}` for the shared-library link | New (`REQ-cxx-link-driver-selection-req`) |
 | `INCL=<header1> <header2> ...` | Names which of this module's *generated* headers get promoted to public (copied to the framework's `build/<KEY>/include/`). Unlisted generated headers stay module-private | New (`REQ-incl-macro-promotes-generated-headers-req`) |
-| `IMPORT=pkg:<name>\|prefix:<dir>` | Import a prebuilt library instead of compiling `SRCS` — resolved via pkg-config, a literal prefix, or (empty) env/`mk/`-hook overrides alone. See `25-imported-libraries.md` | New (`REQ-import-resolution-ladder-req`) |
+| `IMPORT=pkg:<name>\|prefix:<dir>\|fetch:<label>\|fetch-bin:<label>` | Import a prebuilt library instead of compiling `SRCS` — resolved via pkg-config, a literal prefix, env/`mk/`-hook overrides alone, or a fetched distfile (source or prebuilt). See `25-imported-libraries.md` and `26-fetched-external-sources.md` | New (`REQ-import-resolution-ladder-req`, `REQ-fetch-import-source-req`, `REQ-fetch-import-binary-req`) |
 | `IMPORT_HEADERS=<name1> <name2> ...` | Exactly which headers/subdirectories to stage from the resolved import — never the whole prefix | New (`REQ-import-staging-req`) |
+| `FETCH_URL=<url> [<url> ...]` | One or more full URLs to the same distfile, tried in order until one succeeds. Only meaningful with `IMPORT=fetch:`/`fetch-bin:`. See `26-fetched-external-sources.md` | New (`REQ-fetch-import-source-req`) |
+| `FETCH_PATCHES=<name> [<name> ...]` | Files under this module's own `patches/`, applied in order via `patch -p1` against the extracted work tree. Only meaningful with `IMPORT=fetch:`/`fetch-bin:` | New (`REQ-fetch-import-source-req`) |
 | `SHLIB_MAJOR=<n>` | Major version for the shared library. Reused directly from real BSD `bsd.lib.mk` | Reused native (`REQ-shlib-major-minor-cross-platform-emission-req`) |
 | `SHLIB_MINOR=<n>` | Optional minor version | Reused native |
 

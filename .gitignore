@@ -44,3 +44,9 @@ examples/**/build-report-*/
 # on GitHub (via .backup-remote.json) and, when running in a claude.ai
 # sandbox, /mnt/user-data/outputs/.
 project-model-backup.tar.gz
+
+# fetch-cache-never-committed-req: IMPORT=fetch:/fetch-bin: downloaded
+# distfiles and their extraction scratch tree -- never git's, only
+# distinfo/patches/ (committed source) drive what these become.
+distfiles/
+work/

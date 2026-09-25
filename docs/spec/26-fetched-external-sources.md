@@ -1,8 +1,9 @@
 # Bmake It — 26: Fetched External Sources (`IMPORT=fetch:`/`fetch-bin:`)
 
-Status: DRAFT, synthesized from confirmed `project-model/req/` objects.
-Not yet implemented — this chapter specs the mechanism.
-Every claim cites the REQ/DEC alias it comes from.
+Status: Implemented (`mk/mk.lib.mk`) and covered by the test harness
+(`tests/cases/60-fetch-import-source`, `61-fetch-import-checksum-mismatch`,
+`62-fetch-import-binary`). Every claim cites the REQ/DEC alias it comes
+from.
 
 ## Scope and objective
 
@@ -116,27 +117,53 @@ corruption needs a real cryptographic hash.
 
 ## Fetch, verify, extract, patch
 
-1. **Cache check**: if `<module>/distfiles/<basename>` already exists
-   and matches the `distinfo` checksum, skip the download entirely.
-2. **Fetch**: try each `FETCH_URL=` entry in order until one succeeds;
-   save to `<module>/distfiles/<basename>`.
-3. **Verify**: SHA-256 against `distinfo`; `.error` on mismatch (also
-   re-checked on a cache hit, in case the cached file was corrupted —
-   cheap, local, no reason to trust a stale cache blindly).
-4. **Extract**: into `<module>/work/` (gitignored). If the archive
-   extracts into exactly one top-level directory, that directory is the
-   resolved work-tree root; otherwise `work/` itself is (auto-detected,
-   matching the common single-top-level-directory tarball convention
-   most distfiles already follow — an explicit override is deferred,
-   not needed for a first real case).
+The whole pipeline lives in a `.PHONY` recipe, `_fetch_import:`, a
+prerequisite of the compile rules (source kind) or the staging step
+(binary kind) — never run merely from parsing the makefile, since
+`IMPORT=fetch:`/`fetch-bin:` resolution itself (`_IMPORT_SOURCE`,
+`_IMPORT_KIND`, `_IMPORT_WRKSRC`) is pure parse-time string manipulation
+with no network I/O, unlike `pkg:`/`prefix:`'s real `!=` shell-outs.
+
+1. **Fingerprint check**: a `cksum` of `FETCH_URL=`/`FETCH_PATCHES=` is
+   compared against `<module>/work/.extract-fp` (written on the last
+   successful run); an unchanged fingerprint skips the entire pipeline.
+2. **Fetch**: try each `FETCH_URL=` entry in order until one succeeds,
+   saving to `<module>/distfiles/<basename>` — an entry whose basename
+   already exists in `distfiles/` is reused without any network access,
+   which is also what makes a fingerprint change with the *same*
+   basename (e.g. a mirror swapped out) succeed without re-fetching.
+3. **Verify**: SHA-256 against `distinfo`; a clean failure naming the
+   module, the distfile, and both hashes on mismatch — extraction never
+   proceeds on unverified content, whether the distfile was just
+   downloaded or already sitting in `distfiles/`.
+4. **Extract**: into `<module>/work/_extracted/`. If the archive
+   extracts into exactly one top-level directory, that directory is used;
+   otherwise `work/_extracted/` itself is (auto-detected, matching the
+   common single-top-level-directory tarball convention most distfiles
+   already follow — an explicit override is deferred, not needed for a
+   first real case). Either way, its contents are then `cp -a`'d into a
+   **fixed** `<module>/work/_resolved/` — this, not the archive's own
+   (only known post-extraction) top-level name, is `_IMPORT_WRKSRC`: the
+   one parse-time-knowable path `SRCS=`/`IMPORT_HEADERS=` resolve
+   against, sidestepping the chicken-and-egg of needing the extracted
+   name before extraction has happened.
 5. **Patch**: each `FETCH_PATCHES=` entry, in order, via `patch -p1`
-   from the work-tree root.
+   from `work/_resolved/`.
+
+A genuine re-extraction (fingerprint changed, real work done) clears
+`${_OBJDIR}` before recreating it, so a stale `.o` can never survive a
+source change via an mtime race against a distfile's own, possibly old,
+embedded timestamps — then writes the new fingerprint only on success.
 
 Both `distfiles/` and `work/` are per-module, not shared across
 modules or target keys — the same extracted (and patched) source is
 reused for every `TARGET`/`TOOLCHAIN` build of that module, only the
 *compiled* objects differ per target key
-(`REQ-fetch-cache-never-committed-req`).
+(`REQ-fetch-cache-never-committed-req`). `bmake clean` removes `work/`
+unconditionally (build-output-like) and `distfiles/` only under
+`CLEAN_ALL_TARGETS=yes` (an expensive-to-refetch cache, mirroring real
+ports' own `clean`/`distclean` split); `patches/` is committed source
+and is never touched by `clean`.
 
 ## Source kind (`fetch:`)
 
@@ -180,27 +207,30 @@ staging code, no new promotion logic — only the *source* of
 Self-contained, per this project's own established harness convention
 (no real network access from a test — `tests/cases/*` already ship
 their own fake prefixes/`.pc` files for `pkg:`, the same discipline
-applies here): a **local `python3 -m http.server` instance** (or a
-`file://` URL, simpler still, where the test's own fake "distfile" is
-just a `.tar.gz` built from fixture content in the archive) stands in
-for the real distribution site. `FETCH_URL=` points at it; the rest of
-the pipeline runs unmodified. Progressive coverage, mirroring the
-rigor `import-resolution-ladder-req`'s own test list already set:
+applies here): a **`file://` URL** pointing at a fixture `.tar.gz` the
+test itself builds at run time (source content and checksum embedded
+in the test, not committed) stands in for the real distribution site.
+`FETCH_URL=` points at it; the rest of the pipeline runs unmodified.
+Coverage, mirroring the rigor `import-resolution-ladder-req`'s own test
+list already set:
 
-- A `fetch:` module builds from a genuinely fetched, genuinely
-  extracted tarball (explicit `SRCS=`), compiled and run for real.
-- A `FETCH_PATCHES=` entry actually changes fetched-source behavior,
-  verified by running the result, not just by confirming `patch`
-  exited 0.
-- A checksum mismatch is a clean `.error`, not a silent continue —
-  proven by deliberately corrupting the served file.
-- A cache hit (unchanged distfile already on disk) skips re-fetching —
-  proven by pointing `FETCH_URL=` at a now-dead URL on the second
-  build and confirming it still succeeds from cache.
-- `fetch-bin:` stages a prebuilt library and header without compiling
-  anything, and a consumer links and runs against it.
-- Multiple `FETCH_URL=` mirrors: the first entry unreachable, the
-  second succeeds.
+- `tests/cases/60-fetch-import-source`: a `fetch:` module builds from a
+  genuinely fetched, genuinely extracted tarball (explicit `SRCS=`),
+  compiled and run for real; a `FETCH_PATCHES=` entry actually changes
+  the fetched source's behavior, verified by running the result, not
+  just by confirming `patch` exited 0; a fingerprint change whose
+  `FETCH_URL=` now points at an unreachable path but shares the
+  already-downloaded distfile's basename still succeeds (build-level
+  cache hit); multiple `FETCH_URL=` mirrors with the first unreachable
+  fail over to the second, from a genuinely fresh extraction.
+- `tests/cases/61-fetch-import-checksum-mismatch`: a checksum mismatch
+  is a clean build failure naming the module/distfile/both hashes, not
+  a silent continue — proven by deliberately committing a `distinfo`
+  that doesn't match the served file — and the corrupted distfile is
+  not left behind masquerading as valid.
+- `tests/cases/62-fetch-import-binary`: `fetch-bin:` stages a prebuilt
+  library and header without compiling anything, and a consumer links
+  and runs against it.
 
 ## Not yet decided / deferred
 
