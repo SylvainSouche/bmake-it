@@ -299,6 +299,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "cxxstd-macro-req": {
+    "active": true,
+    "id": "0f87-6ab6-00c4-1e52",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cygwin-native-vs-mingw-cross-are-separate-packages": {
     "active": true,
     "id": "6f38-6a8a-085d-2587",
