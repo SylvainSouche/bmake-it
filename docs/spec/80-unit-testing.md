@@ -148,7 +148,21 @@ rebuilds the module's own library/executable itself -- only the test
 binary is recompiled fresh each run. Running `bmake test SANITIZE=address`
 against a library that was last built *without* `SANITIZE=` links the
 test against an unsanitized library and won't catch anything. Rebuild
-with the same `SANITIZE=` first (`bmake all SANITIZE=address`) --
-plain `make` doesn't detect a flags-only change as a reason to
-recompile, so a stale `build/` from an earlier, differently-flagged
-build is a real trap, not just a sanitizer-specific one.
+with the same `SANITIZE=` first (`bmake all SANITIZE=address`).
+
+That rebuild step is now reliable rather than a trap: plain `make`'s
+staleness model is purely timestamp-based and has no native notion of
+"built with different flags," but `all` now fingerprints
+`CC`/`CXX`/`CFLAGS`/`CXXFLAGS`/`LDFLAGS`/`SANITIZE`/`TOOLCHAIN` per
+module (`INPUTS_HASH_EXTRA=` open for other mechanisms to extend) and
+forces exactly the affected objects to recompile whenever that
+fingerprint changes -- confirmed with a real heap-buffer-overflow
+fixture, split across two compilation units so `-O2` (bmake's own
+`sys.mk` default) can't prove the overflowing store dead: silent and
+uncaught under a plain build, a genuine `AddressSanitizer:
+heap-buffer-overflow` abort after `SANITIZE=address`, using the exact
+same already-built objects a naive rebuild would have silently reused
+before (`REQ-inputs-hash-rebuild-req`). The remaining caveat is
+narrower than before: `test:` still won't run `all:` for you, so the
+explicit `bmake all SANITIZE=address` step is still required -- it just
+no longer silently no-ops when you do remember to run it.

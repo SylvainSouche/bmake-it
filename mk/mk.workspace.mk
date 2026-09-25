@@ -117,6 +117,26 @@ all: _build_frameworks _aggregate_ws
 	@cp -a ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH} ${.CURDIR}/${BUILD_REPORT_DIR}/latest/${OS_ARCH}
 	@echo "===> workspace build dashboard -> ${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html (also ${BUILD_REPORT_DIR}/latest/${OS_ARCH}/)"
 .endif
+	@# aggregation-failure-exit-code-req: runs last, after the REPORT=yes
+	@# dashboard above (if any) so it's generated regardless -- this is
+	@# purely about the workspace `all`'s own final exit code. Each
+	@# framework's own build.failed marker is now reliable in turn: its
+	@# `all` recursion (mk.framework.mk's own _check_build_failures)
+	@# correctly fails when any of ITS modules failed.
+	@# @impl 0f87-6ab5-81a2-7bb0
+	@_failed=""; \
+	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		if [ -f "${.CURDIR}/$$_f/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+			_failed="$$_failed $$_f"; \
+		fi; \
+	done; \
+	if [ -n "$$_failed" ]; then \
+		echo "===> workspace BUILD FAILED:$$_failed" >&2; \
+		for _f in $$_failed; do \
+			echo "     $$_f -- see $$_f/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		done; \
+		exit 1; \
+	fi
 
 .if !defined(SUBDIR_FRAMEWORKS)
 SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
@@ -315,12 +335,18 @@ TEST_REPORT_DIR ?= test-report
 test:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@if [ -z "${FW}" ] || [ "${_f}" = "${FW}" ]; then \
+		_rundir=${.CURDIR}/${_f}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 		${MAKE} -C ${_f} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
 			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}"; \
 		_trc=$$?; \
-		if [ "$$_trc" -ne 0 ] && [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
+		if [ "$$_trc" -ne 0 ]; then \
+			touch "$$_rundir/test.failed"; \
+			if [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
+		else \
+			rm -f "$$_rundir/test.failed"; \
+		fi; \
 	fi
 .endfor
 .if ${REPORT} == "yes"
@@ -359,6 +385,23 @@ test:
 	@cp -a ${.CURDIR}/${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH} ${.CURDIR}/${TEST_REPORT_DIR}/latest/${OS_ARCH}
 	@echo "===> workspace test dashboard -> ${TEST_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html (also ${TEST_REPORT_DIR}/latest/${OS_ARCH}/)"
 .endif
+	@# aggregation-failure-exit-code-req: runs last, after the REPORT=yes
+	@# dashboard above (if any) so it's generated regardless.
+	@# @impl 0f87-6ab5-81a2-7bb0
+	@_failed=""; \
+	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		[ -z "${FW}" ] || [ "$$_f" = "${FW}" ] || continue; \
+		if [ -f "${.CURDIR}/$$_f/${BUILD_ROOT}/runs/${RUN_ID}/test.failed" ]; then \
+			_failed="$$_failed $$_f"; \
+		fi; \
+	done; \
+	if [ -n "$$_failed" ]; then \
+		echo "===> workspace TEST FAILED:$$_failed" >&2; \
+		for _f in $$_failed; do \
+			echo "     $$_f -- see $$_f/${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml" >&2; \
+		done; \
+		exit 1; \
+	fi
 
 .PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test
 

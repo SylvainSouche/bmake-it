@@ -95,6 +95,27 @@ sh tests/harness/pack-cases.sh
 | 36 | Two frameworks independently producing a same-named `share/` artifact at workspace-level copy-up: byte-identical content copies silently, differing content warns but still overwrites (build succeeds, last-copied-wins) |
 | 37 | The `share/common → share/<os> → share/<os>_<arch>` overlay cascade across every layer-presence combination: a file unique to any one layer survives; where two-plus layers define the same file, the most specific present layer wins |
 | 38 | A framework present in both the current workspace and a `PARENT_WS`, where only the *parent's* copy has a more-specific `share/<os>` override: the local copy is used in its entirety (its own `share/common` only) — no cross-workspace layer fallback, mirroring case 29's shadow principle applied to `share/` |
+| 39 | A C++ program (`SRCS` has `.cpp`) links with `${CXX}`, not `${CC}` — exercises real C++ runtime support (exceptions) at link time |
+| 40 | A C++ shared library *and* the C++ program consuming it both link with `${CXX}`; the exception is thrown from inside the `.so` itself |
+| 41 | `LINK_CXX=yes`: a pure-C module linking a static C++ library fails to link (undefined C++ runtime symbols) without it, and links/runs correctly with it |
+| 42 | A broken module + a good module: `bmake` (build) exits non-zero and names the broken module at both framework and workspace level, but the good module still builds (`FAIL_FAST=no`, the default); `FAIL_FAST=yes` stops before the good module is even attempted |
+| 43 | Same as 42, for `bmake test`: a genuinely failing atf-c test + a genuinely passing one |
+| 44 | Header dependency tracking (gcc/clang `-MMD -MP`): a no-op rebuild recompiles nothing; a module-private header change and a framework-public header reached only via `PREREQS=` (not the consumer's own `src/`) both trigger exactly the affected object to recompile |
+| 45 | `bmake` then `bmake SANITIZE=address` actually recompiles (not just relinks stale objects), and the resulting binary genuinely crashes under ASan on a real heap-buffer-overflow; a repeated `bmake SANITIZE=address` recompiles nothing, and dropping back to plain `bmake` recompiles again |
+| 46 | `mk.local.mk`'s hook cascade: all four conventional names (`pre.mk`, `pre.${TOOLCHAIN}.mk`, `pre.${TARGET}.mk`, `pre.${TARGET}_${TARGET_ARCH}.mk`) fire when they match (values queried from the real running bmake, not hardcoded), and a hook keyed to a different OS does not |
+| 47 | `IMPORT=pkg:<name>` end to end against a real (self-contained, fake) pkg-config `.pc` file: header+lib staging, a plain `LIBS=`-consuming module needs no IMPORT-specific change, only `IMPORT_HEADERS=` is visible (a sibling header in the same prefix is not), and an unresolvable import fails loudly naming what was tried |
+| 48 | `IMPORT=` resolution precedence: each ladder step (env/CLI, `mk/` hook, pkg-config, probing) proven individually reachable, then proven to lose to the next higher-precedence step once both are available |
+| 49 | Link transitivity, compiled side: a three-level static chain (app → libb → libc) where `app.m` declares only `LIBS=b` -- `libc` still links and runs, pulled in via `libb`'s own recorded `.linkdeps` |
+| 50 | Link transitivity, `IMPORT=` side: a fake pkg-config package's real `Libs.private` entry follows it into a consumer that never mentions the private dependency at all |
+| 51 | `CXXSTD` defaults to `c++17` — a genuine C++20-only construct (`consteval`) fails under the default and builds/runs correctly with `CXXSTD=c++20` |
+| 52 | `OPENMP=yes` builds a real `omp parallel for` program that genuinely uses more than one thread; a compiler that can't accept `-fopenmp` at all (a fake `CC`) gets a clean `.error`, not an opaque compile failure |
+| 53 | `WARN=none` suppresses a vendored module's own warnings; `PUBLIC_HEADERS_SYSTEM=yes` on its framework means a consumer in a different framework isn't flooded with warnings from the vendored public header either (`-isystem`) — but the consumer's own code still reports its own warnings normally |
+| 54 | Header dependency tracking, the fourth case: a PROMOTED GENERATED header (yacc `-d` output, `INCL=`-promoted) triggers a cross-framework consumer to rebuild when regenerated with different content, same as a hand-written header |
+| 55 | `IMPORT=`: `_PKG_CONFIG_EXTRA_DIRS` (settable via a `mk/` hook) is searched for `.pc` files pkg-config's own defaults and `PKG_CONFIG_PATH` would never reach; without it, resolution fails cleanly |
+| 56 | `IMPORT=`: `PREREQS=` alone (no `LIBS=`) lets a consumer `#include` the imported header (compiles) but fails to *link* (undefined symbol) — adding `LIBS=` then links and runs, exactly like a compiled library |
+| 57 | `IMPORT=`: an externals framework shared via `PARENT_WS`, with a local shadow of the same framework name (both `IMPORT=`-resolved) — the local one wins for compiling, linking, and the actual symbol run, mirroring case 29 for compiled frameworks |
+| 58 | The persisted "swap test": the same library, once compiled from source and once `IMPORT=`-resolved, with the consumer module never touched across the swap — both link and run correctly |
+| 59 | `IMPORT=` resolution caching, verified with a real call-counting `pkg-config` stub: the first build makes real calls, an unchanged second build makes none, and a changed `PKG_CONFIG_PATH` triggers real re-resolution |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

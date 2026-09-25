@@ -77,6 +77,31 @@ while [ $# -gt 0 ]; do
             # is what cl.exe's single-driver ASan model expects.
             cflags="$cflags /${arg#-}"
             ;;
+        -std=*)
+            # cl.exe's own /std: flag already uses the identical
+            # "c++17"/"c++20" spelling CXXSTD= does -- no translation
+            # table needed, just the switch character.
+            cflags="$cflags /std:${arg#-std=}"
+            ;;
+        -fopenmp)
+            cflags="$cflags /openmp"
+            ;;
+        -Wall)
+            # /W4 is the practical MSVC equivalent of gcc/clang's combined
+            # -Wall -Wextra -- cl.exe's own /Wall is far noisier (it also
+            # enables warnings off by default specifically because they
+            # fire constantly in Microsoft's own headers), not a match.
+            cflags="$cflags /W4"
+            ;;
+        -Wextra)
+            # No direct MSVC equivalent; /W4 (above) already covers most
+            # of what -Wextra adds beyond -Wall. Silently dropped, not
+            # forwarded as an unrecognized flag.
+            ;;
+        -w)
+            # Exact match: cl.exe's own "disable all warnings" switch.
+            cflags="$cflags /w"
+            ;;
         -shared)
             building_dll=yes
             linkflags="$linkflags /DLL"

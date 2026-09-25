@@ -1,0 +1,8 @@
+#!/bin/sh
+# Call-counting pkg-config stub: records one line per invocation, then
+# delegates to the real pkg-config so resolution still behaves
+# correctly. COUNTER_FILE and REAL_PKG_CONFIG must be set by the caller.
+: "${COUNTER_FILE:?COUNTER_FILE not set}"
+: "${REAL_PKG_CONFIG:?REAL_PKG_CONFIG not set}"
+echo "$*" >> "$COUNTER_FILE"
+exec "$REAL_PKG_CONFIG" "$@"

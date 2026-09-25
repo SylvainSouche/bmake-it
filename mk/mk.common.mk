@@ -146,6 +146,100 @@ CFLAGS   += ${DEBUG_FLAGS}
 CXXFLAGS += ${DEBUG_FLAGS}
 
 # ---------------------------------------------------------------------------
+# WARN= (warn-macro-req): -Wall -Wextra is the default compile-warning
+# baseline (there was none before this -- confirmed by grep, not assumed;
+# see no-default-warning-baseline). WARN=none suppresses it for a module
+# compiling vendored third-party source via -w, a genuine master switch
+# that fully suppresses warnings regardless of whether it's added before
+# or after -Wall -Wextra on the command line (verified: `-Wall -Wextra
+# -w` and `-w -Wall -Wextra` both suppress a real, deliberately-triggered
+# warning) -- so ordering here doesn't matter. A sibling module with no
+# WARN= override keeps reporting its own warnings normally.
+# @impl 0f87-6ab6-02b1-4336
+# ---------------------------------------------------------------------------
+WARN ?=
+CFLAGS   += -Wall -Wextra
+CXXFLAGS += -Wall -Wextra
+.if ${WARN} == "none"
+CFLAGS   += -w
+CXXFLAGS += -w
+.endif
+
+# ---------------------------------------------------------------------------
+# C++ source extensions (cxx-link-driver-selection-req) -- the single shared
+# list mk.prog.mk/mk.lib.mk use both to dispatch a source file to ${CXX} at
+# compile time and to decide whether a module's final link needs ${CXX}
+# instead of ${CC} (mk.common.mk's own _CCLINK, computed per-role after SRCS
+# is known). Deliberately NOT sys.mk's own CXX_SUFFIXES (.C .cc .cpp .cxx,
+# free on every bmake invocation with zero .include) -- reusing it would
+# silently widen SRCS auto-discovery to a fourth extension (.C) neither
+# mk.prog.mk's nor mk.lib.mk's `find src ...` looks for today.
+# @impl 0f87-6ab5-7f76-0dcf
+# ---------------------------------------------------------------------------
+_CXX_EXTS = cc cpp cxx
+
+# ---------------------------------------------------------------------------
+# Header dependency tracking (header-dependency-tracking-req): gcc/clang
+# only -- -MMD -MP alongside -MF <obj>.d, per source, added by each compile
+# recipe in mk.prog.mk/mk.lib.mk (the -MF path is per-source, so it can't
+# live here). Left genuinely UNDEFINED (not merely empty) for TOOLCHAIN=msvc
+# so ${_DEP_CFLAGS:D...} at each call site expands to nothing there --
+# msvc-cc-wrapper.sh forwards any flag it doesn't recognize straight to
+# cl.exe, and -MMD/-MP/-MF are exactly that (msvc-header-dependency-
+# tracking-deferred: cl.exe's own equivalent, /showIncludes, is stdout-
+# based, not a generated file, and needs wrapper-side parsing not built
+# yet). ${_OBJDIR} already lives under ${BUILD_ROOT}, which clean: already
+# removes entirely -- no separate cleanup needed for the .d files.
+# @impl 0f87-6ab5-8442-b2dc
+# ---------------------------------------------------------------------------
+.if ${TOOLCHAIN} != "msvc"
+_DEP_CFLAGS = -MMD -MP
+.endif
+
+# ---------------------------------------------------------------------------
+# Inputs-hash rebuild (inputs-hash-rebuild-req): bmake's staleness model is
+# purely file-timestamp based -- it has no notion that a .o was compiled
+# with different flags than requested this time. `bmake` then `bmake
+# SANITIZE=address` leaves every already-built .o untouched (no source
+# changed), so the final binary silently links stale, non-instrumented
+# objects -- SANITIZE=address requested and never actually applied, with
+# no error. INPUTS_HASH_EXTRA= (empty by default) lets any future
+# mechanism needing the same "rebuild when this input changes" guarantee
+# (e.g. IMPORT= resolution) append its own value instead of inventing a
+# second stamp-file mechanism.
+#
+# _INPUTS_HASH_FILE is a real file every compiled .o depends on
+# (mk.prog.mk/mk.lib.mk add it as an extra prerequisite); _check_inputs_
+# hash: is .PHONY (always runs, a phony target is never "up to date" by
+# file existence) and rewrites the file ONLY when the fingerprint
+# actually changed -- an unconditional rewrite every build would bump the
+# file's mtime every time and defeat incremental compilation entirely.
+# cksum (POSIX, present identically on every phase-1 target) rather than
+# md5/md5sum, whose binary NAME differs across macOS/Linux/BSD.
+# @impl 0f87-6ab5-867f-373b
+# ---------------------------------------------------------------------------
+INPUTS_HASH_EXTRA ?=
+_INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
+
+.PHONY: _check_inputs_hash
+_check_inputs_hash:
+	@mkdir -p ${.CURDIR}/${BUILD_ROOT}
+	@_new=$$(printf '%s' "CC=${CC} CXX=${CXX} CFLAGS=${CFLAGS} CXXFLAGS=${CXXFLAGS} LDFLAGS=${LDFLAGS} SANITIZE=${SANITIZE} TOOLCHAIN=${TOOLCHAIN} EXTRA=${INPUTS_HASH_EXTRA}" | cksum); \
+	if [ ! -f ${_INPUTS_HASH_FILE} ] || [ "$$(cat ${_INPUTS_HASH_FILE} 2>/dev/null)" != "$$_new" ]; then \
+		echo "$$_new" > ${_INPUTS_HASH_FILE}; \
+	fi
+
+# ---------------------------------------------------------------------------
+# IMPORT= support (import-resolution-ladder-req): extra pkg-config search
+# directories per host, mirroring _TOOL_PREFIXES's own per-OS extension
+# point in mk.paths.<os>.mk. Empty by default -- no real per-OS entry is
+# populated here (a concrete need, e.g. lasviewer's own PROJ-via-GDAL
+# case, is project-specific to that acceptance target, not a generic
+# Bmake It default, and couldn't be verified from this host anyway).
+# ---------------------------------------------------------------------------
+_PKG_CONFIG_EXTRA_DIRS ?=
+
+# ---------------------------------------------------------------------------
 # REPORT= uniform report/dashboard trigger (report-flag-uniform-trigger,
 # build-workspace-aggregation-req, test-workspace-aggregation-req)
 # One flag for build, test, and sanitizing-test runs alike -- not a
@@ -309,5 +403,58 @@ run:
 	env ${_RUN_LDPATH_VAR}="$$_LIBDIR:$$${_RUN_LDPATH_VAR}" "$$_BIN" ${ARGS}
 
 .PHONY: run
+
+# ---------------------------------------------------------------------------
+# CXXSTD= C++ language standard (cxxstd-macro-req). -std=<value> for
+# gcc/clang; msvc-cc-wrapper.sh translates the same spelling to
+# /std:<value> for cl.exe (cl.exe's own /std: flag already uses the
+# identical "c++17"/"c++20" spelling, no translation table needed).
+# @impl 0f87-6ab6-00e8-b2f8
+# ---------------------------------------------------------------------------
+CXXSTD ?= c++17
+CXXFLAGS += -std=${CXXSTD}
+
+# ---------------------------------------------------------------------------
+# OPENMP= (openmp-macro-req). Real -fopenmp acceptance is PROBED, not
+# assumed, for gcc/clang -- a compile-only check (no #include, no
+# pragma; just confirms the flag itself is accepted) against a trivial
+# empty main. Skipped for TOOLCHAIN=msvc: cl.exe's own /openmp support
+# (added via msvc-cc-wrapper.sh translating -fopenmp) has been stable
+# for a very long time, and couldn't be probed from this host either
+# way (no Cygwin+MSVC available to test against).
+#
+# MacPorts' own libomp path is added explicitly WHEN IT EXISTS ON DISK
+# -- belt-and-suspenders, empirically found unnecessary on this exact
+# MacPorts LLVM 22 install (confirmed via `clang -fopenmp -### ...`:
+# the driver itself already injects -I/opt/local/include/libomp and
+# -L/opt/local/lib/libomp -lomp for -fopenmp, MacPorts' own LLVM package
+# configuration, not generic clang behavior) but not guaranteed for
+# every MacPorts LLVM version, and Apple's own Xcode clang has no such
+# wiring at all. Homebrew's/pkgsrc's own libomp layouts were not
+# checked (not installed on this host) -- OPENMP=yes there may need an
+# explicit mk/ hook adding -I/-L until a real Homebrew/pkgsrc host can
+# confirm whether the same belt-and-suspenders treatment is needed.
+# @impl 0f87-6ab6-00e8-b2f8
+# ---------------------------------------------------------------------------
+OPENMP ?= no
+.if ${OPENMP} == "yes"
+.  if ${TOOLCHAIN} == "msvc"
+_OPENMP_SUPPORTED = yes
+.  else
+_OPENMP_PROBE != printf 'int main(void){return 0;}' | ${CC} -fopenmp -x c - -c -o /dev/null 2>/dev/null && echo yes || echo no
+_OPENMP_SUPPORTED = ${_OPENMP_PROBE}
+.  endif
+.  if ${_OPENMP_SUPPORTED} != "yes"
+.    error "OPENMP=yes requested but ${CC} does not accept -fopenmp -- install an OpenMP-capable compiler (MacPorts/Homebrew llvm or gcc both bundle libomp/libgomp; Apple's own Xcode clang does not) or unset OPENMP="
+.  endif
+CFLAGS   += -fopenmp
+CXXFLAGS += -fopenmp
+LDFLAGS  += -fopenmp
+.  if exists(/opt/local/include/libomp) && exists(/opt/local/lib/libomp)
+CFLAGS   += -I/opt/local/include/libomp
+CXXFLAGS += -I/opt/local/include/libomp
+LDFLAGS  += -L/opt/local/lib/libomp
+.  endif
+.endif
 
 .endif # _MK_COMMON_MK_

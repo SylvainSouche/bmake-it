@@ -44,6 +44,22 @@ PROG := ${PROG}.exe
 SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
 .endif
 
+# Link driver selection (cxx-link-driver-selection-req): ${CXX} when SRCS
+# contains a C++ source or LINK_CXX=yes overrides it explicitly (e.g. a
+# C-sources-only module linking a static C++ library), ${CC} otherwise.
+# @impl 0f87-6ab5-7f76-0dcf
+_HAS_CXX_SRCS = no
+.for _e in ${_CXX_EXTS}
+.  if !empty(SRCS:M*.${_e})
+_HAS_CXX_SRCS = yes
+.  endif
+.endfor
+.if (defined(LINK_CXX) && ${LINK_CXX} == "yes") || ${_HAS_CXX_SRCS} == "yes"
+_CCLINK = ${CXX}
+.else
+_CCLINK = ${CC}
+.endif
+
 .if exists(${.CURDIR}/include)
 CFLAGS   += -I${.CURDIR}/include
 CXXFLAGS += -I${.CURDIR}/include
@@ -80,13 +96,25 @@ _PREREQ_BASE.${_p} = ${_pws}
 .      endfor
 .    endif
 .    if defined(_PREREQ_BASE.${_p})
+# public-headers-system-req (D3): a framework may opt its whole public
+# header surface into -isystem for consumers, typically because it
+# wraps/vendors third-party code -- an explicit, framework-level
+# declaration, not inferred from any module's own WARN= setting.
+.      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
+_PREREQ_SYS.${_p} != bmake -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
+.      endif
+.      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
+_INCFLAG.${_p} = -isystem
+.      else
+_INCFLAG.${_p} = -I
+.      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/include)
-CFLAGS   += -I${_PREREQ_BASE.${_p}}/${_p}/include
-CXXFLAGS += -I${_PREREQ_BASE.${_p}}/${_p}/include
+CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
+CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
 .      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include)
-CFLAGS   += -I${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-CXXFLAGS += -I${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
+CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
+CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
 .      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
 LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
@@ -115,8 +143,18 @@ LDFLAGS += -Wl,-rpath,${_d}
 .endif
 
 # @impl 0f87-6a98-76c2-a96e
+# import-link-transitivity-req: see mk.lib.mk's identical comment -- a
+# PROG has no lib${LIB}.linkdeps of its own to write (nothing links
+# against a PROG), only the consumer-side read.
+# @impl 0f87-6ab5-8e46-cfb1
 .for _l in ${LIBS}
 LDFLAGS += -l${_l}
+.  for _d in ${_LIB_SEARCH_DIRS}
+.    if exists(${_d}/lib${_l}.linkdeps)
+_LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
+LDFLAGS += ${_LINKDEPS.${_l}}
+.    endif
+.  endfor
 .endfor
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
@@ -132,26 +170,34 @@ _create_dirs:
 
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
-	${CC} ${CFLAGS} -c ${.ALLSRC} -o ${.TARGET}
-.  elif ${_s:E} == "cc" || ${_s:E} == "cpp" || ${_s:E} == "cxx"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s}
-	${CXX} ${CXXFLAGS} -c ${.ALLSRC} -o ${.TARGET}
+${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+.  elif !empty(_CXX_EXTS:M${_s:E})
+${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
-	${CC} ${CFLAGS} -c ${.ALLSRC} -o ${.TARGET}
+${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c
-	${CC} ${CFLAGS} -c ${.ALLSRC} -o ${.TARGET}
+${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+.  endif
+# header-dependency-tracking-req: absent on the first build of this
+# source (no .o exists yet to have produced it), present and consulted
+# on every rebuild after. Plain conditional .include, not bmake's newer
+# .dinclude -- its availability on the phase-1 FreeBSD/NetBSD base-make
+# targets hasn't been checked from this (macOS-only) host.
+.  if exists(${_OBJDIR}/${_s:R}.d)
+.    include "${_OBJDIR}/${_s:R}.d"
 .  endif
 .endfor
 
-all: _create_dirs ${_BINOUT}
+all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
 # @impl 0f87-6a98-8b7f-9215
@@ -168,7 +214,7 @@ ${_BINOUT}: ${OBJS}
 		exit 1; \
 	fi
 .endfor
-	${CC} -o ${.TARGET} ${OBJS} ${LDFLAGS}
+	${_CCLINK} -o ${.TARGET} ${OBJS} ${LDFLAGS}
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all

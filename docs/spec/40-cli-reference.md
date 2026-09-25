@@ -82,6 +82,16 @@ variables directly, appended via `+=` in a module's makefile:
   `YFLAGS`, `LFLAGS` — BSD make's own native variables, unchanged. No
   `LOCAL_*FLAGS`-style wrapper macros the way real `mkmk` had
   (`REQ-flags-reuse-bsd-native-vars-req`).
+- **`CXXSTD=<std>`** (default `c++17`): C++ language standard, a new,
+  project-specific macro (there is no BSD-make-native concept of a
+  language-standard selector). Translated per-toolchain — `-std=<std>`
+  for gcc/clang, `/std:<std>` for msvc — but the *value* itself is
+  unaffected by the optimization-flags question above, which remains
+  separately unresolved (`REQ-cxxstd-macro-req`).
+- **`OPENMP=yes\|no`** (default `no`): real `-fopenmp` compiler
+  acceptance is probed before use, not assumed — a compiler that can't
+  actually provide it fails at parse time with a clear message, not an
+  opaque error deep in the build (`REQ-openmp-macro-req`).
 
 ## `make` targets
 
@@ -134,6 +144,14 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
   all`/`test` (not via workspace/framework recursion) is unaffected
   either way — there's nothing else to continue past
   (`fail-fast-independent-of-report`).
+  A workspace/framework `all`/`test` run's own final exit code reflects
+  every failure it saw, not just the last one attempted — with
+  `FAIL_FAST=no`, the run still keeps going, but the overall exit is
+  non-zero if *any* module/framework failed, and a summary line names
+  each one (`<name> -- see <path>/build.log` or `.../test-results.xml`)
+  right before the final `Stop.` With `FAIL_FAST=yes`, the run stops
+  at the first failure as before, and that failure alone determines the
+  exit code (`aggregation-failure-exit-code-req`).
 - **`RUN_ID=<id>`** (default: `date +%Y%m%d-%H%M%S-$$`, timestamp + PID
   — collision-safe across near-simultaneous runs without needing a
   GNU-only `date` extension like `%N`, which macOS/BSD `date` lacks):

@@ -57,6 +57,17 @@ Compiling a module that only depends on hand-written headers has no
 ordering requirement — hand-written headers are pure source, resolved
 directly, with nothing to wait for.
 
+An `IMPORT=`-based library module (`25-imported-libraries.md`)
+participates in this ordering identically to a compiled one — its
+`LIB=` is what a consumer's `LIBS=` matches against, regardless of
+whether the module compiles or imports. The dependency-order query
+itself (`gen-mod-order.sh`) must evaluate each module's makefile with
+the same `.CURDIR` a real build of that module would see — fixed as
+part of adding `IMPORT=`, since its own resolution logic is `.CURDIR`-
+sensitive (module-local `mk/` hook lookup) in a way `LIB=`/`LIBS=`/
+`PROG=`'s plain literal assignments never were before
+(`REQ-gen-mod-order-correct-curdir-req`).
+
 ## Collision handling during copy-up
 
 The copy-up mechanism (step 6/7) is **diff-aware**
