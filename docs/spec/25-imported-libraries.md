@@ -157,22 +157,55 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
   one `_LIB_SEARCH_DIRS` entry (a shadowing scenario) — duplicate
   `-l`/`-L` flags are harmless to a linker, an accepted simplification.
 
+## Resolution caching
+
+A second build with nothing relevant changed does not re-invoke
+`pkg-config` at all (`REQ-import-resolution-cache-req`) — a real,
+separate question from item 4's own staging cache (which already
+skipped redundant *file copies*, not the resolution call itself). A
+per-module fingerprint (`IMPORT=`, `PKG_CONFIG_PATH`,
+`_PKG_CONFIG_EXTRA_DIRS`, `TARGET`/`TARGET_ARCH`) is checked against a
+stored cache before calling `pkg-config`; a match reads the previously
+resolved values back, a mismatch (or no cache) resolves for real and
+writes the new cache. Verified with a genuine call-counting `pkg-config`
+stub, not just by inspecting the cache file: the first build makes real
+calls, an unchanged second build makes zero additional calls, and a
+changed `PKG_CONFIG_PATH` triggers real re-resolution again.
+
+This does **not** detect a package silently upgraded in place with no
+env/hook/`PKG_CONFIG_PATH` change (the fingerprint doesn't cover the
+resolved `.pc` file's own content or mtime — locating it at all would
+require the very `pkg-config` call being skipped, a chicken-and-egg
+problem a simple fingerprint avoids by not trying). A real bug was
+found and fixed while building this: the cache's read-back path
+originally set the resolved values unconditionally, even for a cached
+*miss* — turning a correctly-undefined resolution (which should fall
+through to probing, then the final `.error`) into defined-but-empty,
+silently skipping both. Caught by the existing precedence test (case
+48), not the new caching test itself, since `IMPORT=` modules are
+parsed twice per `bmake` invocation (once for `all`, once for
+`copy-up`) and the second parse hit the cache the first had just
+written for a step in the middle of a multi-step precedence sequence.
+
+## `PUBLIC_HEADERS_SYSTEM=yes` applies here too
+
+D3 (`-isystem` for a framework's public headers, see
+`50-makefile-macros.md`) is framework-level and doesn't care whether
+the modules inside compile or `IMPORT=` — an externals framework whose
+modules are all `IMPORT=`-resolved can set `PUBLIC_HEADERS_SYSTEM=yes`
+exactly like any other framework wrapping third-party code, and gets
+the same treatment for its consumers.
+
 ## What this chapter does not yet cover
 
 - **Header transitivity** — explicitly rejected: if framework A has
   `PREREQS=B` and B's public headers `#include` C's, A must list
   `PREREQS=C` itself. No transitive `PREREQS=` resolution.
-- **Re-resolution caching** — `IMPORT=`'s resolution (including a
-  `pkg-config` invocation) re-runs on every `bmake` invocation, since it
-  happens at parse time; only *staging* (the actual file copies) is
-  skipped when nothing changed. A persistent resolution cache (skip
-  even the `pkg-config` call when the inputs are provably unchanged)
-  is a known, deferred enhancement, not a correctness gap — `pkg-config`
-  queries are cheap, local commands.
-- **`-isystem`** for imported (or vendored) public headers — undecided.
 - **`install`/packaging** rewriting dylib install names for imported
   shared libraries, or an opt-out from staging a system library into a
-  packaging tree — undecided; also moot today in a different sense:
-  there is no `distrib`/packaging target implemented at all yet
+  packaging tree — explicitly parked, not decided: to be tackled once
+  the cross-platform test harness itself is dealt with seriously, not
+  before. Also moot today in a different sense: there is no
+  `distrib`/packaging target implemented at all yet
   (`pkg`/`deb`/`rpm`/`msi` remain structural placeholders per
   `README.md`'s own Status section).

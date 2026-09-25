@@ -179,19 +179,23 @@ Implements the design described in `docs/spec/`. Known limitations:
 - Cycle detection reports failure rather than being silent (prototype
   behaviour).
 - Packaging targets (`pkg`, `port`, …) and full `share/` overlay testing
-  are structural placeholders.
+  are structural placeholders. `install DESTDIR=`/`distrib` rewriting
+  install names for imported shared libraries (or an opt-out from
+  staging a system library into a packaging tree) is explicitly parked
+  until the cross-platform test harness itself is tackled seriously.
 - Header dependency tracking (`-MMD -MP`, a header change rebuilds
   exactly the affected objects) works for `TOOLCHAIN=gcc`/`llvm`; MSVC
   has no equivalent yet (`cl.exe`'s own mechanism, `/showIncludes`, is
   stdout-based rather than a generated file, and needs wrapper-side
   parsing not built yet).
 - Imported libraries (`IMPORT=`, see `docs/spec/25-imported-libraries.md`)
-  re-resolve (including a `pkg-config` call) on every invocation rather
-  than caching the resolution itself — only re-*staging* is skipped when
-  nothing changed. `LIBS=<name>` link transitivity (own and imported
-  libraries alike) is implemented; header transitivity is not — a
-  framework must list every framework whose headers it actually
-  `#include`s, not just its direct one.
+  cache their `pkg-config` resolution per module (a second build with
+  nothing relevant changed makes no `pkg-config` calls at all), but the
+  cache doesn't detect a package silently upgraded in place with no
+  env/hook/`PKG_CONFIG_PATH` change. `LIBS=<name>` link transitivity
+  (own and imported libraries alike) is implemented; header transitivity
+  is not — a framework must list every framework whose headers it
+  actually `#include`s, not just its direct one.
 
 ## Methodology
 

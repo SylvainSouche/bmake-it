@@ -71,6 +71,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "brief-test-coverage-gaps-found": {
+    "active": true,
+    "id": "0f87-6ab6-0d3e-afe3",
+    "status": "recorded",
+    "type": "obs"
+  },
   "build-obj-os-arch-output": {
     "active": false,
     "id": "6f38-6a88-1836-3d88",
@@ -863,6 +869,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-resolution-cache": {
+    "active": true,
+    "id": "0f87-6ab6-0d63-eb19",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
@@ -1037,9 +1049,27 @@
     "status": "asserted",
     "type": "impl"
   },
+  "import-cache-hit-missing-found-guard-bug": {
+    "active": true,
+    "id": "0f87-6ab6-0d84-736e",
+    "status": "recorded",
+    "type": "obs"
+  },
   "import-link-transitivity-req": {
     "active": true,
     "id": "0f87-6ab5-8e3d-a85e",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "import-resolution-cache-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0d4a-8a15",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "import-resolution-cache-req": {
+    "active": true,
+    "id": "0f87-6ab6-0d57-b619",
     "status": "confirmed",
     "type": "req"
   },
@@ -1108,6 +1138,12 @@
     "id": "0f87-6ab5-8669-5878",
     "status": "recorded",
     "type": "dec"
+  },
+  "install-distrib-rewriting-deferred-topic": {
+    "active": true,
+    "id": "0f87-6ab6-08ec-2598",
+    "status": "recorded",
+    "type": "obs"
   },
   "install-env-script-req": {
     "active": true,

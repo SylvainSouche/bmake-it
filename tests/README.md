@@ -110,6 +110,12 @@ sh tests/harness/pack-cases.sh
 | 51 | `CXXSTD` defaults to `c++17` — a genuine C++20-only construct (`consteval`) fails under the default and builds/runs correctly with `CXXSTD=c++20` |
 | 52 | `OPENMP=yes` builds a real `omp parallel for` program that genuinely uses more than one thread; a compiler that can't accept `-fopenmp` at all (a fake `CC`) gets a clean `.error`, not an opaque compile failure |
 | 53 | `WARN=none` suppresses a vendored module's own warnings; `PUBLIC_HEADERS_SYSTEM=yes` on its framework means a consumer in a different framework isn't flooded with warnings from the vendored public header either (`-isystem`) — but the consumer's own code still reports its own warnings normally |
+| 54 | Header dependency tracking, the fourth case: a PROMOTED GENERATED header (yacc `-d` output, `INCL=`-promoted) triggers a cross-framework consumer to rebuild when regenerated with different content, same as a hand-written header |
+| 55 | `IMPORT=`: `_PKG_CONFIG_EXTRA_DIRS` (settable via a `mk/` hook) is searched for `.pc` files pkg-config's own defaults and `PKG_CONFIG_PATH` would never reach; without it, resolution fails cleanly |
+| 56 | `IMPORT=`: `PREREQS=` alone (no `LIBS=`) lets a consumer `#include` the imported header (compiles) but fails to *link* (undefined symbol) — adding `LIBS=` then links and runs, exactly like a compiled library |
+| 57 | `IMPORT=`: an externals framework shared via `PARENT_WS`, with a local shadow of the same framework name (both `IMPORT=`-resolved) — the local one wins for compiling, linking, and the actual symbol run, mirroring case 29 for compiled frameworks |
+| 58 | The persisted "swap test": the same library, once compiled from source and once `IMPORT=`-resolved, with the consumer module never touched across the swap — both link and run correctly |
+| 59 | `IMPORT=` resolution caching, verified with a real call-counting `pkg-config` stub: the first build makes real calls, an unchanged second build makes none, and a changed `PKG_CONFIG_PATH` triggers real re-resolution |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

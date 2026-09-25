@@ -244,8 +244,44 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_SYSROOT_DIR="${_IMPORT_SYSROOT}" PKG_CONFIG_LIB
 _IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
 _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 .    endif
+# @impl 0f87-6ab6-0d63-eb19
+# import-resolution-cache-req: "does a second build re-resolve" is a
+# real question, distinct from item 4's own staging cache -- pkg-config
+# is a subprocess call, worth skipping when nothing relevant to IT
+# changed, even though *staging* was already cheap to skip via
+# INPUTS_HASH_EXTRA. Cache key: everything the pkg-config call itself
+# depends on (IMPORT=, PKG_CONFIG_PATH, the extra-dirs list, TARGET/
+# TARGET_ARCH) -- NOT the resolved .pc file's own content/mtime, which
+# would need locating the .pc file first (a chicken-and-egg problem: you
+# can't skip the lookup to find what you'd need to detect if the lookup
+# result changed). So this cache correctly detects a changed env/hook/
+# PKG_CONFIG_PATH, but not a package silently upgraded in place with no
+# such change -- a known, narrower limitation than a content-aware
+# cache, not a correctness bug for what it does cover.
+_IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
+_IMPORT_FP != printf '%s' "IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH}" | cksum
+.    if exists(${_IMPORT_CACHE_FILE})
+_IMPORT_FP_CACHED != sed -n '1p' ${_IMPORT_CACHE_FILE} 2>/dev/null
+.    else
+_IMPORT_FP_CACHED =
+.    endif
+.    if ${_IMPORT_FP_CACHED} == ${_IMPORT_FP}
+# Cache hit: read the previously-resolved values back, no pkg-config
+# call this time. Mirrors the non-cached branch's own guard exactly --
+# a cached "not found" must leave _IMPORT_SOURCE genuinely undefined
+# too, or step 4 (probing) and the final .error would be silently
+# skipped in favor of a defined-but-empty resolution.
+_IMPORT_PC_FOUND != sed -n '2p' ${_IMPORT_CACHE_FILE}
+.      if ${_IMPORT_PC_FOUND} == "yes"
+_IMPORT_VERSION != sed -n '3p' ${_IMPORT_CACHE_FILE}
+_IMPORT_SOURCE  != sed -n '4p' ${_IMPORT_CACHE_FILE}
+_IMPORT_CFLAGS  != sed -n '5p' ${_IMPORT_CACHE_FILE}
+_IMPORT_LIBS    != sed -n '6p' ${_IMPORT_CACHE_FILE}
+_IMPORT_LIBDIR  != sed -n '7p' ${_IMPORT_CACHE_FILE}
+.      endif
+.    else
 _IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
-.    if ${_IMPORT_PC_FOUND} == "yes"
+.      if ${_IMPORT_PC_FOUND} == "yes"
 _IMPORT_VERSION != ${_IMPORT_PC_ENV} pkg-config --modversion ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
 _IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/dev/null
@@ -253,6 +289,12 @@ _IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/d
 # module's own consumers need (D2, import-link-transitivity-req).
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+.      endif
+# Write the cache regardless of hit/miss on _IMPORT_PC_FOUND itself --
+# a genuine "not found" is just as valid to cache as a genuine "found"
+# (a second build shouldn't re-probe pkg-config just to re-learn the
+# same absence either).
+_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && { echo '${_IMPORT_FP}'; echo '${_IMPORT_PC_FOUND}'; echo '${_IMPORT_VERSION}'; echo '${_IMPORT_SOURCE}'; echo '${_IMPORT_CFLAGS}'; echo '${_IMPORT_LIBS}'; echo '${_IMPORT_LIBDIR}'; } > ${_IMPORT_CACHE_FILE}; echo ok
 .    endif
 .  elif ${IMPORT:C/:.*//} == "prefix"
 _IMPORT_PREFIX_VAL = ${IMPORT:C/^[^:]*://}
