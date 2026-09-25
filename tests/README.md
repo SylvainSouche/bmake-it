@@ -109,6 +109,7 @@ sh tests/harness/pack-cases.sh
 | 50 | Link transitivity, `IMPORT=` side: a fake pkg-config package's real `Libs.private` entry follows it into a consumer that never mentions the private dependency at all |
 | 51 | `CXXSTD` defaults to `c++17` — a genuine C++20-only construct (`consteval`) fails under the default and builds/runs correctly with `CXXSTD=c++20` |
 | 52 | `OPENMP=yes` builds a real `omp parallel for` program that genuinely uses more than one thread; a compiler that can't accept `-fopenmp` at all (a fake `CC`) gets a clean `.error`, not an opaque compile failure |
+| 53 | `WARN=none` suppresses a vendored module's own warnings; `PUBLIC_HEADERS_SYSTEM=yes` on its framework means a consumer in a different framework isn't flooded with warnings from the vendored public header either (`-isystem`) — but the consumer's own code still reports its own warnings normally |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

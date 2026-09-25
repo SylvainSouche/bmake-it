@@ -16,6 +16,7 @@ BSD-make-native equivalent, introduced by this project.
 | Macro | Meaning | Status |
 |---|---|---|
 | `PREREQS=<fw1> <fw2> ...` | **Mandatory**, even empty (`PREREQS=`). Ordered, space-delimited list of frameworks this one may `LIBS=`-link against and see the public headers of. All entries implicitly public — no per-entry visibility qualifier. Also doubles as the framework auto-discovery signal | New (`REQ-framework-prereqs-macro-req`, `REQ-prereqs-mandatory-even-empty-req`) |
+| `PUBLIC_HEADERS_SYSTEM=yes` | This framework's public headers reach every `PREREQS=`-consumer via `-isystem` instead of `-I` — for a framework that wraps or vendors third-party code, so a consumer isn't flooded with warnings originating from headers it doesn't own | New (`REQ-public-headers-system-req`) |
 
 ## Module makefile — executable (`.include <mk.prog.mk>`)
 
@@ -137,4 +138,6 @@ Full detail: `70-documentation-generation.md`.
 | `SANITIZE=<name>[,<name>...]` | No BSD-make-native concept of sanitizer instrumentation as a selectable unit spanning `CFLAGS`/`CXXFLAGS`/`LDFLAGS`; see `40-cli-reference.md` (`REQ-sanitizer-support-req`) |
 | `CXXSTD=<std>` | C++ language standard, default `c++17`. `-std=<std>` (gcc/clang) or `/std:<std>` (msvc, same spelling — no translation table needed) (`REQ-cxxstd-macro-req`) |
 | `OPENMP=yes\|no` | OpenMP support, default `no`. Real `-fopenmp` acceptance is *probed* (compile-only check), not assumed — a compiler that can't actually provide it is a parse-time `.error`, not an opaque failure deep in the build (`REQ-openmp-macro-req`) |
+| `WARN=none` | Suppresses this module's own compile warnings (`-w`, a genuine master switch) — for a module compiling vendored third-party source. `-Wall -Wextra` is the default baseline otherwise (`REQ-warn-macro-req`) |
+| `PUBLIC_HEADERS_SYSTEM=yes` (framework makefile) | This framework's public headers reach any `PREREQS=`-consumer via `-isystem`, not `-I` — pairs with `WARN=` for a framework that wraps/vendors third-party code (`REQ-public-headers-system-req`) |
 | `PARENT_WS`, `PREREQS`, `PROG`, `LIB`, `LIBS`, `LIB_SHARED`, `INCL` | Domain-specific concepts (workspace parenting, framework prereqs, module identity/linking/header-promotion) that have no BSD-make equivalent at all |

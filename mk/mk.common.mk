@@ -146,6 +146,26 @@ CFLAGS   += ${DEBUG_FLAGS}
 CXXFLAGS += ${DEBUG_FLAGS}
 
 # ---------------------------------------------------------------------------
+# WARN= (warn-macro-req): -Wall -Wextra is the default compile-warning
+# baseline (there was none before this -- confirmed by grep, not assumed;
+# see no-default-warning-baseline). WARN=none suppresses it for a module
+# compiling vendored third-party source via -w, a genuine master switch
+# that fully suppresses warnings regardless of whether it's added before
+# or after -Wall -Wextra on the command line (verified: `-Wall -Wextra
+# -w` and `-w -Wall -Wextra` both suppress a real, deliberately-triggered
+# warning) -- so ordering here doesn't matter. A sibling module with no
+# WARN= override keeps reporting its own warnings normally.
+# @impl 0f87-6ab6-02b1-4336
+# ---------------------------------------------------------------------------
+WARN ?=
+CFLAGS   += -Wall -Wextra
+CXXFLAGS += -Wall -Wextra
+.if ${WARN} == "none"
+CFLAGS   += -w
+CXXFLAGS += -w
+.endif
+
+# ---------------------------------------------------------------------------
 # C++ source extensions (cxx-link-driver-selection-req) -- the single shared
 # list mk.prog.mk/mk.lib.mk use both to dispatch a source file to ${CXX} at
 # compile time and to decide whether a module's final link needs ${CXX}

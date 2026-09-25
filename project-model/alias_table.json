@@ -1019,6 +1019,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-warn-and-public-headers-system": {
+    "active": true,
+    "id": "0f87-6ab6-02b1-4336",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-win-host-detection": {
     "active": true,
     "id": "0f87-6a98-96de-1355",
@@ -1577,6 +1583,12 @@
     "status": "proposed",
     "type": "nreq"
   },
+  "no-default-warning-baseline": {
+    "active": true,
+    "id": "0f87-6ab6-0269-6559",
+    "status": "recorded",
+    "type": "obs"
+  },
   "no-four-level-header-visibility": {
     "active": true,
     "id": "6f38-6a89-b763-b866",
@@ -1834,6 +1846,18 @@
     "id": "0f87-6a9a-c666-3b42",
     "status": "recorded",
     "type": "dec"
+  },
+  "public-headers-system-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0296-570f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "public-headers-system-req": {
+    "active": true,
+    "id": "0f87-6ab6-02a6-cdc0",
+    "status": "confirmed",
+    "type": "req"
   },
   "qemu-tcg-x86-64-boot-stall-on-host": {
     "active": true,
@@ -2516,6 +2540,18 @@
   "vm-nesting-reentrancy-guard-req": {
     "active": true,
     "id": "0f87-6aa7-c4f7-414a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "warn-macro-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0279-a275",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "warn-macro-req": {
+    "active": true,
+    "id": "0f87-6ab6-02a1-8412",
     "status": "confirmed",
     "type": "req"
   },

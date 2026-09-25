@@ -107,13 +107,22 @@ _PREREQ_BASE.${_p} = ${_pws}
 .      endfor
 .    endif
 .    if defined(_PREREQ_BASE.${_p})
+# public-headers-system-req (D3): see mk.prog.mk's identical comment.
+.      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
+_PREREQ_SYS.${_p} != bmake -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
+.      endif
+.      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
+_INCFLAG.${_p} = -isystem
+.      else
+_INCFLAG.${_p} = -I
+.      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/include)
-CFLAGS   += -I${_PREREQ_BASE.${_p}}/${_p}/include
-CXXFLAGS += -I${_PREREQ_BASE.${_p}}/${_p}/include
+CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
+CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
 .      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include)
-CFLAGS   += -I${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-CXXFLAGS += -I${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
+CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
+CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
 .      endif
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
 LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
