@@ -485,6 +485,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "fetch-cache-never-committed-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e33-9d3b",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-distinfo-checksum-req": {
     "active": true,
     "id": "0f87-6ab6-4e2d-fb96",
