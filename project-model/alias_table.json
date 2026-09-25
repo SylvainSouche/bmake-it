@@ -869,6 +869,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-resolution-cache": {
+    "active": true,
+    "id": "0f87-6ab6-0d63-eb19",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
