@@ -384,4 +384,57 @@ run:
 
 .PHONY: run
 
+# ---------------------------------------------------------------------------
+# CXXSTD= C++ language standard (cxxstd-macro-req). -std=<value> for
+# gcc/clang; msvc-cc-wrapper.sh translates the same spelling to
+# /std:<value> for cl.exe (cl.exe's own /std: flag already uses the
+# identical "c++17"/"c++20" spelling, no translation table needed).
+# @impl 0f87-6ab6-00e8-b2f8
+# ---------------------------------------------------------------------------
+CXXSTD ?= c++17
+CXXFLAGS += -std=${CXXSTD}
+
+# ---------------------------------------------------------------------------
+# OPENMP= (openmp-macro-req). Real -fopenmp acceptance is PROBED, not
+# assumed, for gcc/clang -- a compile-only check (no #include, no
+# pragma; just confirms the flag itself is accepted) against a trivial
+# empty main. Skipped for TOOLCHAIN=msvc: cl.exe's own /openmp support
+# (added via msvc-cc-wrapper.sh translating -fopenmp) has been stable
+# for a very long time, and couldn't be probed from this host either
+# way (no Cygwin+MSVC available to test against).
+#
+# MacPorts' own libomp path is added explicitly WHEN IT EXISTS ON DISK
+# -- belt-and-suspenders, empirically found unnecessary on this exact
+# MacPorts LLVM 22 install (confirmed via `clang -fopenmp -### ...`:
+# the driver itself already injects -I/opt/local/include/libomp and
+# -L/opt/local/lib/libomp -lomp for -fopenmp, MacPorts' own LLVM package
+# configuration, not generic clang behavior) but not guaranteed for
+# every MacPorts LLVM version, and Apple's own Xcode clang has no such
+# wiring at all. Homebrew's/pkgsrc's own libomp layouts were not
+# checked (not installed on this host) -- OPENMP=yes there may need an
+# explicit mk/ hook adding -I/-L until a real Homebrew/pkgsrc host can
+# confirm whether the same belt-and-suspenders treatment is needed.
+# @impl 0f87-6ab6-00e8-b2f8
+# ---------------------------------------------------------------------------
+OPENMP ?= no
+.if ${OPENMP} == "yes"
+.  if ${TOOLCHAIN} == "msvc"
+_OPENMP_SUPPORTED = yes
+.  else
+_OPENMP_PROBE != printf 'int main(void){return 0;}' | ${CC} -fopenmp -x c - -c -o /dev/null 2>/dev/null && echo yes || echo no
+_OPENMP_SUPPORTED = ${_OPENMP_PROBE}
+.  endif
+.  if ${_OPENMP_SUPPORTED} != "yes"
+.    error "OPENMP=yes requested but ${CC} does not accept -fopenmp -- install an OpenMP-capable compiler (MacPorts/Homebrew llvm or gcc both bundle libomp/libgomp; Apple's own Xcode clang does not) or unset OPENMP="
+.  endif
+CFLAGS   += -fopenmp
+CXXFLAGS += -fopenmp
+LDFLAGS  += -fopenmp
+.  if exists(/opt/local/include/libomp) && exists(/opt/local/lib/libomp)
+CFLAGS   += -I/opt/local/include/libomp
+CXXFLAGS += -I/opt/local/include/libomp
+LDFLAGS  += -L/opt/local/lib/libomp
+.  endif
+.endif
+
 .endif # _MK_COMMON_MK_

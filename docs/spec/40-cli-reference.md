@@ -82,6 +82,16 @@ variables directly, appended via `+=` in a module's makefile:
   `YFLAGS`, `LFLAGS` — BSD make's own native variables, unchanged. No
   `LOCAL_*FLAGS`-style wrapper macros the way real `mkmk` had
   (`REQ-flags-reuse-bsd-native-vars-req`).
+- **`CXXSTD=<std>`** (default `c++17`): C++ language standard, a new,
+  project-specific macro (there is no BSD-make-native concept of a
+  language-standard selector). Translated per-toolchain — `-std=<std>`
+  for gcc/clang, `/std:<std>` for msvc — but the *value* itself is
+  unaffected by the optimization-flags question above, which remains
+  separately unresolved (`REQ-cxxstd-macro-req`).
+- **`OPENMP=yes\|no`** (default `no`): real `-fopenmp` compiler
+  acceptance is probed before use, not assumed — a compiler that can't
+  actually provide it fails at parse time with a clear message, not an
+  opaque error deep in the build (`REQ-openmp-macro-req`).
 
 ## `make` targets
 

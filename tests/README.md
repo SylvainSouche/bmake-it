@@ -107,6 +107,8 @@ sh tests/harness/pack-cases.sh
 | 48 | `IMPORT=` resolution precedence: each ladder step (env/CLI, `mk/` hook, pkg-config, probing) proven individually reachable, then proven to lose to the next higher-precedence step once both are available |
 | 49 | Link transitivity, compiled side: a three-level static chain (app → libb → libc) where `app.m` declares only `LIBS=b` -- `libc` still links and runs, pulled in via `libb`'s own recorded `.linkdeps` |
 | 50 | Link transitivity, `IMPORT=` side: a fake pkg-config package's real `Libs.private` entry follows it into a consumer that never mentions the private dependency at all |
+| 51 | `CXXSTD` defaults to `c++17` — a genuine C++20-only construct (`consteval`) fails under the default and builds/runs correctly with `CXXSTD=c++20` |
+| 52 | `OPENMP=yes` builds a real `omp parallel for` program that genuinely uses more than one thread; a compiler that can't accept `-fopenmp` at all (a fake `CC`) gets a clean `.error`, not an opaque compile failure |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

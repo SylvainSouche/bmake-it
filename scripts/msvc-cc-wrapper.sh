@@ -77,6 +77,15 @@ while [ $# -gt 0 ]; do
             # is what cl.exe's single-driver ASan model expects.
             cflags="$cflags /${arg#-}"
             ;;
+        -std=*)
+            # cl.exe's own /std: flag already uses the identical
+            # "c++17"/"c++20" spelling CXXSTD= does -- no translation
+            # table needed, just the switch character.
+            cflags="$cflags /std:${arg#-std=}"
+            ;;
+        -fopenmp)
+            cflags="$cflags /openmp"
+            ;;
         -shared)
             building_dll=yes
             linkflags="$linkflags /DLL"

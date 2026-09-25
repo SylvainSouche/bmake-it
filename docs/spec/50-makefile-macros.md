@@ -135,4 +135,6 @@ Full detail: `70-documentation-generation.md`.
 |---|---|
 | `TOOLCHAIN=gcc\|llvm` | No BSD-make-native concept of a toolchain *bundle* (compiler+linker+archiver as one selectable unit) (`REQ-toolchain-cli-variable-req`) |
 | `SANITIZE=<name>[,<name>...]` | No BSD-make-native concept of sanitizer instrumentation as a selectable unit spanning `CFLAGS`/`CXXFLAGS`/`LDFLAGS`; see `40-cli-reference.md` (`REQ-sanitizer-support-req`) |
+| `CXXSTD=<std>` | C++ language standard, default `c++17`. `-std=<std>` (gcc/clang) or `/std:<std>` (msvc, same spelling — no translation table needed) (`REQ-cxxstd-macro-req`) |
+| `OPENMP=yes\|no` | OpenMP support, default `no`. Real `-fopenmp` acceptance is *probed* (compile-only check), not assumed — a compiler that can't actually provide it is a parse-time `.error`, not an opaque failure deep in the build (`REQ-openmp-macro-req`) |
 | `PARENT_WS`, `PREREQS`, `PROG`, `LIB`, `LIBS`, `LIB_SHARED`, `INCL` | Domain-specific concepts (workspace parenting, framework prereqs, module identity/linking/header-promotion) that have no BSD-make equivalent at all |

@@ -293,6 +293,18 @@
     "status": "recorded",
     "type": "obs"
   },
+  "cxxstd-default-dec": {
+    "active": true,
+    "id": "0f87-6ab6-00b9-ac37",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cxxstd-macro-req": {
+    "active": true,
+    "id": "0f87-6ab6-00c4-1e52",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cygwin-native-vs-mingw-cross-are-separate-packages": {
     "active": true,
     "id": "6f38-6a8a-085d-2587",
@@ -800,6 +812,12 @@
   "impl-cxx-link-driver-selection": {
     "active": true,
     "id": "0f87-6ab5-7f76-0dcf",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-cxxstd-openmp": {
+    "active": true,
+    "id": "0f87-6ab6-00e8-b2f8",
     "status": "verified",
     "type": "impl"
   },
@@ -1576,6 +1594,18 @@
     "id": "6f38-6a8a-0550-58a7",
     "status": "proposed",
     "type": "nreq"
+  },
+  "openmp-macro-dec": {
+    "active": true,
+    "id": "0f87-6ab6-00d7-6631",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "openmp-macro-req": {
+    "active": true,
+    "id": "0f87-6ab6-00e3-4fd3",
+    "status": "confirmed",
+    "type": "req"
   },
   "order-cache-auto-triggered": {
     "active": true,
