@@ -872,7 +872,7 @@
   "impl-import-resolution-cache": {
     "active": true,
     "id": "0f87-6ab6-0d63-eb19",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-incl-promotes-generated-headers": {
