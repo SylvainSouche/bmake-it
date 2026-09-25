@@ -1589,6 +1589,12 @@
     "status": "proposed",
     "type": "nreq"
   },
+  "openmp-macro-dec": {
+    "active": true,
+    "id": "0f87-6ab6-00d7-6631",
+    "status": "recorded",
+    "type": "dec"
+  },
   "order-cache-auto-triggered": {
     "active": true,
     "id": "6f38-6a91-03ec-8e6f",
