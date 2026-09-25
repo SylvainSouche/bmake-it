@@ -1841,6 +1841,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "public-headers-system-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0296-570f",
+    "status": "recorded",
+    "type": "dec"
+  },
   "qemu-tcg-x86-64-boot-stall-on-host": {
     "active": true,
     "id": "0f87-6a97-bd07-f29e",
