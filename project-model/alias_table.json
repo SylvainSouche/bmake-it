@@ -1049,6 +1049,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "import-cache-hit-missing-found-guard-bug": {
+    "active": true,
+    "id": "0f87-6ab6-0d84-736e",
+    "status": "recorded",
+    "type": "obs"
+  },
   "import-link-transitivity-req": {
     "active": true,
     "id": "0f87-6ab5-8e3d-a85e",
