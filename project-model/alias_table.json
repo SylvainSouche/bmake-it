@@ -1847,6 +1847,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "public-headers-system-req": {
+    "active": true,
+    "id": "0f87-6ab6-02a6-cdc0",
+    "status": "confirmed",
+    "type": "req"
+  },
   "qemu-tcg-x86-64-boot-stall-on-host": {
     "active": true,
     "id": "0f87-6a97-bd07-f29e",
