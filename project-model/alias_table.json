@@ -1577,6 +1577,12 @@
     "status": "proposed",
     "type": "nreq"
   },
+  "no-default-warning-baseline": {
+    "active": true,
+    "id": "0f87-6ab6-0269-6559",
+    "status": "recorded",
+    "type": "obs"
+  },
   "no-four-level-header-visibility": {
     "active": true,
     "id": "6f38-6a89-b763-b866",
