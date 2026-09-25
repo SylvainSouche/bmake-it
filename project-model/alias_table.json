@@ -485,6 +485,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "fetch-distinfo-checksum-req": {
+    "active": true,
+    "id": "0f87-6ab6-4e2d-fb96",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-import-binary-req": {
     "active": true,
     "id": "0f87-6ab6-4e1e-2778",
