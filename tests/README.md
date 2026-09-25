@@ -119,6 +119,7 @@ sh tests/harness/pack-cases.sh
 | 60 | `IMPORT=fetch:` (source kind): a genuine fetch+SHA-256-verify+extract+patch+compile+run against a `file://` fixture distfile; `FETCH_PATCHES=` actually changes the fetched source's behavior (verified by running the result); a fingerprint change pointing `FETCH_URL=` at an unreachable path but the same already-downloaded basename still succeeds; multiple `FETCH_URL=` mirrors with the first unreachable fail over to the second |
 | 61 | `IMPORT=fetch:`: a `distinfo` SHA-256 that doesn't match the served distfile fails the build cleanly (module/distfile/both hashes named, no corrupted file left behind), and a corrected `distinfo` then builds normally |
 | 62 | `IMPORT=fetch-bin:` (binary kind): a prebuilt `lib+header` tree is fetched/verified/extracted and staged via the same `_stage_import:` mechanism `pkg:`/`prefix:` use — no compile step — and a consumer links and runs against it |
+| 63 | `IMPORT=pkg:` against a real macOS-style dylib symlink chain (`libfoo.dylib` → `libfoo.34.dylib` → `libfoo.34.3.5.dylib`, matching real MacPorts/Homebrew layouts): both the unversioned and SONAME-equivalent major-version names must stage as valid, non-dangling, non-absolute symlinks, proven by actually running the linked consumer, not just inspecting the staged files (macOS-only; skips elsewhere) |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

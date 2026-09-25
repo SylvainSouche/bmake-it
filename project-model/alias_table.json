@@ -917,6 +917,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-staging-symlink-fix": {
+    "active": true,
+    "id": "0f87-6ab6-60c6-d25a",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
@@ -1126,6 +1132,12 @@
     "id": "0f87-6ab5-8a85-7d76",
     "status": "confirmed",
     "type": "req"
+  },
+  "import-staging-broken-dylib-symlinks-obs": {
+    "active": true,
+    "id": "0f87-6ab6-60ac-12e8",
+    "status": "recorded",
+    "type": "obs"
   },
   "import-staging-dec": {
     "active": true,

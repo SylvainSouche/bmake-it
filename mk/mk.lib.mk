@@ -503,7 +503,20 @@ _write_linkdeps:
 # lib${LIB}.* is copied into this module's own build/<KEY>/lib/, exactly
 # where a compiled library's own AR/link recipe would have written it --
 # so LIBS=<lib> in a consumer needs no changes at all (import-staging-req).
+# Every lib${LIB}.* entry is classified by its OWN basename (not by the
+# search extension, since macOS puts the version before the extension --
+# libfoo.34.dylib -- while ELF puts it after -- libfoo.so.34 -- so an
+# extension-anchored glob misses the macOS form entirely): a symlink is
+# followed to its real underlying file (relative or absolute target,
+# possibly multiple hops) and recreated fresh as a same-directory
+# relative symlink pointing at that file's basename, never copied
+# verbatim -- copying a real prefix's symlink as-is either goes dangling
+# (its target's name doesn't match the glob that found it) or leaks an
+# absolute path back into the original install, both observed producing
+# broken dylib symlinks in staged builds against real macOS packages
+# (PDAL/GDAL/GLFW) before this fix (import-staging-broken-dylib-symlinks-obs).
 # @impl 0f87-6ab5-8aa6-c2d0
+# @impl 0f87-6ab6-60c6-d25a
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}
 	@echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"
@@ -526,10 +539,28 @@ _stage_import:
 		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
 	else \
 		_found=no; \
-		for _ext in a so dylib; do \
-			if [ -f "${_IMPORT_LIBDIR}/lib${LIB}.$$_ext" ]; then \
-				cp -a "${_IMPORT_LIBDIR}"/lib${LIB}.$$_ext* ${_LIBOUT_DIR}/; \
-				_found=yes; \
+		for _f in "${_IMPORT_LIBDIR}"/lib${LIB}.*; do \
+			[ -e "$$_f" ] || continue; \
+			_base=$$(basename "$$_f"); \
+			case "$$_base" in \
+				*.a|*.so|*.so.*|*.dylib) ;; \
+				*) continue ;; \
+			esac; \
+			_found=yes; \
+			if [ -L "$$_f" ]; then \
+				_real=$$_f; \
+				while [ -L "$$_real" ]; do \
+					_target=$$(readlink "$$_real"); \
+					case "$$_target" in \
+						/*) _real=$$_target ;; \
+						*) _real=$$(dirname "$$_real")/$$_target ;; \
+					esac; \
+				done; \
+				if [ -f "$$_real" ]; then \
+					ln -sf "$$(basename "$$_real")" "${_LIBOUT_DIR}/$$_base"; \
+				fi; \
+			else \
+				cp -a "$$_f" "${_LIBOUT_DIR}/$$_base"; \
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
