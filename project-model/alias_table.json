@@ -2525,6 +2525,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "warn-macro-dec": {
+    "active": true,
+    "id": "0f87-6ab6-0279-a275",
+    "status": "recorded",
+    "type": "dec"
+  },
   "win-arm64-vm-construction-not-automatable": {
     "active": true,
     "id": "0f87-6a9a-af21-456a",
