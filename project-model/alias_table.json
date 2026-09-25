@@ -2537,6 +2537,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "warn-macro-req": {
+    "active": true,
+    "id": "0f87-6ab6-02a1-8412",
+    "status": "confirmed",
+    "type": "req"
+  },
   "win-arm64-vm-construction-not-automatable": {
     "active": true,
     "id": "0f87-6a9a-af21-456a",
