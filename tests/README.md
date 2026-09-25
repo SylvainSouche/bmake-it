@@ -105,6 +105,8 @@ sh tests/harness/pack-cases.sh
 | 46 | `mk.local.mk`'s hook cascade: all four conventional names (`pre.mk`, `pre.${TOOLCHAIN}.mk`, `pre.${TARGET}.mk`, `pre.${TARGET}_${TARGET_ARCH}.mk`) fire when they match (values queried from the real running bmake, not hardcoded), and a hook keyed to a different OS does not |
 | 47 | `IMPORT=pkg:<name>` end to end against a real (self-contained, fake) pkg-config `.pc` file: header+lib staging, a plain `LIBS=`-consuming module needs no IMPORT-specific change, only `IMPORT_HEADERS=` is visible (a sibling header in the same prefix is not), and an unresolvable import fails loudly naming what was tried |
 | 48 | `IMPORT=` resolution precedence: each ladder step (env/CLI, `mk/` hook, pkg-config, probing) proven individually reachable, then proven to lose to the next higher-precedence step once both are available |
+| 49 | Link transitivity, compiled side: a three-level static chain (app → libb → libc) where `app.m` declares only `LIBS=b` -- `libc` still links and runs, pulled in via `libb`'s own recorded `.linkdeps` |
+| 50 | Link transitivity, `IMPORT=` side: a fake pkg-config package's real `Libs.private` entry follows it into a consumer that never mentions the private dependency at all |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

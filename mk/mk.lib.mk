@@ -145,8 +145,21 @@ LDFLAGS += -Wl,-rpath,${_d}
 .endif
 
 # @impl 0f87-6a98-76c2-a96e
+# import-link-transitivity-req: -l${_l} alone only satisfies THIS
+# module's own direct reference -- ${_l}'s own transitive deps (its
+# lib${_l}.linkdeps, written by that module itself, whether compiled or
+# imported) are appended too, so a consumer never has to list them by
+# hand. No found-guard against the same name resolving in more than one
+# _LIB_SEARCH_DIRS entry -- duplicate -l/-L flags are harmless.
+# @impl 0f87-6ab5-8e46-cfb1
 .for _l in ${LIBS}
 LDFLAGS += -l${_l}
+.  for _d in ${_LIB_SEARCH_DIRS}
+.    if exists(${_d}/lib${_l}.linkdeps)
+_LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
+LDFLAGS += ${_LINKDEPS.${_l}}
+.    endif
+.  endfor
 .endfor
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
@@ -326,15 +339,42 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 .endfor
 
 .if !empty(IMPORT)
-all: _check_inputs_hash _create_dirs _stage_import
+all: _check_inputs_hash _create_dirs _stage_import _write_linkdeps
 	@echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
 .elif ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl
+all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl _write_linkdeps
 	@echo "===> built shared ${SHLIB_NAME}"
 .else
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl
+all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl _write_linkdeps
 	@echo "===> built static ${STATIC_NAME}"
 .endif
+
+# import-link-transitivity-req: this module's OWN flattened direct link
+# deps -- an imported library's is _IMPORT_LIBS (pkg-config's own
+# --libs --static, already the correct transitive set for that package)
+# minus its own self -l${LIB}/-L<owndir> tokens; a compiled library's is
+# its own LIBS=, computed the SAME way the consumer-side loop above
+# does (into a dedicated variable, not by filtering the shared LDFLAGS
+# pot, which also holds unrelated things like -Wl,-rpath, entries) --
+# recursive by construction: build order guarantees a dependency's own
+# .linkdeps already exists by the time this runs.
+# @impl 0f87-6ab5-8e46-cfb1
+.if !empty(IMPORT)
+_OWN_LINKDEPS = ${_IMPORT_LIBS:N-l${LIB}:N-L${_IMPORT_LIBDIR}}
+.else
+_OWN_LINKDEPS =
+.  for _l in ${LIBS}
+_OWN_LINKDEPS += -l${_l}
+.    for _d in ${_LIB_SEARCH_DIRS}
+.      if exists(${_d}/lib${_l}.linkdeps)
+_OWN_LINKDEPS += ${_LINKDEPS.${_l}}
+.      endif
+.    endfor
+.  endfor
+.endif
+
+_write_linkdeps:
+	@echo "${_OWN_LINKDEPS}" > ${_LIBOUT_DIR}/lib${LIB}.linkdeps
 
 # import-staging-req: only IMPORT_HEADERS= is staged (never the whole
 # resolved include dir -- that would leak every unrelated package under
@@ -445,6 +485,6 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import help
+.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _write_linkdeps help
 .endif
 

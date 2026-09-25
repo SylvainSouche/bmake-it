@@ -188,9 +188,10 @@ Implements the design described in `docs/spec/`. Known limitations:
 - Imported libraries (`IMPORT=`, see `docs/spec/25-imported-libraries.md`)
   re-resolve (including a `pkg-config` call) on every invocation rather
   than caching the resolution itself — only re-*staging* is skipped when
-  nothing changed. Link transitivity (a static library's own `LIBS=`
-  automatically following it into a consumer) is not implemented yet,
-  for compiled or imported libraries alike.
+  nothing changed. `LIBS=<name>` link transitivity (own and imported
+  libraries alike) is implemented; header transitivity is not — a
+  framework must list every framework whose headers it actually
+  `#include`s, not just its direct one.
 
 ## Methodology
 

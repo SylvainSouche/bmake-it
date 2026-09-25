@@ -119,12 +119,46 @@ architecture on the same OS — Homebrew's `/opt/homebrew` on arm64 vs
 `/usr/local` on amd64, or a cross sysroot — can be expressed
 (`REQ-local-mk-arch-variant-req`). See `50-makefile-macros.md`.
 
+## Link transitivity
+
+A module's `LIBS=<name>` automatically pulls in `<name>`'s own
+transitive link dependencies, not just `-l<name>` itself, uniformly for
+compiled and imported static libraries (`REQ-import-link-transitivity-
+req`). Every library module — whether it compiles `SRCS` or resolves
+via `IMPORT=` — writes its own flattened direct link deps to
+`lib<LIB>.linkdeps`, alongside `lib<LIB>.*` itself (so it travels
+through the existing copy-up mechanism and is found via the existing
+`_LIB_SEARCH_DIRS`, no new search path). A consumer's `LIBS=<name>` loop
+reads and appends `<name>`'s own `.linkdeps` content in addition to
+`-l<name>`.
+
+- **Compiled library**: its `.linkdeps` content is its own `LIBS=`,
+  each already expanded through *their* own `.linkdeps` files —
+  recursive by construction, since build order already guarantees a
+  dependency is fully built (`.linkdeps` included) before anything that
+  depends on it starts. A three-level, purely-compiled chain (app →
+  libb → libc, where `app.m` declares only `LIBS=b`) proves this: the
+  final link line includes `-lc` with no `LIBS=c` anywhere in `app.m`'s
+  own makefile.
+- **Imported library**: its `.linkdeps` content is `pkg-config --libs
+  --static`'s own output (already the correct transitive set for that
+  package, including `Libs.private`) minus its own self `-l<LIB>`/
+  `-L<owndir>` tokens. A real `Libs.private` entry (the case a project
+  like GDAL privately linking PROJ actually hits) was verified
+  end-to-end: the private dependency's symbol resolves and runs
+  correctly in a consumer that never mentions it.
+- This changes existing behavior for **every** module's `LIBS=`, not
+  just `IMPORT=` ones — a compiled static library's own transitive deps
+  now follow it automatically where they previously required every
+  consumer to list them by hand. In scope deliberately: the objective is
+  that imported and compiled libraries be indistinguishable to a
+  consumer, and that has to hold for linking too, not just headers.
+- No found-guard against the same library name resolving in more than
+  one `_LIB_SEARCH_DIRS` entry (a shadowing scenario) — duplicate
+  `-l`/`-L` flags are harmless to a linker, an accepted simplification.
+
 ## What this chapter does not yet cover
 
-- **Link transitivity** (a static library's own `LIBS=`/`Libs.private`
-  automatically following it into a consumer) — a separate mechanism,
-  applying uniformly to compiled and imported libraries alike, tracked
-  as its own follow-on work.
 - **Header transitivity** — explicitly rejected: if framework A has
   `PREREQS=B` and B's public headers `#include` C's, A must list
   `PREREQS=C` itself. No transitive `PREREQS=` resolution.

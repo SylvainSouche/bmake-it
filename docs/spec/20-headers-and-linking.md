@@ -68,6 +68,14 @@ same framework. A module's private `include/` stays private regardless
 of who links against it. Header visibility is driven **exclusively** by
 the containing framework's `PREREQS=`.
 
+`LIBS=<name>` is also **transitive**: it pulls in `<name>`'s own link
+dependencies automatically, not just `-l<name>` itself, whether `<name>`
+is a compiled or an `IMPORT=`-resolved library
+(`REQ-import-link-transitivity-req`, `25-imported-libraries.md`). This
+is the one exception to "no effect beyond linking itself" — transitivity
+is still purely about *what gets linked*, never about header visibility,
+which stays exclusively `PREREQS=`-driven.
+
 ## Imported libraries
 
 A library module may import a prebuilt library instead of compiling one

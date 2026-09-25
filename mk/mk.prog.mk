@@ -131,8 +131,18 @@ LDFLAGS += -Wl,-rpath,${_d}
 .endif
 
 # @impl 0f87-6a98-76c2-a96e
+# import-link-transitivity-req: see mk.lib.mk's identical comment -- a
+# PROG has no lib${LIB}.linkdeps of its own to write (nothing links
+# against a PROG), only the consumer-side read.
+# @impl 0f87-6ab5-8e46-cfb1
 .for _l in ${LIBS}
 LDFLAGS += -l${_l}
+.  for _d in ${_LIB_SEARCH_DIRS}
+.    if exists(${_d}/lib${_l}.linkdeps)
+_LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
+LDFLAGS += ${_LINKDEPS.${_l}}
+.    endif
+.  endfor
 .endfor
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
