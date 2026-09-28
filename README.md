@@ -199,10 +199,23 @@ Implements the design described in `docs/spec/`. Known limitations:
 - `IMPORT=fetch:`/`fetch-bin:` (see
   `docs/spec/26-fetched-external-sources.md`) fetches, verifies
   (SHA-256), extracts, and optionally patches a public library's source
-  or a prebuilt release at build time, BSD-ports style. `WRKSRC=`
-  override for a multi-top-level-directory archive, `FETCH_PATCH_ARGS=`,
-  and `MASTER_SITES=`-style mirror-list indirection are not implemented;
-  `install`/`distrib` interaction is parked with the rest of that work.
+  or a prebuilt release at build time, BSD-ports style. `FETCH_BUILD=
+  autotools|cmake|meson|custom` delegates the fetched source to its own
+  build system instead of compiling it as `SRCS=`, for a real project
+  too complex for a hand-picked source list — cross-compiling via
+  `FETCH_BUILD=cmake`/`meson` is not implemented (CC/CXX's cross flags
+  are silently dropped rather than erroring); `autotools` cross-compiles
+  correctly. `WRKSRC=` override for a multi-top-level-directory archive,
+  `FETCH_PATCH_ARGS=`, and `MASTER_SITES=`-style mirror-list indirection
+  are not implemented; `install`/`distrib` interaction is parked with
+  the rest of that work.
+- `REQUIRES=<name> [<name> ...]` (see
+  `docs/spec/27-prerequisite-software.md`) declares external software a
+  module needs already installed — not fetched, imported, or staged by
+  Bmake It, just checked (`pkg-config --exists` then `command -v`) and
+  errored on cleanly if missing. No version constraints, no per-platform
+  install-command mapping, and not cross-sysroot-aware (checks the build
+  host, not a cross target's own sysroot).
 
 ## Methodology
 

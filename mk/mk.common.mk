@@ -457,4 +457,37 @@ LDFLAGS  += -L/opt/local/lib/libomp
 .  endif
 .endif
 
+# ---------------------------------------------------------------------------
+# REQUIRES= (requires-software-prereq-req): external prerequisite software
+# this module needs already installed -- not fetched, imported, or staged
+# by Bmake It (that's IMPORT=/fetch:/fetch-bin:/FETCH_BUILD=, a different
+# thing: those acquire and stage a library, this checks and errors). Each
+# name is checked via `pkg-config --exists`, falling back to `command -v`
+# for a CLI-tool-style prerequisite pkg-config wouldn't know about (cmake,
+# ogr2ogr, ...). A missing one is a parse-time .error naming the module
+# and which entry couldn't be found -- fails immediately, before any real
+# build work (including a slow FETCH_BUILD= configure) starts, matching
+# this project's existing CC/CXX-resolution and IMPORT=pkg:-resolution
+# failure style. No Find-module system, no version constraints, no per-
+# platform install-command database -- "just check or error", not all
+# that plumbing. Deliberately not cross-sysroot-aware: checks the HOST's
+# own pkg-config/PATH, same as IMPORT=pkg:'s own non-cross-aware fallback
+# -- for a genuinely cross-compiled target this answers "is it present
+# for a native build," not "is it present in the target's own sysroot".
+# Skipped for `clean`/`help` and a `-V` query (same guard already used by
+# mk.toolchain.llvm.mk/msvc.mk for their own parse-time resolution
+# failures) -- a missing prerequisite must never block cleaning a module
+# or asking for help.
+# @impl 0f87-6aba-6ced-1a19
+# ---------------------------------------------------------------------------
+REQUIRES ?=
+.if !empty(REQUIRES) && empty(.MAKEFLAGS:M-V*) && !make(clean) && !make(help)
+.for _r in ${REQUIRES}
+_REQUIRES_FOUND.${_r} != (command -v pkg-config >/dev/null 2>&1 && pkg-config --exists ${_r} 2>/dev/null && echo yes) || (command -v ${_r} >/dev/null 2>&1 && echo yes) || echo no
+.  if ${_REQUIRES_FOUND.${_r}} != "yes"
+.    error "REQUIRES=${_r}: not found via pkg-config or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.  endif
+.endfor
+.endif
+
 .endif # _MK_COMMON_MK_
