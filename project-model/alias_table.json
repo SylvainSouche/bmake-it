@@ -1049,6 +1049,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-requires-software-prereq": {
+    "active": true,
+    "id": "0f87-6aba-6ced-1a19",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-run-id-history": {
     "active": true,
     "id": "0f87-6aaa-72d2-8ffc",
@@ -1282,6 +1288,12 @@
     "id": "6f38-6a89-b79b-673b",
     "status": "recorded",
     "type": "dec"
+  },
+  "lasviewer-prereq-software-gap-obs": {
+    "active": true,
+    "id": "0f87-6aba-6cb7-af3b",
+    "status": "recorded",
+    "type": "obs"
   },
   "layered-build-output-tree": {
     "active": true,
@@ -2038,6 +2050,18 @@
     "id": "0f87-6aaa-6a4c-d5f3",
     "status": "recorded",
     "type": "dec"
+  },
+  "requires-software-prereq-dec": {
+    "active": true,
+    "id": "0f87-6aba-6cbc-5881",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "requires-software-prereq-req": {
+    "active": true,
+    "id": "0f87-6aba-6cc5-fec0",
+    "status": "confirmed",
+    "type": "req"
   },
   "resource-file-definition": {
     "active": true,

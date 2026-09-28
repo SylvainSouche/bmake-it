@@ -122,6 +122,7 @@ sh tests/harness/pack-cases.sh
 | 63 | `IMPORT=pkg:` against a real macOS-style dylib symlink chain (`libfoo.dylib` → `libfoo.34.dylib` → `libfoo.34.3.5.dylib`, matching real MacPorts/Homebrew layouts): both the unversioned and SONAME-equivalent major-version names must stage as valid, non-dangling, non-absolute symlinks, proven by actually running the linked consumer, not just inspecting the staged files (macOS-only; skips elsewhere) |
 | 64 | `FETCH_BUILD=cmake`: a real `CMakeLists.txt` fixture project is fetched+patched then built via genuine `cmake -S/-B`/`--build`/`--install` (not skipped — this test caught a real bug: inherited `MAKEFLAGS` silently broke CMake's internal make/ninja invocation, `cmake --build` ran and printed nothing), installed to a local prefix, staged, and linked+run; an unchanged second build does not re-invoke cmake |
 | 65 | `FETCH_BUILD=custom`: a hand-rolled `FETCH_BUILD_CMD=` proves the forwarded `CC` and `BMK_FETCH_INSTALL_PREFIX` env vars are real and usable, and that `FETCH_BUILD=custom` with no `FETCH_BUILD_CMD=` fails cleanly naming the missing macro |
+| 66 | `REQUIRES=`: a fake pkg-config package proves the `pkg-config --exists` path, a fake shell-script tool on `PATH` proves the `command -v` fallback, and a genuinely missing entry fails cleanly (module + entry named) before any compile is attempted |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 
