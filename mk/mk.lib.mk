@@ -12,6 +12,17 @@ BMK_MKDIR = ${.CURDIR}
 
 .include "${BMK_MKDIR}/mk.common.mk"
 
+# fetch-build-forwarding-fix-req: a snapshot of LDFLAGS taken right here,
+# before any of THIS file's own consumer-side additions below (LIBS=/
+# PREREQS= -L/-l/-Wl,-rpath, entries) -- so _fetch_build: can forward
+# just the toolchain-level contribution (SANITIZE=/OPENMP=) to an
+# upstream build, not this module's own link flags for linking against
+# sibling frameworks/prereqs. Forwarding the full, later LDFLAGS broke
+# CMake's own "Check for working C compiler" step (an unrelated/stale
+# -l<name> or -Wl,-rpath, entry made CMake's own trial link fail).
+# @impl 0f87-6aba-a53b-3097
+_TOOLCHAIN_LDFLAGS = ${LDFLAGS}
+
 # ---------------------------------------------------------------------------
 # Local customization hooks (local-mk-hook-files-and-cascade-order-req)
 # Module level sees PARENT_WS's mk/ (outermost), workspace's, framework's,
@@ -38,9 +49,16 @@ LIB != echo ${_libdir} | sed 's/^lib//'
 # BMK_DLLIMPORT pattern (REQ-msvc-shared-lib-export-req): only ever
 # defined while compiling THIS module's own sources, never for a
 # consumer including the same public header elsewhere, so the header's
-# own #if resolves to export here and import there.
-CFLAGS   += -D${LIB:tu}_BUILDING
-CXXFLAGS += -D${LIB:tu}_BUILDING
+# own #if resolves to export here and import there. LIB= is a free-form
+# name (a fetched project's own upstream name, e.g. "laz-perf"), not
+# necessarily a valid C identifier once uppercased -- every character
+# that isn't [A-Za-z0-9_] is replaced with _ first (found empirically: a
+# dashed LIB= produced -DLAZ-PERF_BUILDING, not one valid macro define
+# but two broken compiler arguments).
+# @impl 0f87-6aba-a30f-2123
+_LIB_MACRO_NAME = ${LIB:tu:C/[^A-Za-z0-9_]/_/g}
+CFLAGS   += -D${_LIB_MACRO_NAME}_BUILDING
+CXXFLAGS += -D${_LIB_MACRO_NAME}_BUILDING
 
 # @impl 0f87-6a98-77f0-ca62
 .if !defined(LIB_SHARED)
@@ -182,6 +200,81 @@ LDFLAGS += ${_LINKDEPS.${_l}}
 .    endif
 .  endfor
 .endfor
+
+# relink-on-libs-change-req: see mk.prog.mk's identical comment -- each
+# LIBS= entry's actual resolved file (not just -l/-L flags) is a real
+# make prerequisite of the shared-lib link below, so a library rebuilt
+# elsewhere (including a PREREQS=-visible one in another framework)
+# triggers a genuine relink, not just a link-time existence check.
+# @impl 0f87-6aba-a303-153e
+_LIBS_FILES =
+.for _l in ${LIBS}
+_LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
+	for _f in "$$_d/lib${_l}.a" "$$_d/lib${_l}.so" "$$_d/lib${_l}.dylib" "$$_d/${_l}.lib"; do \
+		if [ -f "$$_f" ]; then echo "$$_f"; break 2; fi; \
+	done; \
+done
+_LIBS_FILES += ${_LIB_FILE.${_l}}
+.endfor
+
+# fetch-build-forwarding-fix-req: sibling FETCH_BUILD= modules' own
+# install prefixes, so a fetch-built module's cmake/meson/autotools
+# configure can find_package()/pkg-config another fetch-built module it
+# depends on (found empirically: copc-lib's own cmake configure could
+# not locate laz-perf, a sibling fetch-built module, without manual
+# help) -- no new macro to declare this: every *.m module directory in
+# THIS framework and every PREREQS=-visible framework is scanned by
+# convention (matching how _LIB_SEARCH_DIRS itself is built) for a
+# work/_install it may have already produced. An install prefix that
+# doesn't apply to this particular module is harmless noise to a build
+# tool's own search path, not an error.
+# @impl 0f87-6aba-a53b-3097
+_FETCH_SEARCH_FW_DIRS = ${_FWDIR}
+.for _p in ${_PREREQS}
+.  if defined(_PREREQ_BASE.${_p})
+_FETCH_SEARCH_FW_DIRS += ${_PREREQ_BASE.${_p}}/${_p}
+.  endif
+.endfor
+_FETCH_CMAKE_PREFIX_PATH != _pp=""; \
+	for _fw in ${_FETCH_SEARCH_FW_DIRS}; do \
+		for _d in "$$_fw"/*.m/work/_install; do \
+			[ -d "$$_d" ] && _pp="$$_pp$$_d;"; \
+		done; \
+	done; \
+	printf '%s' "$$_pp"
+
+# fetch-build-forwarding-fix-req: a native macOS build has no explicit
+# deployment target anywhere (unlike a CROSS macos build, which already
+# derives one from the SDK -- mk.toolchain.llvm.mk's _MACOS_MIN_VERSION)
+# -- so a FETCH_BUILD= module's own CMake/Meson/autotools configure is
+# free to pick a DIFFERENT default than whatever this project's own
+# native objects end up with, producing linker warnings about mismatched
+# minimum OS versions (found empirically). BMK_MACOS_MIN_VERSION=, if
+# set, wins; otherwise clang's OWN ambient default for an unflagged
+# native compile is probed directly (compile a trivial object, read its
+# real LC_BUILD_VERSION minos back via otool -l) -- NOT the active SDK's
+# own (higher) version, which is a DIFFERENT number (confirmed
+# empirically: SDK 27.0, but an unflagged compile's own minos was 26.0
+# -- querying the SDK version alone would have "fixed" the mismatch by
+# moving it to the opposite side).
+.if ${TARGET} == "macos"
+.  if defined(BMK_MACOS_MIN_VERSION) && !empty(BMK_MACOS_MIN_VERSION)
+_FETCH_MACOS_MIN_VERSION = ${BMK_MACOS_MIN_VERSION}
+.  else
+_FETCH_MACOS_MIN_VERSION != _t=$$(mktemp 2>/dev/null || echo /tmp/bmk-deploy-probe-$$$$); \
+	printf 'int main(void){return 0;}' | ${CC:[1]} -x c - -o "$$_t" 2>/dev/null && \
+	otool -l "$$_t" 2>/dev/null | awk '/minos/{print $$2; exit}'; \
+	rm -f "$$_t"
+.  endif
+# A parse-time string, not a `.if` inside _fetch_build:'s own recipe --
+# that recipe is one long backslash-continued shell script, and
+# splitting it across a `.if`/`.endif` boundary is unproven/risky here;
+# a plain variable substitution keeps the recipe a single, uninterrupted
+# shell script on every TARGET.
+_FETCH_DEPLOY_EXPORT = export MACOSX_DEPLOYMENT_TARGET="${_FETCH_MACOS_MIN_VERSION}";
+.else
+_FETCH_DEPLOY_EXPORT = :
+.endif
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
 _LIBOUT_DIR = ${.CURDIR}/${LIBDIR_LOCAL}
@@ -448,25 +541,40 @@ OBJS += ${_OBJDIR}/${_s:R}.o
 _create_dirs:
 	@mkdir -p ${_OBJDIR} ${_LIBOUT_DIR} ${.CURDIR}/${INCDIR_LOCAL}
 
+# nested-srcs-objdir-req: each compile rule below mkdir -p's its own
+# ${.TARGET:H} (the object's own subdirectory, from a nested SRCS=
+# entry like backends/foo.cpp) before invoking the compiler -- found
+# empirically that a fetched module's own re-extraction (_fetch_import:'s
+# rm -rf/mkdir -p ${_OBJDIR}) only recreates the TOP-LEVEL object dir,
+# clearing a subdirectory an external hook had already created, so a
+# multi-directory fetched source (Dear ImGui, with backend sources under
+# backends/) failed to compile on a first build.
+# @impl 0f87-6aba-a54a-f741
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
 ${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
 ${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+	@mkdir -p ${.TARGET:H}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${_SRC_BASE}/${_s}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
 	@mkdir -p ${.CURDIR}/${INCDIR_LOCAL}
 	@if [ -f ${_OBJDIR}/${_s:R}.h ]; then cp -f ${_OBJDIR}/${_s:R}.h ${.CURDIR}/${INCDIR_LOCAL}/; fi
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+	@mkdir -p ${.TARGET:H}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${_SRC_BASE}/${_s}
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: see mk.prog.mk's identical comment.
@@ -724,23 +832,35 @@ _fetch_import:
 # flags rather than erroring; a CMAKE_TOOLCHAIN_FILE/Meson cross-file
 # generator is deferred, not implemented (26-fetched-external-sources.md).
 # Cached via a fingerprint (work/.build-fp) over FETCH_BUILD=/
-# FETCH_BUILD_ARGS=/FETCH_BUILD_CMD=/CC/CXX/CFLAGS/CXXFLAGS/LDFLAGS AND
-# the extraction fingerprint itself, so a source or toolchain change
-# forces a real rebuild but nothing else does -- upstream configure+
-# build+install can be genuinely slow. Every -I/-L/-Wl,-rpath, path in
-# CFLAGS/CXXFLAGS/LDFLAGS is realpath-normalized before hashing: confirmed
-# (empirically) that a bare .CURDIR-derived path can be textually
-# /var/folders/... in one bmake invocation and /private/var/folders/...
-# (same real directory -- macOS's /tmp and /var are themselves symlinks
-# into /private) in another, which otherwise made this fingerprint flap
-# between two different values across the SAME unchanged build under a
-# tmpdir-based test harness, defeating the cache. MAKEFLAGS/MAKELEVEL/MFLAGS/MAKE
-# are unset before delegating -- inherited from the OUTER bmake process
+# FETCH_BUILD_ARGS=/FETCH_BUILD_CMD=/CC/CXX/CFLAGS/CXXFLAGS AND the
+# extraction fingerprint itself, so a source or toolchain change forces
+# a real rebuild but nothing else does -- upstream configure+build+
+# install can be genuinely slow. Every -I/-L/-Wl,-rpath, path in CFLAGS/
+# CXXFLAGS is realpath-normalized before hashing: confirmed (empirically)
+# that a bare .CURDIR-derived path can be textually /var/folders/... in
+# one bmake invocation and /private/var/folders/... (same real directory
+# -- macOS's /tmp and /var are themselves symlinks into /private) in
+# another, which otherwise made this fingerprint flap between two
+# different values across the SAME unchanged build under a tmpdir-based
+# test harness, defeating the cache. MAKEFLAGS/MAKELEVEL/MFLAGS/MAKE are
+# unset before delegating -- inherited from the OUTER bmake process
 # otherwise, and confirmed (empirically) to silently break CMake's own
 # internal make/ninja invocation: `cmake --build` ran, printed nothing,
 # and produced no build output at all, exactly the class of bug this
 # project's own run-tests.sh harness already clears these same
 # variables for when launching a nested bmake.
+#
+# fetch-build-forwarding-fix-req: this module's own fully-assembled
+# LDFLAGS (accumulating -L/-l/-Wl,-rpath, entries for linking against
+# SIBLING frameworks/prereqs -- meaningless, and found empirically
+# actively harmful, to an INDEPENDENT upstream build) is never
+# forwarded; only _TOOLCHAIN_LDFLAGS (a snapshot taken before any of
+# that, right after mk.common.mk's own SANITIZE=/OPENMP= contributions)
+# is. CMAKE_PREFIX_PATH (a sibling FETCH_BUILD= module's own install
+# prefix, so find_package() can see it) and, on macOS,
+# MACOSX_DEPLOYMENT_TARGET (so a fetched library never silently picks a
+# different minimum OS version than this project's own native objects,
+# which caused linker warnings) are also forwarded now.
 # @impl 0f87-6ab6-6562-0f89
 _fetch_build:
 .if ${_IMPORT_KIND:Uno} != "source-build"
@@ -766,8 +886,12 @@ _fetch_build:
 	}; \
 	_ncflags=$$(_normflags "${CFLAGS}"); \
 	_ncxxflags=$$(_normflags "${CXXFLAGS}"); \
-	_nldflags=$$(_normflags "${LDFLAGS}"); \
-	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=${CC} CXX=${CXX} CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_nldflags EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
+	_ntoolchainldflags=$$(_normflags "${_TOOLCHAIN_LDFLAGS}"); \
+	_npfxpath=""; \
+	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do \
+		_npfxpath="$$_npfxpath$$(realpath "$$_pp" 2>/dev/null || printf '%s' "$$_pp");"; \
+	done; \
+	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=${CC} CXX=${CXX} CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_ntoolchainldflags PREFIXPATH=$$_npfxpath DEPLOY=${_FETCH_MACOS_MIN_VERSION:U} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
 	if [ -f ${.CURDIR}/work/.build-fp ] && [ "$$(cat ${.CURDIR}/work/.build-fp)" = "$$_bfp" ]; then \
 		exit 0; \
 	fi; \
@@ -777,7 +901,12 @@ _fetch_build:
 	mkdir -p "$$_prefix" "$$_builddir"; \
 	_njobs=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); \
 	unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true; \
-	export CC="${CC}" CXX="${CXX}" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}"; \
+	export CC="${CC}" CXX="${CXX}" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${_TOOLCHAIN_LDFLAGS}"; \
+	export CMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}"; \
+	_pcpath=""; \
+	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do _pcpath="$$_pcpath$$_pp/lib/pkgconfig:"; done; \
+	[ -n "$$_pcpath" ] && export PKG_CONFIG_PATH="$$_pcpath$${PKG_CONFIG_PATH:-}"; \
+	${_FETCH_DEPLOY_EXPORT} \
 	case "${FETCH_BUILD}" in \
 		autotools) \
 			echo "===> FETCH_BUILD=autotools: configure && make && make install"; \
@@ -793,6 +922,7 @@ _fetch_build:
 			echo "===> FETCH_BUILD=cmake: configure && build && install"; \
 			( cmake -S ${_IMPORT_WRKSRC} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
 				-DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}" \
+				-DCMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}" \
 				${FETCH_BUILD_ARGS} && \
 			  cmake --build "$$_builddir" -j"$$_njobs" && \
 			  cmake --install "$$_builddir" ) || { echo "error: IMPORT=${IMPORT}: cmake build failed" >&2; exit 1; }; \
@@ -850,7 +980,7 @@ _stage_fetch_headers:
 .endif
 
 # @impl 0f87-6a98-8b7f-9215
-${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS}
+${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \

@@ -157,6 +157,26 @@ LDFLAGS += ${_LINKDEPS.${_l}}
 .  endfor
 .endfor
 
+# relink-on-libs-change-req: each LIBS= entry's *actual resolved file*
+# (not just its -l/-L flags) is a real make prerequisite of ${_BINOUT},
+# so a library rebuilt elsewhere -- including a PREREQS=-visible one in
+# another framework -- triggers a genuine relink here, not just a link-
+# time existence check (found empirically: a stale binary kept passing
+# because nothing in the prerequisite graph ever changed when a cross-
+# framework static library did). Empty when not yet built is fine --
+# the existing existence-check loop below still gives its own clear
+# error for that case; this only matters once the file DOES exist.
+# @impl 0f87-6aba-a303-153e
+_LIBS_FILES =
+.for _l in ${LIBS}
+_LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
+	for _f in "$$_d/lib${_l}.a" "$$_d/lib${_l}.so" "$$_d/lib${_l}.dylib" "$$_d/${_l}.lib"; do \
+		if [ -f "$$_f" ]; then echo "$$_f"; break 2; fi; \
+	done; \
+done
+_LIBS_FILES += ${_LIB_FILE.${_l}}
+.endfor
+
 _OBJDIR = ${.CURDIR}/${OBJDIR}
 _BINOUT = ${.CURDIR}/${BINDIR_LOCAL}/${PROG}
 
@@ -168,23 +188,34 @@ OBJS += ${_OBJDIR}/${_s:R}.o
 _create_dirs:
 	@mkdir -p ${_OBJDIR} ${.CURDIR}/${BINDIR_LOCAL}
 
+# nested-srcs-objdir-req: see mk.lib.mk's identical comment -- each
+# compile rule below mkdir -p's its own ${.TARGET:H} first, so a nested
+# SRCS= entry works regardless of what else may or may not have already
+# created its subdirectory.
+# @impl 0f87-6aba-a54a-f741
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
 ${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+	@mkdir -p ${.TARGET:H}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+	@mkdir -p ${.TARGET:H}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
 ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: absent on the first build of this
@@ -201,7 +232,7 @@ all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
 # @impl 0f87-6a98-8b7f-9215
-${_BINOUT}: ${OBJS}
+${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \

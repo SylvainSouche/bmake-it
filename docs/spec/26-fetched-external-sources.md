@@ -235,19 +235,47 @@ IMPORT_HEADERS=pdal
   preset's own configure/setup step (e.g. `-DWITH_TESTS=OFF`,
   `--disable-shared`). Not used by `custom`.
 
-**Toolchain forwarding**: `CC`/`CXX`/`CFLAGS`/`CXXFLAGS`/`LDFLAGS` are
-exported as environment variables into the build invocation, so the
-upstream project builds with the same compiler Bmake It is using — all
-three presets (and any sane `custom` command) honor these natively for
-a *native* build. For a cross build under `TOOLCHAIN=llvm`, `CC`/`CXX`
-already carry clang's `--target=`/`--sysroot=` flags
-(`mk.toolchain.llvm.mk`'s own cross machinery), which autotools handles
-correctly (`--host=<triple>`, derived from the same cross flags, plus a
-flags-laden `CC` autotools already knows how to use as-is) — but CMake's
-`-DCMAKE_C_COMPILER=`/Meson's compiler detection both expect a *bare*
-executable path, not a flags-laden string, so a cross build under
-`FETCH_BUILD=cmake`/`meson` does not error but silently loses the cross
-flags. A `CMAKE_TOOLCHAIN_FILE`/Meson cross-file generator is **not
+**Toolchain forwarding** (`fetch-build-forwarding-fix-req`): `CC`/`CXX`/
+`CFLAGS`/`CXXFLAGS` are exported as environment variables into the
+build invocation, so the upstream project builds with the same
+compiler Bmake It is using — all three presets (and any sane `custom`
+command) honor these natively for a *native* build. `LDFLAGS` is
+**not** the module's own fully-assembled `LDFLAGS` — that accumulates
+THIS module's own consumer-side `-L`/`-l`/`-Wl,-rpath,` entries for
+linking against sibling frameworks/prereqs, which is meaningless (and,
+found empirically, actively harmful — an unrelated or stale `-l<name>`
+made CMake's own "Check for working C compiler" trial link fail) to an
+independent upstream build. Only a snapshot taken *before* any of that
+(`_TOOLCHAIN_LDFLAGS`, covering just `SANITIZE=`/`OPENMP=`) is
+forwarded.
+
+Also forwarded:
+
+- **`CMAKE_PREFIX_PATH`/`PKG_CONFIG_PATH`** — every sibling
+  `FETCH_BUILD=` module's own install prefix, in this framework and
+  every `PREREQS=`-visible one, found by scanning `*.m/work/_install`
+  by convention (no macro to declare this). Lets one fetch-built
+  module's `find_package()`/pkg-config locate another (found
+  empirically: a `copc-lib`-class dependent could not locate a
+  `laz-perf`-class dependency's CMake package config without this).
+- **`MACOSX_DEPLOYMENT_TARGET`** (macOS only) — probed from an actual
+  unflagged native compile (`clang -x c - -o <tmp>`, then the real
+  `LC_BUILD_VERSION minos` read back via `otool -l`), **not** the
+  active SDK's own version, which is a different, higher number
+  (confirmed empirically: SDK 27.0, but an unflagged compile's own
+  `minos` was 26.0 — querying the SDK version alone would have "fixed"
+  the mismatched-deployment-target linker warning by moving it to the
+  opposite side). `BMK_MACOS_MIN_VERSION=`, if set, wins over the probe.
+
+For a cross build under `TOOLCHAIN=llvm`, `CC`/`CXX` already carry
+clang's `--target=`/`--sysroot=` flags (`mk.toolchain.llvm.mk`'s own
+cross machinery), which autotools handles correctly (`--host=<triple>`,
+derived from the same cross flags, plus a flags-laden `CC` autotools
+already knows how to use as-is) — but CMake's `-DCMAKE_C_COMPILER=`/
+Meson's compiler detection both expect a *bare* executable path, not a
+flags-laden string, so a cross build under `FETCH_BUILD=cmake`/`meson`
+does not error but silently loses the cross flags. A
+`CMAKE_TOOLCHAIN_FILE`/Meson cross-file generator is **not
 implemented** — deferred, see below.
 
 `MAKEFLAGS`/`MAKELEVEL`/`MFLAGS`/`MAKE` are explicitly unset before
@@ -260,11 +288,30 @@ project's own test harness already applies when launching a nested
 
 **Caching**: a separate fingerprint (`work/.build-fp`, covering
 `FETCH_BUILD=`/`FETCH_BUILD_ARGS=`/`FETCH_BUILD_CMD=`/`CC`/`CXX`/
-`CFLAGS`/`CXXFLAGS`/`LDFLAGS`, and the extraction fingerprint itself)
-skips re-running the upstream build when nothing relevant changed —
+`CFLAGS`/`CXXFLAGS`/the toolchain-only `LDFLAGS`/`CMAKE_PREFIX_PATH`/
+the deployment target, and the extraction fingerprint itself) skips
+re-running the upstream build when nothing relevant changed —
 `./configure`+`make` or a CMake/Meson full build can be genuinely slow,
 and a source or toolchain change already forces re-extraction (and so,
 transitively, a rebuild) via the extraction fingerprint it folds in.
+Every filesystem path folded into this fingerprint is `realpath`-
+normalized first — confirmed empirically that a bare `.CURDIR`-derived
+path can be textually `/var/folders/...` in one `bmake` invocation and
+`/private/var/folders/...` (same real directory — macOS's `/tmp` and
+`/var` are themselves symlinks into `/private`) in another, which
+otherwise flapped the fingerprint between two different values across
+the SAME unchanged build under a tmpdir-based test harness, defeating
+the cache.
+
+**Naming**: a fetched project's own build output filename must match
+`LIB=` exactly (`libfoo.{a,so,dylib}`, staged by the same
+`_stage_import:` mechanism `fetch-bin:` uses) — set `LIB=` to the
+upstream project's own name, the same requirement `fetch-bin:` already
+has. `LIB=` containing `-` (a common real upstream naming convention,
+e.g. `laz-perf`) is handled: the `<LIB>_BUILDING` export/import macro
+sanitizes every non-identifier character to `_` first (found
+empirically: an unsanitized dash produced `-DLAZ-PERF_BUILDING`, not
+one valid macro define but two broken compiler arguments).
 
 ## Binary kind (`fetch-bin:`)
 
@@ -320,6 +367,16 @@ list already set:
   `CC` and `BMK_FETCH_INSTALL_PREFIX` env vars being real and usable;
   `FETCH_BUILD=custom` with no `FETCH_BUILD_CMD=` fails cleanly, naming
   the missing macro.
+- `tests/cases/68-nested-srcs-subdir`: a `fetch:` module whose `SRCS=`
+  names a nested path (mirroring Dear ImGui's own `backends/` layout)
+  compiles correctly on a genuinely fresh, first extraction.
+- `tests/cases/69-fetch-build-forwarding`: two real, genuinely fetched
+  `FETCH_BUILD=cmake` modules where one depends on the other via
+  `find_package()` (mirroring `copc-lib`'s real dependency on
+  `laz-perf`) — proves `CMAKE_PREFIX_PATH` forwarding actually lets the
+  dependent's configure step find the dependency; the dependent's own
+  `LIB=` contains `-`, proving the sanitized `<LIB>_BUILDING` macro;
+  and (macOS) proves no mismatched-deployment-target linker warning.
 
 ## Not yet decided / deferred
 
