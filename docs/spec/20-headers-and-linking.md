@@ -76,6 +76,25 @@ is the one exception to "no effect beyond linking itself" — transitivity
 is still purely about *what gets linked*, never about header visibility,
 which stays exclusively `PREREQS=`-driven.
 
+## Relinking when a `LIBS=` entry changes
+
+Linking a `PROG`/shared `LIB` genuinely depends on the *resolved file*
+of every `LIBS=` entry — not just the `-l`/`-L` flags used to find it
+(`relink-on-libs-change-req`). Each entry's actual `lib<name>.{a,so,
+dylib}` path (searched the same way the link recipe's own existence
+check already does) is a real make prerequisite of the link step, so a
+library rebuilt elsewhere — including a `PREREQS=`-visible one in
+another framework — triggers a genuine relink, not just a link-time
+"has it been built at all" check.
+
+This was found missing in real use: nothing in the prerequisite graph
+changed when a cross-framework static library was rebuilt, so a
+consumer's already-built binary silently stayed stale — the classic
+symptom of testing against old code without realizing it. Resolving an
+entry to "not yet built" is unaffected by this (still caught, with the
+same clear error, by the existing existence check inside the recipe) —
+this only matters once the file *does* exist and then changes again.
+
 ## Imported libraries
 
 A library module may import a prebuilt library instead of compiling one

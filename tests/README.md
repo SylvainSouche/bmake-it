@@ -123,6 +123,9 @@ sh tests/harness/pack-cases.sh
 | 64 | `FETCH_BUILD=cmake`: a real `CMakeLists.txt` fixture project is fetched+patched then built via genuine `cmake -S/-B`/`--build`/`--install` (not skipped — this test caught a real bug: inherited `MAKEFLAGS` silently broke CMake's internal make/ninja invocation, `cmake --build` ran and printed nothing), installed to a local prefix, staged, and linked+run; an unchanged second build does not re-invoke cmake |
 | 65 | `FETCH_BUILD=custom`: a hand-rolled `FETCH_BUILD_CMD=` proves the forwarded `CC` and `BMK_FETCH_INSTALL_PREFIX` env vars are real and usable, and that `FETCH_BUILD=custom` with no `FETCH_BUILD_CMD=` fails cleanly naming the missing macro |
 | 66 | `REQUIRES=`: a fake pkg-config package proves the `pkg-config --exists` path, a fake shell-script tool on `PATH` proves the `command -v` fallback, and a genuinely missing entry fails cleanly (module + entry named) before any compile is attempted |
+| 67 | A program relinks when a `LIBS=` library changes in ANOTHER framework: rebuilds only the library module (never touching the consumer's own directory) and confirms the consumer's link command actually re-runs and the binary's output changes — proven to fail against the pre-fix code (a stale binary silently kept passing) |
+| 68 | A `fetch:` module's `SRCS=` names a nested path (mirroring Dear ImGui's own `backends/` layout) and compiles correctly on a genuinely fresh, first extraction |
+| 69 | Two real, genuinely fetched `FETCH_BUILD=cmake` modules where one depends on the other via `find_package()` (mirroring `copc-lib`'s real dependency on `laz-perf`): proves `CMAKE_PREFIX_PATH` forwarding lets the dependent's configure step find the dependency, proves the dependent's dashed `LIB=` produces a sanitized, valid `<LIB>_BUILDING` macro, and (macOS) proves no mismatched-deployment-target linker warning |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

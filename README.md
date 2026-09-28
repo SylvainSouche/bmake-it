@@ -195,17 +195,26 @@ Implements the design described in `docs/spec/`. Known limitations:
   env/hook/`PKG_CONFIG_PATH` change. `LIBS=<name>` link transitivity
   (own and imported libraries alike) is implemented; header transitivity
   is not — a framework must list every framework whose headers it
-  actually `#include`s, not just its direct one.
+  actually `#include`s, not just its direct one. A `PROG`/shared `LIB`
+  relinks when a `LIBS=` entry's actual resolved file changes, including
+  one rebuilt in another, `PREREQS=`-visible framework (see
+  `docs/spec/20-headers-and-linking.md`) — found missing in real use
+  (a stale binary silently kept passing) and fixed.
 - `IMPORT=fetch:`/`fetch-bin:` (see
   `docs/spec/26-fetched-external-sources.md`) fetches, verifies
   (SHA-256), extracts, and optionally patches a public library's source
   or a prebuilt release at build time, BSD-ports style. `FETCH_BUILD=
   autotools|cmake|meson|custom` delegates the fetched source to its own
   build system instead of compiling it as `SRCS=`, for a real project
-  too complex for a hand-picked source list — cross-compiling via
-  `FETCH_BUILD=cmake`/`meson` is not implemented (CC/CXX's cross flags
-  are silently dropped rather than erroring); `autotools` cross-compiles
-  correctly. `WRKSRC=` override for a multi-top-level-directory archive,
+  too complex for a hand-picked source list — the upstream build gets
+  only toolchain-level flags (never this module's own consumer-side
+  link flags, which broke CMake's own compiler check), plus
+  `CMAKE_PREFIX_PATH`/`PKG_CONFIG_PATH` covering sibling `FETCH_BUILD=`
+  modules' own install prefixes and, on macOS, a probed (not assumed)
+  `MACOSX_DEPLOYMENT_TARGET`. Cross-compiling via `FETCH_BUILD=cmake`/
+  `meson` is not implemented (CC/CXX's cross flags are silently dropped
+  rather than erroring); `autotools` cross-compiles correctly.
+  `WRKSRC=` override for a multi-top-level-directory archive,
   `FETCH_PATCH_ARGS=`, and `MASTER_SITES=`-style mirror-list indirection
   are not implemented; `install`/`distrib` interaction is parked with
   the rest of that work.

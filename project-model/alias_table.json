@@ -491,6 +491,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "fetch-build-forwarding-fix-req": {
+    "active": true,
+    "id": "0f87-6aba-a535-f242",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-build-req": {
     "active": true,
     "id": "0f87-6ab6-654d-0fde",
@@ -887,6 +893,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-fetch-build-forwarding-fix": {
+    "active": true,
+    "id": "0f87-6aba-a53b-3097",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-fetch-import": {
     "active": true,
     "id": "0f87-6ab6-4fe1-98d2",
@@ -971,6 +983,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-lib-macro-name-sanitize": {
+    "active": true,
+    "id": "0f87-6aba-a30f-2123",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-lib-shared-new-macro": {
     "active": true,
     "id": "0f87-6a98-77f0-ca62",
@@ -1025,6 +1043,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-nested-srcs-objdir": {
+    "active": true,
+    "id": "0f87-6aba-a54a-f741",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-prereqs-mandatory": {
     "active": true,
     "id": "0f87-6a98-76a7-f34f",
@@ -1047,6 +1071,12 @@
     "active": true,
     "id": "0f87-6a9a-b8d2-c192",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-relink-on-libs-change": {
+    "active": true,
+    "id": "0f87-6aba-a303-153e",
+    "status": "verified",
     "type": "impl"
   },
   "impl-requires-software-prereq": {
@@ -1292,6 +1322,12 @@
   "lasviewer-prereq-software-gap-obs": {
     "active": true,
     "id": "0f87-6aba-6cb7-af3b",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "lasviewer-second-round-bugs-obs": {
+    "active": true,
+    "id": "0f87-6aba-a265-f2ae",
     "status": "recorded",
     "type": "obs"
   },
@@ -1697,6 +1733,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "nested-srcs-objdir-req": {
+    "active": true,
+    "id": "0f87-6aba-a544-a193",
+    "status": "confirmed",
+    "type": "req"
+  },
   "netbsd-vm-flaky-ssh-was-filesystem-corruption": {
     "active": true,
     "id": "0f87-6a98-2997-bfb8",
@@ -2038,6 +2080,12 @@
     "id": "6f38-6a89-bc24-835e",
     "status": "recorded",
     "type": "dec"
+  },
+  "relink-on-libs-change-req": {
+    "active": true,
+    "id": "0f87-6aba-a2fc-5073",
+    "status": "confirmed",
+    "type": "req"
   },
   "report-flag-uniform-trigger": {
     "active": false,
