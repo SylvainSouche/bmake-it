@@ -133,6 +133,7 @@ sh tests/harness/pack-cases.sh
 | 74 | `IMPORT_LIB=none` (header-only import): a fake `.pc` file whose own `Libs:` field names a nonexistent library proves the lib-staging is genuinely suppressed, not just coincidentally empty, and the consumer builds and runs against the header alone |
 | 75 | `IMPORT_HEADERS=` with a glob entry (`gdal_*.h`) stages every match from a fake prefix mixing matching and unrelated headers — only the matches are staged, and the build genuinely links and runs against the real compiled library |
 | 76 | `bmake docs` scoping: a framework with `DOCS=no` and one with no public `include/` are both skipped with a clear message each; the workspace landing page lands under `build/docs/`, never colliding with a hand-written `docs/`; the landing page links only frameworks that actually got real docs (skips doxygen if not installed) |
+| 77 | `REQUIRES=header:<path>`: a templated/namespaced fake header (not plain C) is found via `CXXFLAGS`, then via `CFLAGS` alone, each building and running correctly, and composes with a plain-name `REQUIRES=` entry in the same list; a missing `-I` and a genuinely nonexistent header path each fail to parse with their own message, before any compile is attempted |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

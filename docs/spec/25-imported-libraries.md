@@ -114,6 +114,12 @@ staging path. Since there's no library, a consuming module needs no
 `LIBS=` entry for it either — just the ordinary framework-level include
 path a `PREREQS=`-visible (or same-framework) module already gets.
 
+This is the half of the original proposal that goes through the full
+`IMPORT=` module -- for a header-only dependency a module reaches via
+its own ordinary `CFLAGS+=`/`CXXFLAGS+=` instead (no `IMPORT=` module at
+all), see `REQUIRES=header:<path>` in `27-prerequisite-software.md`
+(`requires-header-form-req`) — a presence check only, no staging.
+
 ## Staging
 
 (`REQ-import-staging-req`)

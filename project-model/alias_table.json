@@ -1145,6 +1145,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-requires-header-form": {
+    "active": true,
+    "id": "0f87-6abe-49e1-15bc",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-requires-software-prereq": {
     "active": true,
     "id": "0f87-6aba-6ced-1a19",
@@ -2200,6 +2206,12 @@
     "id": "0f87-6aaa-6a4c-d5f3",
     "status": "recorded",
     "type": "dec"
+  },
+  "requires-header-form-req": {
+    "active": true,
+    "id": "0f87-6abe-49ca-e589",
+    "status": "confirmed",
+    "type": "req"
   },
   "requires-software-prereq-dec": {
     "active": true,
