@@ -123,8 +123,20 @@ LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
 .  endfor
 .endif
 
-# Always add framework lib path (created by earlier modules during ordered build)
+# prog-only-framework-ld-warning-fix-req: guarded the same way the
+# PREREQS= loop just above already is -- a framework holding only a
+# PROG (no LIB module at all) never creates its own build/<KEY>/lib/,
+# so an unconditional -L here produced a harmless but noisy
+# `ld: warning: search path ... not found` on every single link (found
+# in real use, Viewer: a program-only framework). A sibling LIB module
+# in the SAME framework, when one exists, has already built and
+# copied-up by the time this module's own makefile parses (modules
+# build in order, one fully completing before the next starts), so
+# this dir reliably exists whenever it's actually needed.
+# @impl 0f87-6abe-3f50-b644
+.if exists(${_FWDIR}/${BUILD_ROOT}/lib)
 LDFLAGS += -L${_FWDIR}/${BUILD_ROOT}/lib
+.endif
 _LIB_SEARCH_DIRS = ${_FWDIR}/${BUILD_ROOT}/lib
 .for _p in ${_PREREQS}
 .  if defined(_PREREQ_BASE.${_p}) && exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
@@ -231,6 +243,25 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
+# duplicate-linkdeps-fix-req: transitive .linkdeps expansion (above) can
+# legitimately name the same -l<name>/-L<dir>/-Wl,-rpath,<dir> more than
+# once -- two different LIBS= entries sharing a common transitive
+# dependency both carry it forward. Harmless to the linker itself (ld
+# just warns and ignores the repeat), but the warning is pure noise
+# (found in real use: "ignoring duplicate libraries" on every link).
+# First-occurrence-preserving, not a blind sort+uniq -- static link
+# order can matter; this never reorders, only drops an exact repeat of
+# something already seen.
+# @impl 0f87-6abe-3f50-0560
+_LDFLAGS_DEDUP != _out=""; \
+	for _f in ${LDFLAGS}; do \
+		case " $$_out " in \
+			*" $$_f "*) ;; \
+			*) _out="$$_out $$_f" ;; \
+		esac; \
+	done; \
+	printf '%s' "$$_out"
+
 # @impl 0f87-6a98-8b7f-9215
 ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
@@ -245,7 +276,7 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 		exit 1; \
 	fi
 .endfor
-	${_CCLINK} -o ${.TARGET} ${OBJS} ${LDFLAGS}
+	${_CCLINK} -o ${.TARGET} ${OBJS} ${_LDFLAGS_DEDUP}
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all

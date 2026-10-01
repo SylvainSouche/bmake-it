@@ -74,9 +74,26 @@ DOC_LICENSE_NOTICE =
 .  endif
 .endif
 
-# docs: generate this framework's own public-scope HTML docs + tag file.
+# bmake-docs-scoping-fix-req: DOCS=no opts a framework out entirely --
+# no Doxyfile, no output, no warnings. A framework with no PUBLIC
+# include/ (local/include only -- an app-only framework like a Viewer
+# that exposes nothing to PREREQS= consumers) is skipped the same way,
+# with one clear message, instead of running Doxygen against a
+# nonexistent INPUT and producing an empty page plus "INPUT ... does
+# not exist"/"No files to be processed" warnings (found in real use).
+# An imported-library framework (every module IMPORT=-resolved, nothing
+# of this project's own) is also skipped -- there is no SOURCE for this
+# project's own Doxygen comments to document, only a re-export of
+# someone else's headers.
+DOCS ?= yes
 # @impl 0f87-6aa9-025e-d5c5
+# @impl 0f87-6abe-3f73-763e
 docs:
+.if ${DOCS} == "no"
+	@echo "===> docs skipped for ${.CURDIR:T}: DOCS=no"
+.elif !exists(${.CURDIR}/include)
+	@echo "===> docs skipped for ${.CURDIR:T}: no public include/ (local/include-only or imported-library framework)"
+.else
 	@mkdir -p ${.CURDIR}/${DOCS_DIR}
 	@echo "PROJECT_NAME = ${DOC_PROJECT_NAME}" > ${_DOXYFILE}
 .if !empty(DOC_PROJECT_VERSION)
@@ -106,6 +123,7 @@ docs:
 .endif
 	@${DOXYGEN} ${_DOXYFILE}
 	@echo "===> docs generated for ${.CURDIR:T} -> ${DOCS_DIR}/html/index.html"
+.endif
 
 .PHONY: docs
 

@@ -250,8 +250,21 @@ install:
 # same project-metadata treatment as each framework's own Doxygen page
 # (name/version/brief/logo/license), read from the workspace root -- the
 # canonical source frameworks inherit from when they don't override it.
+# bmake-docs-scoping-fix-req: the generated landing page lives under
+# WS_DOCS_DIR (default build/docs/, matching this project's own
+# generated-output convention), NOT the bare, easily-already-taken
+# "docs/" a project's own hand-written documentation commonly already
+# uses (found in real use: the landing page silently overwrote content
+# inside the project's own docs/). DOCS_DIR itself is unchanged and
+# still names where EACH FRAMEWORK's own per-framework docs live
+# (mk.docs.mk's identical default) -- the landing page's own links to
+# them are computed relative to WS_DOCS_DIR's own depth, not hardcoded
+# to one directory level up.
 # @impl 0f87-6aa9-0267-bd7c
+# @impl 0f87-6abe-3f73-763e
 DOCS_DIR ?= docs
+WS_DOCS_DIR ?= build/docs
+_WS_DOCS_UP != printf '%s' "${WS_DOCS_DIR}" | awk -F/ '{s=""; for(i=0;i<NF;i++) s=s"../"; printf "%s", s}'
 DOC_PROJECT_NAME ?= ${.CURDIR:T}
 DOC_PROJECT_BRIEF ?=
 
@@ -285,32 +298,34 @@ docs:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@${MAKE} -C ${_f} docs BMK_MKDIR=${BMK_MKDIR}
 .endfor
-	@mkdir -p ${.CURDIR}/${DOCS_DIR}
-	@echo "<!DOCTYPE html><html><head><title>${DOC_PROJECT_NAME}</title></head><body>" > ${.CURDIR}/${DOCS_DIR}/index.html
+	@mkdir -p ${.CURDIR}/${WS_DOCS_DIR}
+	@echo "<!DOCTYPE html><html><head><title>${DOC_PROJECT_NAME}</title></head><body>" > ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .if !empty(DOC_LOGO)
-	@echo "<img src=\"${DOC_LOGO:T}\" alt=\"logo\" height=\"64\">" >> ${.CURDIR}/${DOCS_DIR}/index.html
-	@if [ "${DOC_LOGO}" != "${.CURDIR}/${DOCS_DIR}/${DOC_LOGO:T}" ]; then \
-		cp ${DOC_LOGO} ${.CURDIR}/${DOCS_DIR}/${DOC_LOGO:T}; \
+	@echo "<img src=\"${DOC_LOGO:T}\" alt=\"logo\" height=\"64\">" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
+	@if [ "${DOC_LOGO}" != "${.CURDIR}/${WS_DOCS_DIR}/${DOC_LOGO:T}" ]; then \
+		cp ${DOC_LOGO} ${.CURDIR}/${WS_DOCS_DIR}/${DOC_LOGO:T}; \
 	fi
 .endif
-	@echo "<h1>${DOC_PROJECT_NAME}" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "<h1>${DOC_PROJECT_NAME}" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .if !empty(DOC_PROJECT_VERSION)
-	@echo " <small>${DOC_PROJECT_VERSION}</small>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo " <small>${DOC_PROJECT_VERSION}</small>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .endif
-	@echo "</h1>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "</h1>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .if !empty(DOC_PROJECT_BRIEF)
-	@echo "<p>${DOC_PROJECT_BRIEF}</p>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "<p>${DOC_PROJECT_BRIEF}</p>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .endif
-	@echo "<ul>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "<ul>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .for _f in ${SUBDIR_FRAMEWORKS}
-	@echo "<li><a href=\"../${_f}/${DOCS_DIR}/html/index.html\">${_f}</a></li>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@if [ -d "${.CURDIR}/${_f}/${DOCS_DIR}/html" ]; then \
+		echo "<li><a href=\"${_WS_DOCS_UP}${_f}/${DOCS_DIR}/html/index.html\">${_f}</a></li>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html; \
+	fi
 .endfor
-	@echo "</ul>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "</ul>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .if !empty(DOC_LICENSE_NOTICE)
-	@echo "<p><small>${DOC_LICENSE_NOTICE}</small></p>" >> ${.CURDIR}/${DOCS_DIR}/index.html
+	@echo "<p><small>${DOC_LICENSE_NOTICE}</small></p>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
 .endif
-	@echo "</body></html>" >> ${.CURDIR}/${DOCS_DIR}/index.html
-	@echo "===> workspace docs complete -> ${DOCS_DIR}/index.html"
+	@echo "</body></html>" >> ${.CURDIR}/${WS_DOCS_DIR}/index.html
+	@echo "===> workspace docs complete -> ${WS_DOCS_DIR}/index.html"
 
 TEST_REPORT_DIR ?= test-report
 

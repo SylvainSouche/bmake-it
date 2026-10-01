@@ -40,6 +40,31 @@ listing every framework and its generated docs — analogous to the
 CAADoc/mkmancpp, one of this design's real precedents alongside plain
 Doxygen.
 
+## Scoping (`bmake-docs-scoping-fix-req`)
+
+Not every framework gets documentation, and the landing page doesn't live
+where a project's own hand-written docs might already be:
+
+- **`DOCS=no`** on a framework opts it out entirely — no `Doxyfile`, no
+  output, no warnings, just a one-line "docs skipped" message.
+- **A framework with no public `include/`** (local-only — an app-only
+  framework exposing nothing to `PREREQS=` consumers, or one built
+  entirely from `IMPORT=`-resolved modules with nothing of this
+  project's own to document) is skipped the same way, automatically —
+  rather than running Doxygen against a nonexistent `INPUT` and
+  producing an empty page plus `INPUT ... does not exist`/`No files to
+  be processed` warnings (found in real use: a Viewer-class, app-only
+  framework).
+- **The workspace landing page lives under `WS_DOCS_DIR`** (default
+  `build/docs/`, matching this project's own generated-output
+  convention), never the bare `docs/` a project's own hand-written
+  documentation commonly already occupies (found in real use: the
+  landing page silently overwrote content inside the project's own
+  `docs/`). Per-framework `DOCS_DIR` — where each framework's *own*
+  docs live — is unchanged; the landing page's own relative links are
+  computed from `WS_DOCS_DIR`'s own path depth, and only list a
+  framework whose docs were actually generated.
+
 ## PDF grouping (`DOCWITH=`)
 
 PREREQS-order connectivity is **not** used to decide what gets bundled
@@ -74,6 +99,7 @@ the public-scope default (`REQ-doc-generation-local-qa-trigger-req`).
 ## Output
 
 `docs/html/index.html` per framework (plus `docs/<name>.tag`); a
-workspace-level `docs/index.html` aggregation page when invoked from the
-workspace root. Generated output is not committed to the repository — see
-`.gitignore`'s `examples/**/docs/` entry for the worked example.
+workspace-level `build/docs/index.html` aggregation page when invoked
+from the workspace root. Generated output is not committed to the
+repository — see `.gitignore`'s `examples/**/docs/` entry for the worked
+example.
