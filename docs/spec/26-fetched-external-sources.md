@@ -178,7 +178,15 @@ the fetched, patched files are treated exactly like a `.y`/`.l`
 grammar's generated `.c` already is: an ordinary compiled source this
 project's own toolchain invocation handles directly. Same "no
 third-party build-system plumbing" stance already established for Qt
-(`qt-development-without-plumbing-req`).
+(`qt-development-without-plumbing-req`). The resolved work tree's own
+root is on `CFLAGS`/`CXXFLAGS`'s own include search path automatically
+(`fetch-root-include-req`), so a nested `SRCS=` entry can `#include` a
+root header with a plain quote-include, with no hand-written `mk/`
+hook — mirrors Dear ImGui's own real layout (`backends/*.cpp`
+`#include`-ing `imgui.h` from the tree root). Found missing in real
+use: it only ever worked by accident, once an earlier build had already
+staged the header into the framework's own public include dir, masking
+the gap on every incremental build after the first.
 
 Once compiled, the result is an **ordinary library module** for every
 other purpose: `LIB_SHARED=`, `LIBS=` transitivity (its own
@@ -377,6 +385,13 @@ list already set:
   dependent's configure step find the dependency; the dependent's own
   `LIB=` contains `-`, proving the sanitized `<LIB>_BUILDING` macro;
   and (macOS) proves no mismatched-deployment-target linker warning.
+- `tests/cases/70-noop-rebuild-fetch`: a `fetch:` (source kind) module
+  is a genuine no-op across three consecutive, untouched rebuilds — zero
+  compiler/archiver invocations after the first build — and a genuine
+  `FETCH_URL=` change still correctly triggers a real rebuild.
+- `tests/cases/72-fetch-root-include`: the same Dear ImGui `backends/`
+  layout as case 68, proving the include path fix specifically (no
+  hand-written `mk/` hook, on a genuinely fresh extraction).
 
 ## Not yet decided / deferred
 

@@ -18,7 +18,7 @@ mk/                      # role makefiles
 ├── mk.prog.mk            # executable module (PROG=, LIBS=)
 ├── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
 ├── mk.docs.mk            # `bmake docs` — Doxygen generation + tag-file cross-linking
-├── mk.test.mk            # `bmake test`/`test-all` — ATF/Kyua unit tests
+├── mk.test.mk            # `bmake test` (REPORT=yes for HTML) — ATF/Kyua unit tests
 └── mk.local.mk           # per-level mk/ hook-file cascade (pre.mk/local.mk)
 include/                 # bmk_export.h (portable dllexport/dllimport macros)
 scripts/                 # gen-mod-order.sh, gen-fw-order.sh, MSVC wrappers
@@ -135,11 +135,11 @@ LD_LIBRARY_PATH=build/linux-amd64/lib ./build/linux-amd64/bin/hello
 Generate docs and run unit tests (from a framework or module directory):
 
 ```sh
-bmake docs      # Doxygen HTML for this framework (or every framework +
-                # a workspace landing page, from the workspace root)
-bmake test      # build + run this module's TESTS_CXX=/TESTS_C=/TESTS_SH=
-                # via ATF/Kyua; JUnit XML report
-bmake test-all  # same, plus a full HTML report
+bmake docs             # Doxygen HTML for this framework (or every framework +
+                       # a workspace landing page, from the workspace root)
+bmake test             # build + run this module's TESTS_CXX=/TESTS_C=/TESTS_SH=
+                       # via ATF/Kyua; JUnit XML report
+bmake test REPORT=yes  # same, plus a full HTML report
 ```
 
 See `docs/spec/70-documentation-generation.md` and `docs/spec/80-unit-testing.md`.
@@ -225,6 +225,23 @@ Implements the design described in `docs/spec/`. Known limitations:
   errored on cleanly if missing. No version constraints, no per-platform
   install-command mapping, and not cross-sysroot-aware (checks the build
   host, not a cross target's own sysroot).
+- A shared `IMPORT=pkg:` resolution uses plain `pkg-config --libs`, not
+  `--libs --static`'s full transitive closure, which could reference an
+  unrelated dependency with no `-L` of its own and break the link (see
+  `docs/spec/25-imported-libraries.md`). `IMPORT_LIB=none` declares a
+  header-only import (no `lib<LIB>.*` anywhere, by design — glm's real
+  case); `IMPORT_HEADERS=` accepts a shell glob, staging every match
+  (GDAL's ~150 loose headers). A `fetch:` (source kind) module's own
+  resolved work tree root is on its include path automatically (no
+  hand-written hook needed for Dear ImGui's own `backends/` layout, see
+  `docs/spec/26-fetched-external-sources.md`), and a second, unchanged
+  build of one is a genuine no-op (a `.PHONY` fetch prerequisite used to
+  force every object to recompile on every build, regardless of whether
+  anything had actually changed). `bmake docs` (see
+  `docs/spec/70-documentation-generation.md`) skips a `DOCS=no`
+  framework or one with no public headers, and its workspace landing
+  page lives under `build/docs/`, never colliding with a project's own
+  hand-written `docs/`.
 
 ## Methodology
 

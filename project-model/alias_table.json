@@ -65,6 +65,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "bmake-docs-scoping-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3f73-5888",
+    "status": "confirmed",
+    "type": "req"
+  },
   "bmk-mkdir-discovery-via-makesyspath": {
     "active": true,
     "id": "0f87-6aaa-d63e-839a",
@@ -467,6 +473,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "duplicate-linkdeps-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3f50-4cd6",
+    "status": "confirmed",
+    "type": "req"
+  },
   "external-tool-generation-config-topic": {
     "active": true,
     "id": "0f87-6aa7-dd89-04d6",
@@ -536,6 +548,12 @@
   "fetch-import-source-req-v2": {
     "active": true,
     "id": "0f87-6ab6-6543-b0d4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-root-include-req": {
+    "active": true,
+    "id": "0f87-6abe-3f03-1474",
     "status": "confirmed",
     "type": "req"
   },
@@ -803,6 +821,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "header-only-import-req": {
+    "active": true,
+    "id": "0f87-6abe-3f35-5413",
+    "status": "confirmed",
+    "type": "req"
+  },
   "headers-resolved-from-source-not-build": {
     "active": true,
     "id": "6f38-6a8a-967a-a54e",
@@ -836,6 +860,12 @@
   "impl-aggregation-failure-exit-code": {
     "active": true,
     "id": "0f87-6ab5-81a2-7bb0",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-bmake-docs-scoping-fix": {
+    "active": true,
+    "id": "0f87-6abe-3f73-763e",
     "status": "verified",
     "type": "impl"
   },
@@ -887,6 +917,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-duplicate-linkdeps-fix": {
+    "active": true,
+    "id": "0f87-6abe-3f50-0560",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-fetch-build": {
     "active": true,
     "id": "0f87-6ab6-6562-0f89",
@@ -902,6 +938,12 @@
   "impl-fetch-import": {
     "active": true,
     "id": "0f87-6ab6-4fe1-98d2",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-fetch-root-include": {
+    "active": true,
+    "id": "0f87-6abe-3f03-19dd",
     "status": "verified",
     "type": "impl"
   },
@@ -929,10 +971,22 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-header-only-import": {
+    "active": true,
+    "id": "0f87-6abe-3f35-6680",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-help-target": {
     "active": true,
     "id": "0f87-6a98-7829-4019",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-import-headers-glob": {
+    "active": true,
+    "id": "0f87-6abe-3f41-3d0f",
+    "status": "verified",
     "type": "impl"
   },
   "impl-import-libraries": {
@@ -1049,6 +1103,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-noop-rebuild-fix": {
+    "active": true,
+    "id": "0f87-6abe-3f12-1050",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-prereqs-mandatory": {
     "active": true,
     "id": "0f87-6a98-76a7-f34f",
@@ -1065,6 +1125,12 @@
     "active": true,
     "id": "0f87-6a98-5ff4-1b42",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-prog-only-framework-ld-warning-fix": {
+    "active": true,
+    "id": "0f87-6abe-3f50-b644",
+    "status": "verified",
     "type": "impl"
   },
   "impl-rade-export-header": {
@@ -1109,6 +1175,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-shared-import-link-flags-fix": {
+    "active": true,
+    "id": "0f87-6abe-3ef3-cd79",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-shared-lib-rpath": {
     "active": true,
     "id": "0f87-6aa9-448d-537c",
@@ -1131,6 +1203,12 @@
     "active": true,
     "id": "0f87-6aaa-6201-a430",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-transitive-linkdeps-l-rpath-fix": {
+    "active": true,
+    "id": "0f87-6abe-3f27-cde6",
+    "status": "verified",
     "type": "impl"
   },
   "impl-vcvarsall-auto-discovery": {
@@ -1162,6 +1240,12 @@
     "id": "0f87-6ab6-0d84-736e",
     "status": "recorded",
     "type": "obs"
+  },
+  "import-headers-glob-req": {
+    "active": true,
+    "id": "0f87-6abe-3f41-37f0",
+    "status": "confirmed",
+    "type": "req"
   },
   "import-link-transitivity-req": {
     "active": true,
@@ -1328,6 +1412,12 @@
   "lasviewer-second-round-bugs-obs": {
     "active": true,
     "id": "0f87-6aba-a265-f2ae",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "lasviewer-third-round-issues-obs": {
+    "active": true,
+    "id": "0f87-6abe-3ed4-e933",
     "status": "recorded",
     "type": "obs"
   },
@@ -1775,6 +1865,12 @@
     "status": "proposed",
     "type": "nreq"
   },
+  "noop-rebuild-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3f12-2d90",
+    "status": "confirmed",
+    "type": "req"
+  },
   "openmp-macro-dec": {
     "active": true,
     "id": "0f87-6ab6-00d7-6631",
@@ -2009,6 +2105,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "prog-only-framework-ld-warning-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3f50-d19a",
+    "status": "confirmed",
+    "type": "req"
+  },
   "project-renamed-bmake-it": {
     "active": true,
     "id": "0f87-6a9a-c666-3b42",
@@ -2206,6 +2308,12 @@
     "id": "6f38-6a89-bcf2-135b",
     "status": "recorded",
     "type": "dec"
+  },
+  "shared-import-link-flags-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3eee-a5f1",
+    "status": "confirmed",
+    "type": "req"
   },
   "shared-lib-not-runtime-loadable-obs": {
     "active": true,
@@ -2504,6 +2612,12 @@
   "toolchain-triggers-dedicated-mk-file-req-v4": {
     "active": true,
     "id": "0f87-6a95-2b36-c1c5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "transitive-linkdeps-missing-l-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-3f27-075c",
     "status": "confirmed",
     "type": "req"
   },

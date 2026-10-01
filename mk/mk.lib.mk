@@ -161,8 +161,15 @@ LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
 .  endfor
 .endif
 
-# Always add framework lib path (created by earlier modules during ordered build)
+# prog-only-framework-ld-warning-fix-req: see mk.prog.mk's identical
+# comment -- guarded the same way the PREREQS= loop just above already
+# is, so the first lib module in a framework (nothing copied-up yet)
+# doesn't produce a noisy, harmless `ld: warning: search path ... not
+# found`.
+# @impl 0f87-6abe-3f50-b644
+.if exists(${_FWDIR}/${BUILD_ROOT}/lib)
 LDFLAGS += -L${_FWDIR}/${BUILD_ROOT}/lib
+.endif
 _LIB_SEARCH_DIRS = ${_FWDIR}/${BUILD_ROOT}/lib
 .for _p in ${_PREREQS}
 .  if defined(_PREREQ_BASE.${_p}) && exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
@@ -301,6 +308,20 @@ _LIBOUT_DIR = ${.CURDIR}/${LIBDIR_LOCAL}
 # ---------------------------------------------------------------------------
 IMPORT ?=
 IMPORT_HEADERS ?=
+# header-only-import-req: IMPORT_LIB=none declares a header-only import
+# -- no lib<LIB>.{a,so,dylib} exists anywhere for it, by design (glm is
+# the real case this came from: MacPorts' own optional compiled glm lib
+# only made step 4's existing lib-file probe succeed by accident; a
+# genuinely header-only glm, matching most installs, would never
+# resolve). Step 4 probing's own success criterion switches from "a lib
+# file exists" to "the first IMPORT_HEADERS= entry exists under this
+# prefix's include/", and whatever DID resolve (pkg:/prefix:/probing)
+# has its lib-staging suppressed regardless of what pkg-config or a
+# probed prefix might otherwise have reported -- reusing
+# _stage_import:'s own existing "_IMPORT_LIBDIR empty -> skip lib
+# staging" branch (import-staging-req), not a new staging path.
+# @impl 0f87-6abe-3f35-6680
+IMPORT_LIB ?=
 # fetch-import-source-req/fetch-import-binary-req: IMPORT=fetch:<label>
 # (source) / fetch-bin:<label> (prebuilt release) -- see
 # 26-fetched-external-sources.md. FETCH_URL= is one or more full URLs to
@@ -449,10 +470,26 @@ _IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/
 _IMPORT_VERSION != ${_IMPORT_PC_ENV} pkg-config --modversion ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
 _IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/dev/null
-# --static also pulls in Libs.private -- the transitive link deps this
-# module's own consumers need (D2, import-link-transitivity-req).
-_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+# shared-import-link-flags-fix-req: a shared library (.so/.dylib) embeds
+# its own dependency references (install_name/rpath on macOS, DT_NEEDED
+# on ELF), resolved by the dynamic linker at LOAD time, not link time --
+# `--static`'s full transitive closure is both unnecessary for one and
+# risky: a Requires.private entry may validly omit its own -L (relying
+# on the HOST's own default linker search path, e.g. /opt/local/lib),
+# which this project's own build doesn't necessarily share, producing
+# `ld: library 'X' not found` for an entirely unrelated transitive
+# dependency -- found in real use (gdal's own lz4 dependency). Only a
+# STATIC-only import (no .so/.dylib found at the resolved libdir) needs
+# the full --static closure (D2, import-link-transitivity-req), since a
+# .a carries no dependency info of its own for the final consumer to
+# resolve at link time.
+# @impl 0f87-6abe-3ef3-cd79
+.      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib)
+_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs ${_IMPORT_PKGNAME} 2>/dev/null
+.      else
+_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
+.      endif
 .      endif
 # Write the cache regardless of hit/miss on _IMPORT_PC_FOUND itself --
 # a genuine "not found" is just as valid to cache as a genuine "found"
@@ -469,9 +506,17 @@ _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 .  endif
 
 # Step 4: probing, only if still unresolved by any of the above.
+# header-only-import-req: IMPORT_LIB=none switches the success criterion
+# from "a lib file exists" to "the first IMPORT_HEADERS= entry exists
+# under this prefix's include/" -- there is no lib file to probe for.
 .  if !defined(_IMPORT_SOURCE)
 .    for _p in ${_TOOL_PREFIXES:H:O:u}
-.      if !defined(_IMPORT_SOURCE) && (exists(${_p}/lib/lib${LIB}.a) || exists(${_p}/lib/lib${LIB}.so) || exists(${_p}/lib/lib${LIB}.dylib))
+.      if ${IMPORT_LIB} == "none"
+.        if !defined(_IMPORT_SOURCE) && exists(${_p}/include/${IMPORT_HEADERS:[1]})
+_IMPORT_SOURCE  = probe:${_p}
+_IMPORT_CFLAGS  = -I${_p}/include
+.        endif
+.      elif !defined(_IMPORT_SOURCE) && (exists(${_p}/lib/lib${LIB}.a) || exists(${_p}/lib/lib${LIB}.so) || exists(${_p}/lib/lib${LIB}.dylib))
 _IMPORT_SOURCE  = probe:${_p}
 _IMPORT_CFLAGS  = -I${_p}/include
 _IMPORT_LIBS    = -L${_p}/lib -l${LIB}
@@ -482,6 +527,16 @@ _IMPORT_LIBDIR  = ${_p}/lib
 
 .  if !defined(_IMPORT_SOURCE)
 .error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), pkg-config, and probing ${_TOOL_PREFIXES:H:O:u} -- install the library via your host's package manager (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
+.  endif
+
+# header-only-import-req: whatever DID resolve (pkg:/prefix:/env/hook/
+# probing), suppress lib-staging regardless of what it reported --
+# _stage_import: already treats an empty _IMPORT_LIBDIR as "nothing to
+# stage" (import-staging-req), so this reuses that path rather than
+# adding a new one.
+.  if ${IMPORT_LIB} == "none"
+_IMPORT_LIBS    =
+_IMPORT_LIBDIR  =
 .  endif
 
 # import-staging-req: re-stage whenever the resolved inputs change,
@@ -495,10 +550,36 @@ INPUTS_HASH_EXTRA += IMPORT=${_IMPORT_SOURCE} IMPORT_CFLAGS=${_IMPORT_CFLAGS} IM
 # extraction there also clears ${_OBJDIR} so a changed fetch always
 # forces a real recompile (not left to a source-mtime race against a
 # distfile's own, possibly old, embedded timestamps).
+#
+# noop-rebuild-fix-req: _FETCH_PREREQ names the REAL stamp file
+# (work/.extract-fp), not the phony _fetch_import target itself --
+# found empirically that listing a .PHONY target directly as a
+# prerequisite of a real .o: rule forces bmake to treat that .o as
+# stale on EVERY build, regardless of whether _fetch_import's own
+# internal fingerprint decided nothing needed re-extracting (a .PHONY
+# prerequisite has no mtime of its own, so make treats anything
+# depending on one as unconditionally out of date -- confirmed by a
+# fetch: module recompiling and re-archiving on a second, completely
+# unchanged build). _fetch_import itself is still listed explicitly on
+# all: below (ensuring it runs, and so work/.extract-fp gets created,
+# before any .o: rule's own dependency chain is evaluated) -- but
+# that's a prerequisite of the PHONY all:, which already runs its own
+# recipe every time regardless, so no cascading harm there.
 # @impl 0f87-6ab6-4fe1-98d2
+# @impl 0f87-6abe-3f12-1050
 .if ${_IMPORT_KIND:Uno} == "source"
 _SRC_BASE = ${_IMPORT_WRKSRC}
-_FETCH_PREREQ = _fetch_import
+_FETCH_PREREQ = ${.CURDIR}/work/.extract-fp
+# fetch-root-include-req: the resolved work tree's own root is on the
+# include search path, so a nested SRCS= entry (Dear ImGui's own
+# backends/*.cpp, #include-ing "imgui.h" from the tree root) compiles
+# without a hand-written mk/ hook -- found in real use: it only ever
+# worked by accident, because an EARLIER build had already staged
+# imgui.h into the framework's own public include dir, masking the gap
+# on every incremental build after the first.
+# @impl 0f87-6abe-3f03-19dd
+CFLAGS   += -I${_IMPORT_WRKSRC}
+CXXFLAGS += -I${_IMPORT_WRKSRC}
 .else
 _SRC_BASE = ${.CURDIR}/src
 _FETCH_PREREQ =
@@ -587,12 +668,16 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 # fetch-import-source-req: an ordinary compiled-library build (SHLIB_NAME/
 # STATIC_NAME from OBJS, exactly like a non-IMPORT= module), plus header
 # staging from the resolved fetched tree instead of INCL=/generated
-# headers. _fetch_import already ran as a prerequisite of each .o: above.
+# headers. noop-rebuild-fix-req: _fetch_import is listed explicitly
+# here (not just via _FETCH_PREREQ on each .o: rule) so it's guaranteed
+# to run -- and so work/.extract-fp exists -- before any .o:'s own
+# dependency chain is evaluated; all: is itself .PHONY, so a phony
+# prerequisite here costs nothing extra.
 .  if ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
 	@echo "===> built shared ${SHLIB_NAME} (fetched: ${_IMPORT_SOURCE})"
 .  else
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
 	@echo "===> built static ${STATIC_NAME} (fetched: ${_IMPORT_SOURCE})"
 .  endif
 .elif ${_IMPORT_KIND:Uno} == "source-build"
@@ -632,6 +717,24 @@ _OWN_LINKDEPS = ${_IMPORT_LIBS:N-l${LIB}:N-L${_IMPORT_LIBDIR}}
 .else
 _OWN_LINKDEPS =
 .  for _l in ${LIBS}
+# transitive-linkdeps-missing-L-fix-req: the resolved -L<dir> (link
+# time) AND -Wl,-rpath,<dir> (run time, shared libs only -- no rpath
+# concept on Windows) travel alongside -l<name>, not just the bare name
+# -- a .linkdeps consumer that doesn't *also* happen to put this
+# library's own directory on its search path some other way (e.g. by
+# listing the same framework in its own PREREQS=) would otherwise link
+# only by accident, and even then dyld/ld.so still couldn't LOAD a
+# shared lib found only this transitively (confirmed empirically:
+# fixing just -L produces a binary that links but dyld can't find at
+# run time). _LIB_FILE.${_l} is already resolved above for the
+# relink-on-libs-change fix; its own dirname is exactly this directory.
+# @impl 0f87-6abe-3f27-cde6
+.    if !empty(_LIB_FILE.${_l})
+_OWN_LINKDEPS += -L${_LIB_FILE.${_l}:H}
+.      if ${TARGET} != "win"
+_OWN_LINKDEPS += -Wl,-rpath,${_LIB_FILE.${_l}:H}
+.      endif
+.    endif
 _OWN_LINKDEPS += -l${_l}
 .    for _d in ${_LIB_SEARCH_DIRS}
 .      if exists(${_d}/lib${_l}.linkdeps)
@@ -668,12 +771,28 @@ _write_linkdeps:
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}
 	@echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"
+# import-headers-glob-req: an entry containing a shell glob
+# metacharacter (*, ?, [...]) stages every match, not just one exact
+# name/directory -- found in real use (GDAL installs ~150 loose headers
+# directly in its includedir, no per-package subdirectory to stage
+# wholesale the way IMPORT_HEADERS= already could; a real project had
+# to hand-list the 49 it actually used). A plain, glob-free entry
+# behaves exactly as before: the shell's own glob expansion leaves a
+# non-matching literal pattern untouched, so `[ -e ... ]` on it
+# correctly reports "not found" the same way it always has.
+# @impl 0f87-6abe-3f41-3d0f
 .for _h in ${IMPORT_HEADERS}
 	@_found=no; \
 	for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//}; do \
-		if [ -e "$$_d/${_h}" ]; then \
-			cp -a "$$_d/${_h}" ${_FWDIR}/${BUILD_ROOT}/include/; \
-			echo "===> staged header ${_h} from $$_d"; \
+		_matched=no; \
+		for _f in "$$_d"/${_h}; do \
+			if [ -e "$$_f" ]; then \
+				cp -a "$$_f" ${_FWDIR}/${BUILD_ROOT}/include/; \
+				_matched=yes; \
+			fi; \
+		done; \
+		if [ "$$_matched" = yes ]; then \
+			echo "===> staged header(s) ${_h} from $$_d"; \
 			_found=yes; \
 			break; \
 		fi; \
@@ -979,6 +1098,18 @@ _stage_fetch_headers:
 .endfor
 .endif
 
+# duplicate-linkdeps-fix-req: see mk.prog.mk's identical comment -- a
+# first-occurrence-preserving dedup of LDFLAGS, not a blind sort+uniq.
+# @impl 0f87-6abe-3f50-0560
+_LDFLAGS_DEDUP != _out=""; \
+	for _f in ${LDFLAGS}; do \
+		case " $$_out " in \
+			*" $$_f "*) ;; \
+			*) _out="$$_out $$_f" ;; \
+		esac; \
+	done; \
+	printf '%s' "$$_out"
+
 # @impl 0f87-6a98-8b7f-9215
 ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
@@ -993,7 +1124,7 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 		exit 1; \
 	fi
 .endfor
-	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} ${LDFLAGS}
+	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} ${_LDFLAGS_DEDUP}
 .if ${TARGET} != "win"
 	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR}/${SHLIB_LINK}
 	@${AR} rcs ${_LIBOUT_DIR}/${STATIC_NAME} ${OBJS}

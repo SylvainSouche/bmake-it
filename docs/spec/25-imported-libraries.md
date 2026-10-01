@@ -50,10 +50,24 @@ target key, and every source tried, with an install hint pointing at
 `IMPORT=` syntax: `pkg:<name>` (pkg-config), `prefix:<dir>` (direct, no
 pkg-config involved), or empty (only steps 1–2 can resolve it).
 
-**pkg-config details.** Step 3 captures `--cflags`, `--libs --static`
-(not plain `--libs` — `--static` also pulls in `Libs.private`, the
-transitive link deps a future link-transitivity mechanism needs),
-`--modversion`, and `--variable=libdir`. Extra `.pc` search directories
+**pkg-config details.** Step 3 captures `--cflags`, `--modversion`, and
+`--variable=libdir`. For `--libs`, which flavor depends on what was
+actually found at the resolved libdir
+(`shared-import-link-flags-fix-req`): a **shared** library (`.so`/
+`.dylib`) uses plain `pkg-config --libs` (just this package's own `-L`/
+`-l`) — a shared library embeds its own dependency references
+(`install_name`/rpath on macOS, `DT_NEEDED` on ELF), resolved by the
+dynamic linker at *load* time, not link time, so the full `--static`
+transitive closure is unnecessary and, found in real use (importing
+`gdal`), actively risky: a `Libs.private:` entry may validly omit its
+own `-L` (relying on the *host's* own default linker search path),
+which this project's own build doesn't necessarily share, producing
+`ld: library 'X' not found` for an entirely unrelated transitive
+dependency (`gdal`'s own `lz4`). A **static-only** import (no `.so`/
+`.dylib` found) uses `--libs --static` (`Libs.private`, the transitive
+link deps the link-transitivity mechanism below needs — a `.a` carries
+no dependency info of its own for the final consumer to resolve at
+link time). Extra `.pc` search directories
 come from `_PKG_CONFIG_EXTRA_DIRS` (`mk.paths.<os>.mk`'s own extension
 point, mirroring `_TOOL_PREFIXES`; empty by default — no real per-OS
 entry is populated in this repo, since a concrete need such as
@@ -76,7 +90,29 @@ cross-compilation status — stubs for most non-Windows targets).
 
 **Step 4 (probing)** derives candidate prefixes from `_TOOL_PREFIXES:H`
 (the dirname of each already-defined `bin/` entry), not a second prefix
-list.
+list. Its own success criterion is normally "a `lib<LIB>.*` file exists
+at `<prefix>/lib/`" — except under `IMPORT_LIB=none` (below), where it's
+"the first `IMPORT_HEADERS=` entry exists under `<prefix>/include/`"
+instead, since there is no lib file to probe for.
+
+## Header-only imports (`IMPORT_LIB=none`)
+
+(`header-only-import-req`)
+
+`IMPORT_LIB=none` declares that no `lib<LIB>.{a,so,dylib}` exists
+anywhere for this import, by design — a real gap found importing `glm`:
+it ships no `.pc` file at all, so step 3 never applies, and step 4's
+own lib-file probe only ever found a result because MacPorts' particular
+glm package happens to ship an *optional* compiled library — a
+genuinely header-only glm install (the common case) would never
+resolve. With `IMPORT_LIB=none`, step 4's probe switches to a header
+existence check (above), and whatever *did* resolve (env/hook/`pkg:`/
+`prefix:`/probing) has its lib-staging suppressed regardless of what
+that source might otherwise have reported — reusing `_stage_import:`'s
+existing "no resolved library directory" skip (below), not a new
+staging path. Since there's no library, a consuming module needs no
+`LIBS=` entry for it either — just the ordinary framework-level include
+path a `PREREQS=`-visible (or same-framework) module already gets.
 
 ## Staging
 
@@ -88,7 +124,14 @@ list.
   They land in `<fw>/build/<KEY>/include/`, the same destination
   promoted generated headers already use (`REQ-generated-headers-in-
   build-tree-req`) — a `PREREQS=`-declared consumer already searches
-  there.
+  there. An entry containing a shell glob metacharacter (`*`, `?`,
+  `[...]`) stages every match, not just one exact name
+  (`import-headers-glob-req`) — found in real use importing `gdal`,
+  whose ~150 headers sit loose directly in its includedir with no
+  per-package subdirectory to stage wholesale the way a single
+  directory name already could; a glob like `IMPORT_HEADERS=gdal_*.h
+  ogr_*.h cpl_*.h` covers them without hand-listing each one. A plain,
+  glob-free entry behaves exactly as before.
 - **Libraries**: `lib<LIB>.{a,so*,dylib}` are copied into the *module's
   own* `build/<KEY>/lib/`, exactly where a compiled library's own
   `ar`/link recipe would have written them — so `LIBS=<lib>` in a
@@ -159,7 +202,14 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
   depends on it starts. A three-level, purely-compiled chain (app →
   libb → libc, where `app.m` declares only `LIBS=b`) proves this: the
   final link line includes `-lc` with no `LIBS=c` anywhere in `app.m`'s
-  own makefile.
+  own makefile. Each `-l<name>` carries its resolved `-L<dir>` (link
+  time) and, for a shared library, `-Wl,-rpath,<dir>` (run time)
+  alongside it, not just the bare name
+  (`transitive-linkdeps-missing-l-fix-req`) — found in real use: a
+  consumer that doesn't *also* happen to put that directory on its own
+  search path some other way (e.g. by listing the same framework in its
+  own `PREREQS=`) would otherwise link only by accident, and even then
+  couldn't *load* a shared transitive dependency found only this way.
 - **Imported library**: its `.linkdeps` content is `pkg-config --libs
   --static`'s own output (already the correct transitive set for that
   package, including `Libs.private`) minus its own self `-l<LIB>`/
@@ -175,7 +225,20 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
   consumer, and that has to hold for linking too, not just headers.
 - No found-guard against the same library name resolving in more than
   one `_LIB_SEARCH_DIRS` entry (a shadowing scenario) — duplicate
-  `-l`/`-L` flags are harmless to a linker, an accepted simplification.
+  `-l`/`-L` flags are harmless to a linker. They *are*, however, noisy:
+  two `LIBS=` entries sharing a common transitive dependency both carry
+  it forward, and the final link's own `LDFLAGS` is deduplicated
+  (first-occurrence preserved, never reordered — static link order can
+  matter) right before use (`duplicate-linkdeps-fix-req`) — found in
+  real use as a pure-noise `ignoring duplicate libraries` linker
+  warning on every link.
+- A module's own framework `-L` search path is only added when that
+  directory actually exists (`prog-only-framework-ld-warning-fix-req`)
+  — a framework holding only a `PROG` (no `LIB` module at all) never
+  creates its own `build/<KEY>/lib/`, and an unconditional `-L`
+  produced a harmless but noisy `ld: warning: search path ... not
+  found` on every single link (found in real use: an app-only,
+  Viewer-class framework).
 
 ## Resolution caching
 
