@@ -49,6 +49,6 @@ bin=$(find . -type f -name app | head -1)
 out=$("$bin")
 echo "$out" | grep -q "^1$"
 
-grep -q "no resolved library directory" build1.log
+grep -q "no resolved library directory" libglm_build.log
 
 echo "header-only-import OK"

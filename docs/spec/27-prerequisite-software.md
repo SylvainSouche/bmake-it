@@ -1,8 +1,8 @@
 # Bmake It — 27: Prerequisite Software (`REQUIRES=`)
 
 Status: Implemented (`mk/mk.common.mk`) and covered by the test harness
-(`tests/cases/66-requires-prereq-software`). Every claim cites the
-REQ/DEC alias it comes from.
+(`tests/cases/66-requires-prereq-software`, `tests/cases/77-requires-header-form`).
+Every claim cites the REQ/DEC alias it comes from.
 
 ## Scope and objective
 
@@ -60,6 +60,59 @@ your host's package manager (see README.md Prerequisites) before
 building
 ```
 
+## Header-only prerequisites (`header:<path>`, `requires-header-form-req`)
+
+Neither check above fits a header-only library with no `.pc` file at
+all: `glm` on a distro that ships no optional compiled library has
+nothing for `pkg-config --exists` to find, and it's not a CLI tool
+`command -v` can locate either (`lasviewer-third-round-issues-obs`,
+issue 5 — the header-only-import half of the same report implemented
+`IMPORT_LIB=none`, see `25-imported-libraries.md`).
+
+A `REQUIRES=` entry whose name starts with `header:` is checked a third
+way instead:
+
+```makefile
+PROG=app
+REQUIRES=header:glm/glm.hpp
+CXXFLAGS+=-I/opt/local/include
+.include <mk.prog.mk>
+```
+
+`<path>` (everything after the first `:`) is checked by preprocessing a
+trivial translation unit that `#include`s it — never compiled, so the
+header's actual C-vs-C++ content is never parsed, only located. Tried
+twice, in order:
+
+1. `CC` with the current `CFLAGS`, in C mode.
+2. If that fails, `CXX` with the current `CXXFLAGS`, in C++ mode.
+
+Two separate attempts, not one merged pass: a C++-only header's `-I` is
+commonly carried on `CXXFLAGS` alongside a real `-std=c++..` flag, which
+the compiler rejects outright when forced into C mode. "Current" means
+as `CFLAGS`/`CXXFLAGS` stand at the point `mk.common.mk` evaluates
+`REQUIRES=` — the module's own makefile (so a `CFLAGS+=`/`CXXFLAGS+=`
+placed *before* `.include <mk.prog.mk>`/`<mk.lib.mk>` counts) plus this
+file's own earlier `SANITIZE=`/`OPENMP=` contributions, but *not* what
+`mk.local.mk` hooks add — that file is `.include`d later. In practice,
+this means the header is found either via the compiler's own default
+system search path, or via an `-I` the module sets directly in its own
+makefile before the `.include` line.
+
+A missing header fails to parse the same way a missing name does, with
+its own message naming the path, not just the bare entry:
+
+```
+REQUIRES=header:glm/glm.hpp: header glm/glm.hpp not found via
+<cc>/<cxx> with the current CFLAGS/CXXFLAGS -- add its include
+directory to CFLAGS or CXXFLAGS (before .include <mk.prog.mk>/
+<mk.lib.mk>) or install the providing package (see README.md
+Prerequisites) before building
+```
+
+A plain-name entry and a `header:` entry compose freely in the same
+`REQUIRES=` list (`REQUIRES=header:glm/glm.hpp sqlite3 cmake`).
+
 ## When the check runs
 
 Parse time, same failure style already used for `CC`/`CXX` resolution
@@ -96,3 +149,11 @@ pkg-config path; a fake shell-script "tool" placed on `PATH` proves the
 `command -v` fallback; a third, genuinely nonexistent name proves the
 failure names the right module and entry, and that it happens *before*
 any compile is attempted (no object file ever gets built).
+
+`tests/cases/77-requires-header-form`: a fake, templated/namespaced
+header (not plain C, to prove the C-vs-C++ dispatch) is found via
+`CXXFLAGS`, then via `CFLAGS` alone, each building successfully and
+composing with a plain-name `REQUIRES=` entry in the same list; a
+missing `-I` and a genuinely nonexistent header path each fail to parse
+with their own distinct `header:<path>: header ... not found` message,
+before any compile is attempted.

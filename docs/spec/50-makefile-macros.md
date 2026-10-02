@@ -25,7 +25,7 @@ BSD-make-native equivalent, introduced by this project.
 | `PROG=<name>` | Output executable name. Defaults to the module directory name (`.m` stripped) if unset | New (`REQ-prog-lib-default-to-module-name-req`) |
 | `LIBS=<lib1> <lib2> ...` | Space-delimited libraries to link against (dev and/or system). **Link-time only** — has no effect on header visibility | New, replaces an earlier `LINK_WITH=` design (`REQ-libs-macro-link-only-headers-via-prereqs-req`) |
 | `LINK_CXX=yes` | Force the final link to use `${CXX}` even though `SRCS` is all-C. See below | New (`REQ-cxx-link-driver-selection-req`) |
-| `REQUIRES=<name> [<name> ...]` | External prerequisite software this module needs already installed (checked via `pkg-config --exists` then `command -v`, not acquired by Bmake It) — a missing one is a clean, parse-time error. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`) |
+| `REQUIRES=<name> [<name> ...]` | External prerequisite software this module needs already installed (checked via `pkg-config --exists` then `command -v`; a `header:<path>` entry instead checks the header is reachable via `#include`, not acquired by Bmake It) — a missing one is a clean, parse-time error. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`, `REQ-requires-header-form-req`) |
 
 ## Module makefile — library (`.include <mk.lib.mk>`)
 
@@ -43,7 +43,7 @@ BSD-make-native equivalent, introduced by this project.
 | `FETCH_BUILD=autotools\|cmake\|meson\|custom` | On an `IMPORT=fetch:` module, delegates the extracted+patched source to its own upstream build system instead of `SRCS=`, installing into a local prefix and staging the result like `fetch-bin:`. See `26-fetched-external-sources.md` | New (`REQ-fetch-build-req`) |
 | `FETCH_BUILD_ARGS=<arg> [<arg> ...]` | Extra arguments appended to a `FETCH_BUILD=` preset's own configure/setup step. Not used by `custom` | New (`REQ-fetch-build-req`) |
 | `FETCH_BUILD_CMD=<shell command>` | Required when `FETCH_BUILD=custom`; run verbatim, cwd the resolved work tree, with `BMK_FETCH_SRCDIR`/`BMK_FETCH_BUILD_DIR`/`BMK_FETCH_INSTALL_PREFIX` exported | New (`REQ-fetch-build-req`) |
-| `REQUIRES=<name> [<name> ...]` | Same as the executable role — external prerequisite software this module needs already installed, checked not acquired. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`) |
+| `REQUIRES=<name> [<name> ...]` | Same as the executable role — external prerequisite software this module needs already installed, checked not acquired. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`, `REQ-requires-header-form-req`) |
 | `SHLIB_MAJOR=<n>` | Major version for the shared library. Reused directly from real BSD `bsd.lib.mk` | Reused native (`REQ-shlib-major-minor-cross-platform-emission-req`) |
 | `SHLIB_MINOR=<n>` | Optional minor version | Reused native |
 

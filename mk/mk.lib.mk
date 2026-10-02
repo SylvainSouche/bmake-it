@@ -686,10 +686,10 @@ all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${STATIC_NAME}
 # installed into a module-local prefix, then staged exactly like a
 # fetch-bin: import -- no SRCS=/OBJS=/compile step of Bmake It's own.
 all: _check_inputs_hash _create_dirs _fetch_import _fetch_build _stage_import _write_linkdeps
-	@echo "===> imported ${LIB} (${_IMPORT_SOURCE}, built via FETCH_BUILD=${FETCH_BUILD})"
+	@:
 .elif !empty(IMPORT)
 all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
-	@echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
+	@:
 .elif ${LIB_SHARED} == "YES"
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl _write_linkdeps
 	@echo "===> built shared ${SHLIB_NAME}"
@@ -744,8 +744,17 @@ _OWN_LINKDEPS += ${_LINKDEPS.${_l}}
 .  endfor
 .endif
 
+# linkdeps-write-idempotent-req: _write_linkdeps is .PHONY (runs on every
+# all: evaluation), so an unconditional write bumped the file's mtime on
+# every visit and fed every downstream copy-up pass. Write only when the
+# computed content differs from what is already on disk.
+# @impl 0f87-6abe-8e68-fc89
 _write_linkdeps:
-	@echo "${_OWN_LINKDEPS}" > ${_LIBOUT_DIR}/lib${LIB}.linkdeps
+	@_new="${_OWN_LINKDEPS}"; \
+	if [ -f ${_LIBOUT_DIR}/lib${LIB}.linkdeps ] && [ "$$(cat ${_LIBOUT_DIR}/lib${LIB}.linkdeps)" = "$$_new" ]; then \
+		exit 0; \
+	fi; \
+	echo "$$_new" > ${_LIBOUT_DIR}/lib${LIB}.linkdeps
 
 # import-staging-req: only IMPORT_HEADERS= is staged (never the whole
 # resolved include dir -- that would leak every unrelated package under
@@ -768,9 +777,19 @@ _write_linkdeps:
 # (PDAL/GDAL/GLFW) before this fix (import-staging-broken-dylib-symlinks-obs).
 # @impl 0f87-6ab5-8aa6-c2d0
 # @impl 0f87-6ab6-60c6-d25a
-_stage_import:
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}
-	@echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"
+# import-staging-idempotent-req: one shell block, guarded by a
+# fingerprint of everything that determines WHAT gets staged (IMPORT=,
+# IMPORT_HEADERS=, IMPORT_LIB=, and the resolved source/cflags/libdir),
+# stored in ${BUILD_ROOT}/.stage-fp (under the build root so `bmake clean` discards it together with the staged outputs it vouches for) -- same idiom _fetch_import: already uses.
+# _stage_import is .PHONY and listed directly under all:, so it was
+# re-running its whole body (re-copying every header and lib, re-printing
+# "imported"/"staged header(s)") on every all: evaluation -- up to 4
+# times per build for one imported module (workspace all+copy-up x
+# framework all+copy-up). An unchanged fingerprint now exits silently
+# before any copy or print. The IMPORT_HEADERS= loop is a shell `for`,
+# not a bmake .for, precisely so the whole body is ONE script and the
+# early exit actually skips everything (each .for iteration would be its
+# own recipe line, which an `exit 0` could not short-circuit).
 # import-headers-glob-req: an entry containing a shell glob
 # metacharacter (*, ?, [...]) stages every match, not just one exact
 # name/directory -- found in real use (GDAL installs ~150 loose headers
@@ -781,28 +800,36 @@ _stage_import:
 # non-matching literal pattern untouched, so `[ -e ... ]` on it
 # correctly reports "not found" the same way it always has.
 # @impl 0f87-6abe-3f41-3d0f
-.for _h in ${IMPORT_HEADERS}
-	@_found=no; \
-	for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//}; do \
-		_matched=no; \
-		for _f in "$$_d"/${_h}; do \
-			if [ -e "$$_f" ]; then \
-				cp -a "$$_f" ${_FWDIR}/${BUILD_ROOT}/include/; \
-				_matched=yes; \
+# @impl 0f87-6abe-8e68-741b
+_stage_import:
+	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
+	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
+	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fp)" = "$$_fp" ]; then \
+		exit 0; \
+	fi; \
+	echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"; \
+	for _h in ${IMPORT_HEADERS}; do \
+		_found=no; \
+		for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//}; do \
+			_matched=no; \
+			for _f in "$$_d"/$$_h; do \
+				if [ -e "$$_f" ]; then \
+					cp -a "$$_f" ${_FWDIR}/${BUILD_ROOT}/include/; \
+					_matched=yes; \
+				fi; \
+			done; \
+			if [ "$$_matched" = yes ]; then \
+				echo "===> staged header(s) $$_h from $$_d"; \
+				_found=yes; \
+				break; \
 			fi; \
 		done; \
-		if [ "$$_matched" = yes ]; then \
-			echo "===> staged header(s) ${_h} from $$_d"; \
-			_found=yes; \
-			break; \
+		if [ "$$_found" = no ]; then \
+			echo "error: IMPORT_HEADERS=$$_h: not found under any resolved include dir (${_IMPORT_CFLAGS})" >&2; \
+			exit 1; \
 		fi; \
 	done; \
-	if [ "$$_found" = no ]; then \
-		echo "error: IMPORT_HEADERS=${_h}: not found under any resolved include dir (${_IMPORT_CFLAGS})" >&2; \
-		exit 1; \
-	fi
-.endfor
-	@if [ -z "${_IMPORT_LIBDIR}" ]; then \
+	if [ -z "${_IMPORT_LIBDIR}" ]; then \
 		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
 	else \
 		_found=no; \
@@ -834,7 +861,9 @@ _stage_import:
 			echo "error: IMPORT=${IMPORT}: lib${LIB}.{a,so,dylib} not found in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
 			exit 1; \
 		fi; \
-	fi
+	fi; \
+	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fp; \
+	echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
 
 # fetch-import-source-req/fetch-import-binary-req/fetch-distinfo-
 # checksum-req/fetch-cache-never-committed-req (26-fetched-external-
@@ -1098,18 +1127,6 @@ _stage_fetch_headers:
 .endfor
 .endif
 
-# duplicate-linkdeps-fix-req: see mk.prog.mk's identical comment -- a
-# first-occurrence-preserving dedup of LDFLAGS, not a blind sort+uniq.
-# @impl 0f87-6abe-3f50-0560
-_LDFLAGS_DEDUP != _out=""; \
-	for _f in ${LDFLAGS}; do \
-		case " $$_out " in \
-			*" $$_f "*) ;; \
-			*) _out="$$_out $$_f" ;; \
-		esac; \
-	done; \
-	printf '%s' "$$_out"
-
 # @impl 0f87-6a98-8b7f-9215
 ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
@@ -1124,7 +1141,27 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 		exit 1; \
 	fi
 .endfor
-	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} ${_LDFLAGS_DEDUP}
+# duplicate-linkdeps-fix-req/ldflags-dedup-hook-timing-fix-req: see
+# mk.prog.mk's identical comment -- computed in the recipe (sees
+# LDFLAGS after every hook phase, unlike a top-level != assignment),
+# restricted to -l*/-L*/-Wl,-rpath,* so a flag+argument pair (e.g.
+# -framework X) is never split.
+# @impl 0f87-6abe-3f50-0560
+# @impl 0f87-6abe-8c3c-9ca3
+	@_ldflags=""; _seen=""; \
+	for _f in ${LDFLAGS}; do \
+		_skip=no; \
+		case "$$_f" in \
+			-l*|-L*|-Wl,-rpath,*) \
+				case " $$_seen " in \
+					*" $$_f "*) _skip=yes ;; \
+				esac; \
+				[ "$$_skip" = no ] && _seen="$$_seen $$_f" ;; \
+		esac; \
+		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
+	done; \
+	echo "${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags"; \
+	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags
 .if ${TARGET} != "win"
 	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR}/${SHLIB_LINK}
 	@${AR} rcs ${_LIBOUT_DIR}/${STATIC_NAME} ${OBJS}

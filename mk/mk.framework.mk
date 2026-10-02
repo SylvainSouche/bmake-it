@@ -94,7 +94,7 @@ SUBDIR_MODULES != ls -d *.m 2>/dev/null || true
 # FAIL_FAST=yes opts into stop-on-first-failure instead
 # (build-workspace-aggregation-req-v2, report-flag-uniform-trigger-v2).
 # ---------------------------------------------------------------------------
-all: _build_modules _aggregate _check_build_failures
+all: _create_fw_dirs _build_modules _aggregate _check_build_failures
 	@echo "===> framework ${.CURDIR:T} complete for ${OS_ARCH}"
 
 # aggregation-failure-exit-code-req: FAIL_FAST=no already lets every
@@ -209,10 +209,31 @@ _check_test_failures:
 		exit 1; \
 	fi
 
-# Aggregate resources (share/ overlay) and ensure dirs exist
-_aggregate:
+# framework-dir-creation-ordering-fix-req: build/<key>/{bin,lib,share,
+# include} must exist BEFORE any module in this framework is built, on
+# EVERY pass -- not just after the first pass's _aggregate ran. Found
+# empirically (direct reproduction, not assumed): mk.prog.mk/mk.lib.mk
+# gate -I<fwdir>/build/<key>/include onto CFLAGS/CXXFLAGS with a parse-
+# time exists() check; when dir creation was part of _aggregate (which
+# ran AFTER _build_modules), a module parsed on a framework's first
+# pass (directory absent) got no such -I, while the SAME module parsed
+# on a second, fresh bmake pass (directory now exists, created by the
+# first pass) silently gained one -- changing CFLAGS content between
+# passes, which changed _check_inputs_hash's fingerprint, forcing a
+# spurious recompile and re-archive whose new embedded `ar` timestamp
+# then differed from the already-copied-up archive, producing a
+# "copy-up collision ... differs -- overwriting" warning on an
+# otherwise genuinely clean, unchanged build (confirmed via a minimal
+# static-lib + consuming-app reproduction: `ar rcs` ran twice from a
+# single clean workspace build, the second time with build/.../include
+# newly on the compile line).
+# @impl 0f87-6abe-8e68-a7a7
+_create_fw_dirs:
 	@mkdir -p ${.CURDIR}/${BINDIR_LOCAL} ${.CURDIR}/${LIBDIR_LOCAL} \
 	          ${.CURDIR}/${SHAREDIR_LOCAL} ${.CURDIR}/${INCDIR_LOCAL}
+
+# Aggregate resources (share/ overlay)
+_aggregate:
 	@# share/ 3-layer overlay: common → <os> → <os>_<arch>
 	@if [ -d share/common ]; then \
 		cp -a share/common/. ${.CURDIR}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
@@ -263,7 +284,7 @@ add-prereq:
 	fi
 	@echo "Appended ${FW} to PREREQS"
 
-.PHONY: all clean help copy-up add-prereq _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
+.PHONY: all clean help copy-up add-prereq _create_fw_dirs _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
 
 .include "${BMK_MKDIR}/mk.docs.mk"
 
