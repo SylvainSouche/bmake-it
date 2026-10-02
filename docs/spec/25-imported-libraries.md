@@ -245,15 +245,26 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
   silently never reached the link, and comparing single words split a
   flag+argument pair like `-framework X` or `-Xlinker X`. Every other
   token passes through untouched, repeats included.
-- **A second visit is a no-op.** A workspace build reaches each module's
-  `all:` up to four times (workspace and framework each run `all` then
-  `copy-up`). `_stage_import:` is guarded by a fingerprint of
+- **Each module is entered once, and a second visit is a no-op.**
+  Workspace and framework each run `all copy-up` as ONE `make`
+  invocation per child (it used to be two processes, the second
+  re-parsing the whole makefile chain — `IMPORT=` resolution included —
+  only to find nothing to do), and `gen-mod-order.sh` asks for
+  `LIBS`/`LIB`/`PROG` in one `bmake -V` run per module instead of three
+  (`single-module-visit-req`; a four-module imported framework went from
+  ~2.6 s to ~0.9 s before its first module was entered). Within one
+  visit: `_stage_import:` is guarded by a fingerprint of
   `IMPORT`/`IMPORT_HEADERS`/`IMPORT_LIB` and the resolved
   source/cflags/libdir, kept in `build/<KEY>/.stage-fp` (under the build
   root so `bmake clean` discards it with the outputs it vouches for);
   an unchanged fingerprint exits silently before any copy or message
   (`import-staging-idempotent-req`), and the `===> imported` line is
-  printed from that guarded block only. `lib<LIB>.linkdeps` is written
+  printed from that guarded block only. The same holds for the
+  `fetch:` + `SRCS=` path: `_stage_fetch_headers:` is fingerprint-guarded
+  (`IMPORT_HEADERS=` plus the extraction fingerprint), and `built
+  static/shared/<prog>` is printed by the archive/link recipe itself, not
+  by `all:`, so a visit that rebuilt nothing says nothing
+  (`repeated-messages-fix-req`). `lib<LIB>.linkdeps` is written
   only when its content differs (`linkdeps-write-idempotent-req`). The
   framework's `build/<KEY>/{bin,lib,share,include}` are created before
   any module is built, on every pass (`framework-dir-creation-ordering-fix-req`):

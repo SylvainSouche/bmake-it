@@ -121,6 +121,12 @@ _check_build_failures:
 		exit 1; \
 	fi
 
+# single-module-visit-req: `all copy-up` is ONE make invocation per
+# module (it was two: build, then a second process just for copy-up, which
+# re-parsed the whole makefile chain -- IMPORT= resolution included --
+# only to find nothing to do). `all` failing stops the invocation, so
+# copy-up still never runs after a failed build.
+# @impl 0f87-6abf-aeba-b9eb
 # @impl 0f87-6a98-5e47-0c71
 # @impl 0f87-6aaa-6a6e-00d0
 # @impl 0f87-6aaa-72d2-8ffc
@@ -129,17 +135,13 @@ _build_modules:
 	@echo "===> building module ${_m}"
 	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rcfile=$$(mktemp); \
-	{ ${MAKE} -C ${_m} all \
+	{ ${MAKE} -C ${_m} all copy-up \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
 	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
 		rm -f "$$_rundir/build.failed"; \
-		${MAKE} -C ${_m} copy-up \
-			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
-			2>&1 | tee -a "$$_rundir/build.log"; \
 	else \
 		touch "$$_rundir/build.failed"; \
 		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \

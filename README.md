@@ -173,6 +173,12 @@ a Linux host).
 
 Implements the design described in `docs/spec/`. Known limitations:
 
+Round-5 lasviewer fixes (see `docs/spec/25`, `27`, `40`): `REQUIRES=header:` also
+probes the tool prefixes the import uses; a framework whose `PREREQS=` failed is
+skipped with a one-line reason; each module is entered once per workspace build
+(`all copy-up` is a single invocation, module-order discovery one `bmake -V`);
+progress messages print only when work happened.
+
 - Cross-compilation toolchains are stubs (host compiler used) for most
   non-Windows targets; real path tables for phase-1 targets need filling on
   FreeBSD/macOS hardware.

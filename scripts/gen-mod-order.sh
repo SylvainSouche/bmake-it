@@ -31,9 +31,18 @@ esac
 # is correct, exactly as a real recursive ${MAKE} -C <moduledir> build
 # would see it.
 # @impl 0f87-6ab5-8d38-83ac
+# single-module-visit-req (lasviewer round 5, item 3): takes a
+# space-separated LIST of variables and asks for all of them in ONE bmake
+# run (-V a -V b -V c, one output line each). It used to run once per
+# variable -- three full parses of the module's makefile chain (IMPORT=
+# resolution and pkg-config included) per module, ~2.5s for a four-module
+# framework, before the first module was even entered.
+# @impl 0f87-6abf-aeba-b9eb
 _bmake_q() {
     _mf=$1
-    _var=$2
+    _vars=$2
+    _vargs=""
+    for _v in $_vars; do _vargs="$_vargs -V $_v"; done
     _dir=$(dirname "$_mf")
     _file=$(basename "$_mf")
     (
@@ -51,18 +60,18 @@ _bmake_q() {
                     BMK_MKDIR="$BMK_MKDIR" \
                     "$BMAKE" -m "$BMK_MKDIR" -m "$_sys" \
                     BMK_MKDIR="$BMK_MKDIR" \
-                    -f "$_file" -V "$_var" 2>/dev/null
+                    -f "$_file" $_vargs 2>/dev/null
             else
                 env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
                     MAKESYSPATH="$BMK_MKDIR" \
                     BMK_MKDIR="$BMK_MKDIR" \
                     "$BMAKE" -m "$BMK_MKDIR" \
                     BMK_MKDIR="$BMK_MKDIR" \
-                    -f "$_file" -V "$_var" 2>/dev/null
+                    -f "$_file" $_vargs 2>/dev/null
             fi
         else
             env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                "$BMAKE" -f "$_file" -V "$_var" 2>/dev/null
+                "$BMAKE" -f "$_file" $_vargs 2>/dev/null
         fi
     ) || true
 }
@@ -84,9 +93,10 @@ tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
 for name in $mods; do
-    libs=$(_bmake_q "${name}.m/makefile" LIBS)
-    libid=$(_bmake_q "${name}.m/makefile" LIB)
-    progid=$(_bmake_q "${name}.m/makefile" PROG)
+    _q=$(_bmake_q "${name}.m/makefile" "LIBS LIB PROG")
+    libs=$(printf '%s\n' "$_q" | sed -n 1p)
+    libid=$(printf '%s\n' "$_q" | sed -n 2p)
+    progid=$(printf '%s\n' "$_q" | sed -n 3p)
     ids="$name"
     [ -n "$libid" ] && ids="$ids $libid lib${libid}"
     [ -n "$progid" ] && ids="$ids $progid"

@@ -36,6 +36,7 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.requires.mk"
 
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(LIB) || empty(LIB)
@@ -242,10 +243,22 @@ _FETCH_SEARCH_FW_DIRS = ${_FWDIR}
 _FETCH_SEARCH_FW_DIRS += ${_PREREQ_BASE.${_p}}/${_p}
 .  endif
 .endfor
+# single-module-visit-req: THIS module's own work/_install is excluded.
+# It does not exist on the first parse and does on every later one, so
+# including it made the FETCH_BUILD= fingerprint differ between a
+# module's first and second build -- one spurious cmake reconfigure +
+# rebuild on the second run. (The old build-then-copy-up double visit
+# happened to absorb that one-time mismatch inside the first workspace
+# build; with each module entered once it would otherwise surface on the
+# user's next build.)
 _FETCH_CMAKE_PREFIX_PATH != _pp=""; \
+	_self=$$(cd ${.CURDIR} 2>/dev/null && pwd -P)/work/_install; \
 	for _fw in ${_FETCH_SEARCH_FW_DIRS}; do \
 		for _d in "$$_fw"/*.m/work/_install; do \
-			[ -d "$$_d" ] && _pp="$$_pp$$_d;"; \
+			[ -d "$$_d" ] || continue; \
+			_real=$$(cd "$$_d" && pwd -P); \
+			[ "$$_real" = "$$_self" ] && continue; \
+			_pp="$$_pp$$_d;"; \
 		done; \
 	done; \
 	printf '%s' "$$_pp"
@@ -675,10 +688,10 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 # prerequisite here costs nothing extra.
 .  if ${LIB_SHARED} == "YES"
 all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
-	@echo "===> built shared ${SHLIB_NAME} (fetched: ${_IMPORT_SOURCE})"
+	@:
 .  else
 all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
-	@echo "===> built static ${STATIC_NAME} (fetched: ${_IMPORT_SOURCE})"
+	@:
 .  endif
 .elif ${_IMPORT_KIND:Uno} == "source-build"
 # fetch-build-req: the extracted (+patched) source is built by its OWN
@@ -692,10 +705,10 @@ all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
 	@:
 .elif ${LIB_SHARED} == "YES"
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl _write_linkdeps
-	@echo "===> built shared ${SHLIB_NAME}"
+	@:
 .else
 all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl _write_linkdeps
-	@echo "===> built static ${STATIC_NAME}"
+	@:
 .endif
 
 # import-link-transitivity-req: this module's OWN flattened direct link
@@ -742,6 +755,15 @@ _OWN_LINKDEPS += ${_LINKDEPS.${_l}}
 .      endif
 .    endfor
 .  endfor
+.endif
+
+# repeated-messages-fix-req: "built ..." is printed by the recipe that
+# actually archives/links (not by all:, which runs on every visit), so a
+# visit that rebuilt nothing says nothing.
+.if ${_IMPORT_KIND:Uno} == "source"
+_BUILT_NOTE = (fetched: ${_IMPORT_SOURCE})
+.else
+_BUILT_NOTE =
 .endif
 
 # linkdeps-write-idempotent-req: _write_linkdeps is .PHONY (runs on every
@@ -1107,24 +1129,33 @@ _fetch_build:
 # that, via the ordinary ${_LIBOUT_DIR}/${SHLIB_NAME}/${STATIC_NAME}
 # recipes below).
 # @impl 0f87-6ab6-4fe1-98d2
+# repeated-messages-fix-req: fingerprint-guarded like _stage_import: --
+# IMPORT_HEADERS= plus the extraction fingerprint (work/.extract-fp), kept
+# under the build root. Unchanged => silent, nothing re-copied.
+# @impl 0f87-6abf-aeba-e6a2
 _stage_fetch_headers:
 .if !empty(IMPORT_HEADERS)
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include
-.for _h in ${IMPORT_HEADERS}
-	@_found=no; \
-	for _d in ${_IMPORT_WRKSRC} ${_IMPORT_WRKSRC}/include; do \
-		if [ -e "$$_d/${_h}" ]; then \
-			cp -a "$$_d/${_h}" ${_FWDIR}/${BUILD_ROOT}/include/; \
-			echo "===> staged header ${_h} from $$_d"; \
-			_found=yes; \
-			break; \
+	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${.CURDIR}/${BUILD_ROOT}; \
+	_fp=$$(printf '%s' "HEADERS=${IMPORT_HEADERS} WRK=${_IMPORT_WRKSRC} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
+	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp)" = "$$_fp" ]; then \
+		exit 0; \
+	fi; \
+	for _h in ${IMPORT_HEADERS}; do \
+		_found=no; \
+		for _d in ${_IMPORT_WRKSRC} ${_IMPORT_WRKSRC}/include; do \
+			if [ -e "$$_d/$$_h" ]; then \
+				cp -a "$$_d/$$_h" ${_FWDIR}/${BUILD_ROOT}/include/; \
+				echo "===> staged header $$_h from $$_d"; \
+				_found=yes; \
+				break; \
+			fi; \
+		done; \
+		if [ "$$_found" = no ]; then \
+			echo "error: IMPORT_HEADERS=$$_h: not found under the fetched work tree (${_IMPORT_WRKSRC} or its include/)" >&2; \
+			exit 1; \
 		fi; \
 	done; \
-	if [ "$$_found" = no ]; then \
-		echo "error: IMPORT_HEADERS=${_h}: not found under the fetched work tree (${_IMPORT_WRKSRC} or its include/)" >&2; \
-		exit 1; \
-	fi
-.endfor
+	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp
 .endif
 
 # @impl 0f87-6a98-8b7f-9215
@@ -1162,6 +1193,7 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 	done; \
 	echo "${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags"; \
 	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags
+	@echo "===> built shared ${SHLIB_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
 .if ${TARGET} != "win"
 	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR}/${SHLIB_LINK}
 	@${AR} rcs ${_LIBOUT_DIR}/${STATIC_NAME} ${OBJS}
@@ -1175,6 +1207,7 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 
 ${_LIBOUT_DIR}/${STATIC_NAME}: ${OBJS}
 	${AR} rcs ${.TARGET} ${OBJS}
+	@echo "===> built static ${STATIC_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
 
 # @impl 0f87-6a98-7718-886d
 _promote_incl:
