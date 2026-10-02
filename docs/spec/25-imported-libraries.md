@@ -237,7 +237,32 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
   (first-occurrence preserved, never reordered — static link order can
   matter) right before use (`duplicate-linkdeps-fix-req`) — found in
   real use as a pure-noise `ignoring duplicate libraries` linker
-  warning on every link.
+  warning on every link. The dedup runs **inside the link recipe**, not
+  as a parse-time assignment, and only touches `-l*`, `-L*` and
+  `-Wl,-rpath,*` tokens (`ldflags-dedup-hook-timing-fix-req`): a
+  parse-time version ran before `mk.local.mk`'s `local` phase, so any
+  `LDFLAGS +=` from a `local*.mk` post-hook (e.g. `-framework OpenGL`)
+  silently never reached the link, and comparing single words split a
+  flag+argument pair like `-framework X` or `-Xlinker X`. Every other
+  token passes through untouched, repeats included.
+- **A second visit is a no-op.** A workspace build reaches each module's
+  `all:` up to four times (workspace and framework each run `all` then
+  `copy-up`). `_stage_import:` is guarded by a fingerprint of
+  `IMPORT`/`IMPORT_HEADERS`/`IMPORT_LIB` and the resolved
+  source/cflags/libdir, kept in `build/<KEY>/.stage-fp` (under the build
+  root so `bmake clean` discards it with the outputs it vouches for);
+  an unchanged fingerprint exits silently before any copy or message
+  (`import-staging-idempotent-req`), and the `===> imported` line is
+  printed from that guarded block only. `lib<LIB>.linkdeps` is written
+  only when its content differs (`linkdeps-write-idempotent-req`). The
+  framework's `build/<KEY>/{bin,lib,share,include}` are created before
+  any module is built, on every pass (`framework-dir-creation-ordering-fix-req`):
+  `-I<fw>/build/<KEY>/include` is added to CFLAGS by a parse-time
+  `exists()` check, and creating the directory only after the modules
+  built made a module's CFLAGS differ between the first and second pass,
+  which changed the inputs hash and recompiled and re-archived it (the
+  new embedded `ar` timestamp then triggered a `copy-up collision`
+  warning on a clean build).
 - A module's own framework `-L` search path is only added when that
   directory actually exists (`prog-only-framework-ld-warning-fix-req`)
   — a framework holding only a `PROG` (no `LIB` module at all) never

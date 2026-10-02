@@ -243,25 +243,6 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
-# duplicate-linkdeps-fix-req: transitive .linkdeps expansion (above) can
-# legitimately name the same -l<name>/-L<dir>/-Wl,-rpath,<dir> more than
-# once -- two different LIBS= entries sharing a common transitive
-# dependency both carry it forward. Harmless to the linker itself (ld
-# just warns and ignores the repeat), but the warning is pure noise
-# (found in real use: "ignoring duplicate libraries" on every link).
-# First-occurrence-preserving, not a blind sort+uniq -- static link
-# order can matter; this never reorders, only drops an exact repeat of
-# something already seen.
-# @impl 0f87-6abe-3f50-0560
-_LDFLAGS_DEDUP != _out=""; \
-	for _f in ${LDFLAGS}; do \
-		case " $$_out " in \
-			*" $$_f "*) ;; \
-			*) _out="$$_out $$_f" ;; \
-		esac; \
-	done; \
-	printf '%s' "$$_out"
-
 # @impl 0f87-6a98-8b7f-9215
 ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
@@ -276,7 +257,41 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 		exit 1; \
 	fi
 .endfor
-	${_CCLINK} -o ${.TARGET} ${OBJS} ${_LDFLAGS_DEDUP}
+# duplicate-linkdeps-fix-req/ldflags-dedup-hook-timing-fix-req:
+# transitive .linkdeps expansion (above) can legitimately name the same
+# -l<name>/-L<dir>/-Wl,-rpath,<dir> more than once -- two different
+# LIBS= entries sharing a common transitive dependency both carry it
+# forward. Harmless to the linker itself (ld just warns and ignores the
+# repeat), but the warning is pure noise (found in real use: "ignoring
+# duplicate libraries" on every link). Computed HERE, inside the
+# recipe, not as a top-level != assignment: a top-level != runs at
+# parse time, before mk.local.mk's own "local"-phase post-hooks
+# contribute to LDFLAGS (below, in this same file) -- a hook-added flag
+# silently never reached the link line (a real regression, found in
+# use). A recipe only runs after the whole file is parsed, so ${LDFLAGS}
+# here already reflects every hook phase. Deduplication is restricted
+# to -l*/-L*/-Wl,-rpath,* -- exactly what .linkdeps expansion repeats --
+# every other token is passed through unchanged and never compared:
+# deduplicating by single word previously split a flag+argument pair
+# (`-framework X`, `-Xlinker X`, ...), silently losing the argument or
+# the repeated flag. First-occurrence-preserving, not a blind
+# sort+uniq -- static link order can matter.
+# @impl 0f87-6abe-3f50-0560
+# @impl 0f87-6abe-8c3c-9ca3
+	@_ldflags=""; _seen=""; \
+	for _f in ${LDFLAGS}; do \
+		_skip=no; \
+		case "$$_f" in \
+			-l*|-L*|-Wl,-rpath,*) \
+				case " $$_seen " in \
+					*" $$_f "*) _skip=yes ;; \
+				esac; \
+				[ "$$_skip" = no ] && _seen="$$_seen $$_f" ;; \
+		esac; \
+		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
+	done; \
+	echo "${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags"; \
+	${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all

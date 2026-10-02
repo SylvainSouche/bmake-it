@@ -599,6 +599,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "framework-dir-creation-ordering-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-8e56-ed51",
+    "status": "confirmed",
+    "type": "req"
+  },
   "framework-discovery-signal-req": {
     "active": true,
     "id": "6f38-6a8a-f6ee-e69f",
@@ -918,9 +924,9 @@
     "type": "impl"
   },
   "impl-duplicate-linkdeps-fix": {
-    "active": true,
+    "active": false,
     "id": "0f87-6abe-3f50-0560",
-    "status": "verified",
+    "status": "superseded",
     "type": "impl"
   },
   "impl-fetch-build": {
@@ -951,6 +957,12 @@
     "active": true,
     "id": "0f87-6a98-5ff4-5d24",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-framework-dir-creation-ordering-fix": {
+    "active": true,
+    "id": "0f87-6abe-8e68-a7a7",
+    "status": "verified",
     "type": "impl"
   },
   "impl-framework-discovery-signal": {
@@ -1007,6 +1019,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-staging-idempotent": {
+    "active": true,
+    "id": "0f87-6abe-8e68-741b",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-import-staging-symlink-fix": {
     "active": true,
     "id": "0f87-6ab6-60c6-d25a",
@@ -1037,6 +1055,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-ldflags-dedup-hook-timing-fix": {
+    "active": true,
+    "id": "0f87-6abe-8c3c-9ca3",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-lib-macro-name-sanitize": {
     "active": true,
     "id": "0f87-6aba-a30f-2123",
@@ -1059,6 +1083,12 @@
     "active": true,
     "id": "0f87-6a98-8b7f-9215",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-linkdeps-write-idempotent": {
+    "active": true,
+    "id": "0f87-6abe-8e68-fc89",
+    "status": "verified",
     "type": "impl"
   },
   "impl-linux-libc-default-glibc": {
@@ -1295,6 +1325,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "import-staging-idempotent-req": {
+    "active": true,
+    "id": "0f87-6abe-8e5b-5d79",
+    "status": "confirmed",
+    "type": "req"
+  },
   "import-staging-req": {
     "active": true,
     "id": "0f87-6ab5-8a9c-1d21",
@@ -1409,6 +1445,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "lasviewer-fourth-round-issues-obs": {
+    "active": true,
+    "id": "0f87-6abe-8c33-3123",
+    "status": "recorded",
+    "type": "obs"
+  },
   "lasviewer-prereq-software-gap-obs": {
     "active": true,
     "id": "0f87-6aba-6cb7-af3b",
@@ -1430,6 +1472,18 @@
   "layered-build-output-tree": {
     "active": true,
     "id": "6f38-6a89-ba51-6adc",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "ldflags-dedup-hook-timing-fix-req": {
+    "active": true,
+    "id": "0f87-6abe-8c38-3769",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "ldflags-dedup-must-run-in-recipe-dec": {
+    "active": true,
+    "id": "0f87-6abe-8c64-398c",
     "status": "recorded",
     "type": "dec"
   },
@@ -1498,6 +1552,12 @@
     "id": "0f87-6ab5-8e32-0225",
     "status": "recorded",
     "type": "dec"
+  },
+  "linkdeps-write-idempotent-req": {
+    "active": true,
+    "id": "0f87-6abe-8e60-dfd2",
+    "status": "confirmed",
+    "type": "req"
   },
   "linux-glibc-musl-arch-tiering": {
     "active": true,
