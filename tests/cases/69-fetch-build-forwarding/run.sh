@@ -119,4 +119,21 @@ if grep -q "was built for newer 'macOS' version\|but linking with dylib.*built f
     exit 1
 fi
 
+# A FETCH_BUILD= module that is a DEPENDENCY of a later sibling must not
+# reconfigure on the next build (lasviewer: laz-perf vs copc-lib). Its
+# CMAKE_PREFIX_PATH used to list every sibling's work/_install, including
+# ones that only appear after the sibling is built, so the fingerprint
+# changed between the first and second build. (sleep: bmake mtimes are
+# one-second granular.)
+sleep 1
+bmake >build2.log 2>&1
+bmake >build3.log 2>&1
+for i in 2 3; do
+    if grep -q "built via FETCH_BUILD" build$i.log; then
+        echo "build $i re-ran a FETCH_BUILD= configure/install with nothing changed" >&2
+        grep "built via FETCH_BUILD" build$i.log >&2
+        exit 1
+    fi
+done
+
 echo "fetch-build-forwarding OK"
