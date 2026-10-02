@@ -1,7 +1,7 @@
 # Bmake It — 27: Prerequisite Software (`REQUIRES=`)
 
 Status: Implemented (`mk/mk.common.mk`) and covered by the test harness
-(`tests/cases/66-requires-prereq-software`, `tests/cases/77-requires-header-form`).
+(`tests/cases/66-requires-prereq-software`, `77-requires-header-form`, `82-requires-header-prefix`).
 Every claim cites the REQ/DEC alias it comes from.
 
 ## Scope and objective
@@ -90,23 +90,34 @@ twice, in order:
 Two separate attempts, not one merged pass: a C++-only header's `-I` is
 commonly carried on `CXXFLAGS` alongside a real `-std=c++..` flag, which
 the compiler rejects outright when forced into C mode. "Current" means
-as `CFLAGS`/`CXXFLAGS` stand at the point `mk.common.mk` evaluates
-`REQUIRES=` — the module's own makefile (so a `CFLAGS+=`/`CXXFLAGS+=`
-placed *before* `.include <mk.prog.mk>`/`<mk.lib.mk>` counts) plus this
-file's own earlier `SANITIZE=`/`OPENMP=` contributions, but *not* what
-`mk.local.mk` hooks add — that file is `.include`d later. In practice,
-this means the header is found either via the compiler's own default
-system search path, or via an `-I` the module sets directly in its own
-makefile before the `.include` line.
+as `CFLAGS`/`CXXFLAGS` stand when `mk/mk.requires.mk` runs — the
+module's own makefile (a `CFLAGS+=`/`CXXFLAGS+=` placed *before*
+`.include <mk.prog.mk>`/`<mk.lib.mk>` counts), `mk.common.mk`'s
+`SANITIZE=`/`OPENMP=` contributions, and any `pre` hook, but not the
+later `local` post-hook phase.
+
+If neither attempt finds it, `<prefix>/include/<path>` is tried for every
+prefix the `IMPORT_LIB=none` step-4 probe uses (`_TOOL_PREFIXES` with the
+trailing `bin/` stripped — `/opt/local`, `/opt/homebrew`, ... on macOS),
+so a header installed under a package manager's prefix the compiler
+doesn't search by default is found the same way the import finds it
+(`requires-header-prefix-probe-req`; found in real use with MacPorts and
+glm). This is a presence check only — it adds no `-I`, so a module that
+`#include`s the header directly, with no `IMPORT=`, still needs its own.
+
+The check runs from `mk/mk.requires.mk`, included after the `pre` hook
+phase, so a `pre` hook's `CFLAGS+=-I...` or `_TOOL_PREFIXES` override is
+seen too (only the `local` post-hook phase comes later).
 
 A missing header fails to parse the same way a missing name does, with
-its own message naming the path, not just the bare entry:
+its own message naming the path and everything tried, not just the bare
+entry:
 
 ```
-REQUIRES=header:glm/glm.hpp: header glm/glm.hpp not found via
-<cc>/<cxx> with the current CFLAGS/CXXFLAGS -- add its include
-directory to CFLAGS or CXXFLAGS (before .include <mk.prog.mk>/
-<mk.lib.mk>) or install the providing package (see README.md
+REQUIRES=header:glm/glm.hpp: header glm/glm.hpp not found -- tried
+<cc>/<cxx> with the current CFLAGS/CXXFLAGS, and <prefix>/include for:
+/opt/local /opt/homebrew ... -- add its include directory to CFLAGS or
+CXXFLAGS or install the providing package (see README.md
 Prerequisites) before building
 ```
 
@@ -157,3 +168,8 @@ composing with a plain-name `REQUIRES=` entry in the same list; a
 missing `-I` and a genuinely nonexistent header path each fail to parse
 with their own distinct `header:<path>: header ... not found` message,
 before any compile is attempted.
+
+`tests/cases/82-requires-header-prefix`: a header that exists only under a
+fake tool prefix the compiler doesn't search (the prefix list is
+overridden from a `pre` hook) passes `REQUIRES=header:`; a genuinely
+absent one still fails, naming the prefixes tried.

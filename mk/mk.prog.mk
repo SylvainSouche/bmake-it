@@ -25,6 +25,7 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.requires.mk"
 
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(PROG) || empty(PROG)
@@ -241,7 +242,7 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 .endfor
 
 all: _check_inputs_hash _create_dirs ${_BINOUT}
-	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
+	@:
 
 # @impl 0f87-6a98-8b7f-9215
 ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
@@ -292,6 +293,7 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 	done; \
 	echo "${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags"; \
 	${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags
+	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all

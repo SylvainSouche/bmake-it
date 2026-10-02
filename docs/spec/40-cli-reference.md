@@ -152,6 +152,15 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
   right before the final `Stop.` With `FAIL_FAST=yes`, the run stops
   at the first failure as before, and that failure alone determines the
   exit code (`aggregation-failure-exit-code-req`).
+  A framework whose `PREREQS=` names a framework that failed (or was
+  itself skipped) is **skipped, not built**: it would only fail again,
+  later and far noisier (a missing-header error 450 lines after the real
+  `REQUIRES=` failure, in the case that prompted this). One line says
+  why — `===> framework Geo skipped: prerequisite GIS failed`, plus
+  `(root cause: GIS)` when the failed prerequisite was itself skipped —
+  independent frameworks are still built, a skipped framework counts as
+  failed for the exit status, and the final summary lists root failures
+  first, skipped frameworks after (`failed-prereq-framework-skip-req`).
 - **`RUN_ID=<id>`** (default: `date +%Y%m%d-%H%M%S-$$`, timestamp + PID
   — collision-safe across near-simultaneous runs without needing a
   GNU-only `date` extension like `%N`, which macOS/BSD `date` lacks):

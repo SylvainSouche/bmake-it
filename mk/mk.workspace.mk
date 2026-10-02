@@ -124,16 +124,22 @@ all: _build_frameworks _aggregate_ws
 	@# `all` recursion (mk.framework.mk's own _check_build_failures)
 	@# correctly fails when any of ITS modules failed.
 	@# @impl 0f87-6ab5-81a2-7bb0
-	@_failed=""; \
+	@_failed=""; _skipped=""; \
 	for _f in ${SUBDIR_FRAMEWORKS}; do \
-		if [ -f "${.CURDIR}/$$_f/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+		_rd="${.CURDIR}/$$_f/${BUILD_ROOT}/runs/${RUN_ID}"; \
+		if [ -f "$$_rd/build.skipped" ]; then \
+			_skipped="$$_skipped $$_f"; \
+		elif [ -f "$$_rd/build.failed" ]; then \
 			_failed="$$_failed $$_f"; \
 		fi; \
 	done; \
-	if [ -n "$$_failed" ]; then \
-		echo "===> workspace BUILD FAILED:$$_failed" >&2; \
+	if [ -n "$$_failed$$_skipped" ]; then \
+		echo "===> workspace BUILD FAILED:$$_failed$$_skipped" >&2; \
 		for _f in $$_failed; do \
 			echo "     $$_f -- see $$_f/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		done; \
+		for _f in $$_skipped; do \
+			echo "     $$_f -- skipped, root cause: $$(cat ${.CURDIR}/$$_f/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped)" >&2; \
 		done; \
 		exit 1; \
 	fi
@@ -153,26 +159,61 @@ SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
 # @impl 0f87-6a98-5e47-0c71
 # @impl 0f87-6aaa-6a6e-00d0
 # @impl 0f87-6aaa-72d2-8ffc
+# failed-prereq-framework-skip-req: a framework whose PREREQS= names a
+# framework that failed (or was itself skipped) is not built -- it would
+# only fail again, much later and far noisier (found in real use: a
+# REQUIRES= failure in GIS was followed by Geo/Viewer dying on a missing
+# glm header ~450 lines on). One line says why; the root cause is carried
+# along (build.skipped) so a transitive skip can name it. Independent
+# frameworks are still attempted (keep-going); the skipped one is marked
+# build.failed so the exit status stays non-zero. PREREQS= is only
+# queried once something has already failed, so a healthy build pays
+# nothing.
+# single-module-visit-req: `all copy-up` is ONE make invocation per
+# framework, not two (the second re-entered every module just to find
+# nothing to do).
+# @impl 0f87-6abf-aeba-66f1
+# @impl 0f87-6abf-aeba-b9eb
 _build_frameworks:
 .for _f in ${SUBDIR_FRAMEWORKS}
-	@echo "===> building framework ${_f}"
 	@_rundir=${.CURDIR}/${_f}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
-	_rcfile=$$(mktemp); \
-	{ ${MAKE} -C ${_f} all \
-		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" REPORT="${REPORT}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
-	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
-	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
-	if [ "$$_rc" -eq 0 ]; then \
-		rm -f "$$_rundir/build.failed"; \
-		${MAKE} -C ${_f} copy-up \
-			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
-			2>&1 | tee -a "$$_rundir/build.log"; \
-	else \
-		touch "$$_rundir/build.failed"; \
-		echo "===> framework ${_f} build FAILED -- see ${_f}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+	_why=""; _root=""; _anyfail=no; \
+	for _x in ${SUBDIR_FRAMEWORKS}; do \
+		[ "$$_x" = "${_f}" ] && break; \
+		[ -f "${.CURDIR}/$$_x/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ] && _anyfail=yes; \
+	done; \
+	if [ "$$_anyfail" = yes ]; then \
+		for _p in $$(${MAKE} -C ${_f} -V PREREQS 2>/dev/null); do \
+			_pd=${.CURDIR}/$$_p/${BUILD_ROOT}/runs/${RUN_ID}; \
+			if [ -f "$$_pd/build.failed" ]; then \
+				_why=$$_p; \
+				if [ -f "$$_pd/build.skipped" ]; then _root=$$(cat "$$_pd/build.skipped"); else _root=$$_p; fi; \
+				break; \
+			fi; \
+		done; \
+	fi; \
+	if [ -n "$$_why" ]; then \
+		_msg="===> framework ${_f} skipped: prerequisite $$_why failed"; \
+		if [ "$$_root" != "$$_why" ]; then _msg="$$_msg (root cause: $$_root)"; fi; \
+		echo "$$_msg" >&2; echo "$$_msg" > "$$_rundir/build.log"; \
+		echo "$$_root" > "$$_rundir/build.skipped"; touch "$$_rundir/build.failed"; \
 		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+	else \
+		rm -f "$$_rundir/build.skipped"; \
+		echo "===> building framework ${_f}"; \
+		_rcfile=$$(mktemp); \
+		{ ${MAKE} -C ${_f} all copy-up \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" REPORT="${REPORT}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
+		  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
+		_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
+		if [ "$$_rc" -eq 0 ]; then \
+			rm -f "$$_rundir/build.failed"; \
+		else \
+			touch "$$_rundir/build.failed"; \
+			echo "===> framework ${_f} build FAILED -- see ${_f}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+			if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+		fi; \
 	fi; \
 	rm -rf ${.CURDIR}/${_f}/${BUILD_ROOT}/runs/latest; \
 	cp -a "$$_rundir" ${.CURDIR}/${_f}/${BUILD_ROOT}/runs/latest
