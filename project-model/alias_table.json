@@ -515,6 +515,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "fetch-build-prefix-stability-req": {
+    "active": true,
+    "id": "0f87-6abf-bef3-ba61",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-build-req": {
     "active": true,
     "id": "0f87-6ab6-654d-0fde",
@@ -950,6 +956,12 @@
   "impl-fetch-build-forwarding-fix": {
     "active": true,
     "id": "0f87-6aba-a53b-3097",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-fetch-build-prefix-stability": {
+    "active": true,
+    "id": "0f87-6abf-bef3-d99b",
     "status": "verified",
     "type": "impl"
   },
@@ -1502,6 +1514,12 @@
   "lasviewer-third-round-issues-obs": {
     "active": true,
     "id": "0f87-6abe-3ed4-e933",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "lasviewer-usage-feedback-obs": {
+    "active": true,
+    "id": "0f87-6abf-bef3-fed3",
     "status": "recorded",
     "type": "obs"
   },

@@ -243,21 +243,37 @@ _FETCH_SEARCH_FW_DIRS = ${_FWDIR}
 _FETCH_SEARCH_FW_DIRS += ${_PREREQ_BASE.${_p}}/${_p}
 .  endif
 .endfor
-# single-module-visit-req: THIS module's own work/_install is excluded.
-# It does not exist on the first parse and does on every later one, so
-# including it made the FETCH_BUILD= fingerprint differ between a
-# module's first and second build -- one spurious cmake reconfigure +
-# rebuild on the second run. (The old build-then-copy-up double visit
-# happened to absorb that one-time mismatch inside the first workspace
-# build; with each module entered once it would otherwise surface on the
-# user's next build.)
+# @impl 0f87-6abf-bef3-d99b
+# single-module-visit-req: only prefixes that already exist when this
+# module is FIRST parsed may be listed, or the FETCH_BUILD= fingerprint
+# differs between a module's first and second build (one spurious cmake
+# reconfigure + rebuild on the second run -- found in real use for a
+# fetch-built module that is a dependency of a later sibling: laz-perf
+# vs copc-lib). So within THIS framework, only modules BEFORE this one in
+# the framework's build order (.gen-mod-order.mk: dependencies first) are
+# scanned -- never this module's own work/_install, and never a module
+# built after it, whose install only appears later. Every PREREQS=-visible
+# framework is built before this one, so all of its modules still count.
+# If the order file is absent (a module built standalone before its
+# framework was ever parsed) no sibling is scanned.
+# (The old build-then-copy-up double visit happened to absorb this
+# one-time mismatch inside the first workspace build.)
 _FETCH_CMAKE_PREFIX_PATH != _pp=""; \
-	_self=$$(cd ${.CURDIR} 2>/dev/null && pwd -P)/work/_install; \
+	_myfw=$$(cd ${_FWDIR} 2>/dev/null && pwd -P); \
+	_selfn=$$(basename "$$(cd ${.CURDIR} && pwd -P)"); \
+	_before=""; \
+	for _w in $$(sed -n 's/^MODULE_SUBDIR=//p' ${_FWDIR}/.gen-mod-order.mk 2>/dev/null | head -1); do \
+		[ "$$_w" = "$$_selfn" ] && break; \
+		_before="$$_before $$_w"; \
+	done; \
 	for _fw in ${_FETCH_SEARCH_FW_DIRS}; do \
+		_fwreal=$$(cd "$$_fw" 2>/dev/null && pwd -P); \
 		for _d in "$$_fw"/*.m/work/_install; do \
 			[ -d "$$_d" ] || continue; \
-			_real=$$(cd "$$_d" && pwd -P); \
-			[ "$$_real" = "$$_self" ] && continue; \
+			if [ "$$_fwreal" = "$$_myfw" ]; then \
+				_mod=$$(basename "$$(dirname "$$(dirname "$$_d")")"); \
+				case " $$_before " in *" $$_mod "*) ;; *) continue ;; esac; \
+			fi; \
 			_pp="$$_pp$$_d;"; \
 		done; \
 	done; \
