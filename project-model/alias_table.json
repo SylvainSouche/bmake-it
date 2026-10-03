@@ -185,6 +185,12 @@
     "status": "superseded",
     "type": "req"
   },
+  "constraint-reason-message-req": {
+    "active": true,
+    "id": "0f87-6ac0-d593-d1c3",
+    "status": "confirmed",
+    "type": "req"
+  },
   "copy-up-collision-diff-aware": {
     "active": true,
     "id": "6f38-6a8d-1de3-846e",
@@ -2186,6 +2192,30 @@
   "phase1-target-scope": {
     "active": true,
     "id": "6f38-6a89-bb64-d9ed",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "platform-constraint-evaluation-req": {
+    "active": true,
+    "id": "0f87-6ac0-d593-5828",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "platform-constraint-open-points-cand": {
+    "active": true,
+    "id": "0f87-6ac0-d593-03d4",
+    "status": "open",
+    "type": "cand"
+  },
+  "platform-list-grammar-req": {
+    "active": true,
+    "id": "0f87-6ac0-d593-108a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "platform-toolchain-constraints-dec": {
+    "active": true,
+    "id": "0f87-6ac0-d592-a5b7",
     "status": "recorded",
     "type": "dec"
   },
