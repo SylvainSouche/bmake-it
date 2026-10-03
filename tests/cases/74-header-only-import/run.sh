@@ -18,7 +18,7 @@ mkdir -p "$FAKE/include/glm" "$FAKE/lib/pkgconfig"
 cat > "$FAKE/include/glm/glm.hpp" <<'EOF'
 #ifndef GLM_HPP
 #define GLM_HPP
-inline int glm_version(void) { return 1; }
+static inline int glm_version(void) { return 1; }
 #endif
 EOF
 

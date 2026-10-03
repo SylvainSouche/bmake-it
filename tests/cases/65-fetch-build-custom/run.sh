@@ -37,12 +37,14 @@ EOF
 # The custom command itself proves BMK_FETCH_INSTALL_PREFIX and the
 # forwarded CC are both real and usable: it hand-builds a shared
 # library and installs it with plain mkdir/cp/cc, nothing preset-shaped.
+# -dynamiclib/.dylib are macOS-only; Linux and the BSDs use -shared -fPIC/.so.
+if [ "$(uname -s)" = Darwin ]; then SHFLAGS=-dynamiclib; EXT=dylib; else SHFLAGS="-shared -fPIC"; EXT=so; fi
 cat > "$ROOT/ws/Fw/libfoo.m/makefile" <<EOF
 LIB=foo
 IMPORT=fetch:foo
 FETCH_URL=file://$ROOT/fake/dist/foo-1.0.tar.gz
 FETCH_BUILD=custom
-FETCH_BUILD_CMD=mkdir -p \$\${BMK_FETCH_INSTALL_PREFIX}/include \$\${BMK_FETCH_INSTALL_PREFIX}/lib && \$\${CC} -dynamiclib -o \$\${BMK_FETCH_INSTALL_PREFIX}/lib/libfoo.dylib foo.c && cp foo.h \$\${BMK_FETCH_INSTALL_PREFIX}/include/
+FETCH_BUILD_CMD=mkdir -p \$\${BMK_FETCH_INSTALL_PREFIX}/include \$\${BMK_FETCH_INSTALL_PREFIX}/lib && \$\${CC} $SHFLAGS -o \$\${BMK_FETCH_INSTALL_PREFIX}/lib/libfoo.$EXT foo.c && cp foo.h \$\${BMK_FETCH_INSTALL_PREFIX}/include/
 IMPORT_HEADERS=foo.h
 .include <mk.lib.mk>
 EOF
