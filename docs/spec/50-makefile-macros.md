@@ -17,6 +17,7 @@ BSD-make-native equivalent, introduced by this project.
 |---|---|---|
 | `PREREQS=<fw1> <fw2> ...` | **Mandatory**, even empty (`PREREQS=`). Ordered, space-delimited list of frameworks this one may `LIBS=`-link against and see the public headers of. All entries implicitly public — no per-entry visibility qualifier. Also doubles as the framework auto-discovery signal | New (`REQ-framework-prereqs-macro-req`, `REQ-prereqs-mandatory-even-empty-req`) |
 | `PUBLIC_HEADERS_SYSTEM=yes` | This framework's public headers reach every `PREREQS=`-consumer via `-isystem` instead of `-I` — for a framework that wraps or vendors third-party code, so a consumer isn't flooded with warnings originating from headers it doesn't own | New (`REQ-public-headers-system-req`) |
+| `PLATFORMS=[!][-]<os[_arch]> ...`, `TOOLCHAINS=[!][-]<toolchain> ...`, `REASON.<entry>=<text>` | Where this is built: a plain entry means only these (others skipped quietly), `-` excludes quietly, a leading `!` makes the entry an error instead of a skip. See `28-platform-toolchain-constraints.md` | New (`REQ-platform-list-grammar-req`, `REQ-platform-constraint-evaluation-req`, `REQ-constraint-reason-message-req`) |
 
 ## Module makefile — executable (`.include <mk.prog.mk>`)
 
@@ -26,6 +27,7 @@ BSD-make-native equivalent, introduced by this project.
 | `LIBS=<lib1> <lib2> ...` | Space-delimited libraries to link against (dev and/or system). **Link-time only** — has no effect on header visibility | New, replaces an earlier `LINK_WITH=` design (`REQ-libs-macro-link-only-headers-via-prereqs-req`) |
 | `LINK_CXX=yes` | Force the final link to use `${CXX}` even though `SRCS` is all-C. See below | New (`REQ-cxx-link-driver-selection-req`) |
 | `REQUIRES=<name> [<name> ...]` | External prerequisite software this module needs already installed (checked via `pkg-config --exists` then `command -v`; a `header:<path>` entry instead checks the header is reachable via `#include`, not acquired by Bmake It) — a missing one is a clean, parse-time error. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`, `REQ-requires-header-form-req`) |
+| `PLATFORMS=[!][-]<os[_arch]> ...`, `TOOLCHAINS=[!][-]<toolchain> ...`, `REASON.<entry>=<text>` | Where this is built: a plain entry means only these (others skipped quietly), `-` excludes quietly, a leading `!` makes the entry an error instead of a skip. See `28-platform-toolchain-constraints.md` | New (`REQ-platform-list-grammar-req`, `REQ-platform-constraint-evaluation-req`, `REQ-constraint-reason-message-req`) |
 
 ## Module makefile — library (`.include <mk.lib.mk>`)
 
@@ -46,6 +48,7 @@ BSD-make-native equivalent, introduced by this project.
 | `REQUIRES=<name> [<name> ...]` | Same as the executable role — external prerequisite software this module needs already installed, checked not acquired. See `27-prerequisite-software.md` | New (`REQ-requires-software-prereq-req`, `REQ-requires-header-form-req`) |
 | `SHLIB_MAJOR=<n>` | Major version for the shared library. Reused directly from real BSD `bsd.lib.mk` | Reused native (`REQ-shlib-major-minor-cross-platform-emission-req`) |
 | `SHLIB_MINOR=<n>` | Optional minor version | Reused native |
+| `PLATFORMS=[!][-]<os[_arch]> ...`, `TOOLCHAINS=[!][-]<toolchain> ...`, `REASON.<entry>=<text>` | Where this is built: a plain entry means only these (others skipped quietly), `-` excludes quietly, a leading `!` makes the entry an error instead of a skip. See `28-platform-toolchain-constraints.md` | New (`REQ-platform-list-grammar-req`, `REQ-platform-constraint-evaluation-req`, `REQ-constraint-reason-message-req`) |
 
 `SHLIB_MAJOR`/`SHLIB_MINOR` is the single cross-platform source of
 truth: on FreeBSD/Linux it produces `libfoo.so.MAJOR[.MINOR]` with the
@@ -119,6 +122,15 @@ Typical use: a module's own `mk/local.${TOOLCHAIN}.mk` appending an extra
 | `TESTS_SH=<name1> <name2> ...` | atf-sh script tests, staged from `tests/<name>.sh` | New |
 
 Full detail, including the `test`/`test-all` targets: `80-unit-testing.md`.
+
+### `.tst` test modules (`.include <mk.tst.mk>`)
+
+| Macro | Meaning | Status |
+|---|---|---|
+| `PROG=<name>` | In a `.tst` module: a *utility* program built from `src/`, used by the module's scripts; not registered as a test | New (`REQ-tst-test-prog-req`) |
+| `TEST_PROG=<name>` | In a `.tst` module: the program that is itself an ATF test program, registered with Kyua | New (`REQ-tst-test-prog-req`) |
+| `TEST_SRCS=<file> ...` | Sources (relative to `src/`) of the test program; required when `PROG=` and `TEST_PROG=` are both set, and then `PROG` is built from the rest | New (`REQ-tst-test-srcs-req`) |
+| `testcases/*.sh` | Auto-discovered; each script is a test (atf-sh). See `80-unit-testing.md` | New (`REQ-tst-scripts-are-tests-req`) |
 
 ## Documentation-generation metadata (`.include <mk.docs.mk>`)
 

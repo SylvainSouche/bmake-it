@@ -36,6 +36,8 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.constraints.mk"
+.if ${_BMK_BUILD} == "yes"
 .include "${BMK_MKDIR}/mk.requires.mk"
 
 # @impl 0f87-6a98-5ff4-1b42
@@ -668,6 +670,7 @@ OBJS += ${_OBJDIR}/${_s:R}.o
 
 _create_dirs:
 	@mkdir -p ${_OBJDIR} ${_LIBOUT_DIR} ${.CURDIR}/${INCDIR_LOCAL}
+	@rm -f ${_FWDIR}/${BUILD_ROOT}/.skipped/${LIB}
 
 # nested-srcs-objdir-req: each compile rule below mkdir -p's its own
 # ${.TARGET:H} (the object's own subdirectory, from a nested SRCS=
@@ -1216,6 +1219,12 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 		fi; \
 	done; \
 	if [ "$$_found" = no ]; then \
+		for _d in ${_LIB_SEARCH_DIRS}; do \
+			if [ -f "$$_d/../.skipped/${_l}" ]; then \
+				echo "error: cannot link lib${LIB}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${.CURDIR:T} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
+				exit 1; \
+			fi; \
+		done; \
 		echo "error: cannot link lib${LIB}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS}" >&2; \
 		exit 1; \
 	fi
@@ -1307,5 +1316,9 @@ BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
 .PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _fetch_import _fetch_build _stage_fetch_headers _write_linkdeps help
+.else
+_SK_ROLE = module
+.include "${BMK_MKDIR}/mk.skipped.mk"
+.endif
 .endif
 

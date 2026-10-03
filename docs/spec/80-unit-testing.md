@@ -52,6 +52,89 @@ All three kinds are registered in a generated `Kyuafile` and run via
 `kyua test`, agnostic to which kind produced the pass/fail
 (`REQ-unit-test-feature-for-built-software-req`).
 
+## Test modules (`.tst`)
+
+Implemented in `mk/mk.tst.mk` and the framework's `test` target, covered
+by `tests/cases/91-tst-modules` (`tst-test-modules-dec`,
+`tst-module-layout-req`, `tst-scripts-are-tests-req`, `tst-test-prog-req`,
+`tst-test-srcs-req`, `tst-test-environment-req`).
+
+The flat `tests/<name>.cpp` form above is the cheap default and stays.
+Its limit is that a loose test source has no makefile, so no build
+directives: no per-test `LIBS=`/flags, no second source file, no helper
+shared between tests, and a script test cannot be paired with a helper
+program. For a project that outgrows that, a test can instead be a
+**`.tst` module** — the same idea as Dassault Systèmes' mkmk, where a
+framework `FrameworkXYZ` has a sibling of test modules.
+
+```
+GIS/
+  libgdal.m/
+  raster.tst/               a test module, same shape as a .m module
+    makefile                PROG=raster_util  TEST_PROG=raster_test  LIBS=geo
+    src/                    compiled sources
+    testcases/              *.sh -- each one is a test
+      warp.sh
+      thin.sh
+```
+
+- **Where:** inside the framework, beside the `.m` modules, discovered the
+  same way (a `*.tst` suffix). A nested test framework was considered
+  and rejected: it would need recursive discovery and its own `PREREQS=`,
+  where a `.tst` module inherits the framework's `PREREQS=`/`LIBS=`/header
+  visibility as-is.
+- **Built, never shipped** (`tst-modules-built-not-shipped-dec`): a plain
+  `bmake` builds `.tst` modules too, after the `.m` modules, so a compile
+  error in a test surfaces at build time like any other module's. They take
+  no part in `copy-up`, `install` or `distrib`: their programs stay in the
+  module's own `build/<KEY>/` and never reach the framework's or workspace's
+  `bin/`. `bmake test` is what runs them.
+- **Scripts are the tests.** Every `testcases/*.sh` is auto-discovered
+  (like `src/`; no `TESTS_SH=` list) and registered with Kyua as an
+  atf-sh test program, so one program can serve many scenarios.
+- **Programs.** `PROG=<name>` builds a *utility* the scripts call; it is
+  built but not registered. `TEST_PROG=<name>` — named like `PROG=`, not a
+  flag — builds a program that *is* an ATF test program and is registered.
+  A module may set both and have any number of scripts.
+- **Finding the helper.** A module's built programs and its scripts are
+  placed in one test directory (`build/<KEY>/tests/`, as for the flat
+  form), so a script reaches its utility with `$(atf_get_srcdir)/<name>`.
+- **Test environment** (`tst-test-environment-dec`,
+  `tst-test-environment-req`). A test script sees the *resulting* build
+  output, not just its own module or framework: every executable present
+  in the resulting `bin` is on its `PATH`, whichever framework built it,
+  and the resulting `share` directory is reachable for shipped helper
+  scripts (the variable naming it is decided at implementation). Using an
+  executable from a framework outside the test's `PREREQS=` is **bad
+  practice, documented as such, and not an error** — nothing tracks it,
+  so there is no build-order guarantee: such an executable may be absent
+  or stale depending on what was built first. That is the cost of the
+  practice, not something Bmake It diagnoses.
+- **Helper scripts are shipped, not hidden.** If a test script needs a
+  script to do some of its work, that script is shipped the usual way
+  (a framework's `share/` overlay, or an executable in `bin/`), not kept
+  private inside a test module's `testcases/`, which holds tests only.
+- **Limit.** A `.tst` module can link a library module, but not a *program*
+  module's objects minus `main.o` — that is what the in-module `tests/`
+  form does for a `PROG=` module (Viewer's tests in lasviewer). A program's
+  internals are tested in-module, or by moving the logic into a library.
+
+**Sources when both are set** (`tst-test-srcs-req`, decided at
+implementation, flagged for review): `TEST_PROG=` alone builds the test
+program from all of `src/` (or `TEST_SRCS=`); with `PROG=` also set,
+`TEST_SRCS=` names the test program's sources (relative to `src/`) and
+`PROG` is built from the rest. Setting both without `TEST_SRCS=` is an
+error. A module with neither is scripts-only.
+
+**How it runs.** The framework's `test` first builds its `.m` modules, copies
+them up and aggregates `share/` (only when it has `.tst` modules, so a
+framework without them behaves exactly as before), then enters each `.tst`
+module. `TEST=<name>` matches a test program or a script name. The scripts
+get `PATH` = the module's test directory, its framework's `bin`, the
+workspace's `bin` and each `PARENT_WS`'s `bin`, and `BMK_SHAREDIR` = the
+matching `share` directories, colon-separated in the same order. Kyua passes
+the environment through unchanged.
+
 ## `make test` — one target, not two
 
 `test` first brings the module's own build up to date (it depends on

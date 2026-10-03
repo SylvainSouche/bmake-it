@@ -1,0 +1,1 @@
+.include <mk.tst.mk>
