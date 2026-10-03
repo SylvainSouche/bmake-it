@@ -139,6 +139,12 @@ sh tests/harness/pack-cases.sh
 | 80 | A `fetch:` + `SRCS=` module with `IMPORT_HEADERS=`: `staged header` and `built shared` print exactly once on the first build, nothing on unchanged rebuilds, and once again after a genuine `FETCH_URL=` change (built from the workspace root; a `sleep 1` covers bmake's one-second mtime granularity) |
 | 81 | Frameworks A ← B ← C plus an independent D, A fails to compile: B and C are skipped (`framework B skipped: prerequisite A failed`, C also `(root cause: A)`) and never attempted, D still builds, the exit status is non-zero and the summary lists A before the skipped frameworks |
 | 82 | `REQUIRES=header:` with the header installed only under a fake tool prefix the compiler doesn't search (prefix list overridden from a `pre` hook) passes; a genuinely absent header still fails, naming the prefixes tried |
+| 83 | The `FETCH_BUILD=` deployment-target prologue ends in `;` for `TARGET=linux/freebsd/netbsd/macos` and the `case` that follows it runs under `sh`, `dash` and `bash` (off macOS it was a bare `:`, a dash syntax error on every `FETCH_BUILD=` module) |
+| 84 | An `IMPORT=pkg:` whose `.pc` has an empty `Cflags:` (pkg-config's behaviour for a system include dir) still stages `IMPORT_HEADERS=` from `--variable=includedir`; an absent header still fails and names where it looked |
+| 85 | An import whose `lib/` holds only symlinks to a versioned real file in another directory stages the real file once with relative links and no self-loop, and the consumer links and runs (host's own `.dylib`/`.so` naming) |
+| 86 | `bmake test` alone, after a library source edit, tests the NEW library (atf/kyua; skips without them) |
+| 87 | Dot-files and dot-directories under `src/` (macOS AppleDouble `._x.cpp`) are not compiled |
+| 88 | A module overwriting its own rebuilt program prints no `copy-up collision`; a second module producing the same program name still does |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

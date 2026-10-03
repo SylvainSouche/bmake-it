@@ -336,6 +336,12 @@ staging code, no new promotion logic — only the *source* of
 
 ## Testing
 
+`83-fetch-build-prologue-shell`: the deployment-target prologue spliced
+onto the `FETCH_BUILD=` recipe line ends in `;` for every `TARGET`, so
+the `case` that follows is never swallowed as an argument of `:` —
+which made every `FETCH_BUILD=` module a syntax error under dash on
+Linux (`fetch-build-prologue-terminated-req`).
+
 Self-contained, per this project's own established harness convention
 (no real network access from a test — `tests/cases/*` already ship
 their own fake prefixes/`.pc` files for `pkg:`, the same discipline

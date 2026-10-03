@@ -18,7 +18,8 @@ bmake >build1.log 2>&1
 # own bmake invocations run below, so only its own build/ output is
 # guaranteed fresh; a framework/workspace-level copy would stay stale
 # regardless of the fix under test, and checking it would prove nothing.
-bin="Fw2/app.m/build/macos-arm64/bin/app"
+KEY=$(bmake -V OS_ARCH)
+bin="Fw2/app.m/build/$KEY/bin/app"
 [ -x "$bin" ]
 out1=$("$bin")
 echo "$out1" | grep -q "v1"
@@ -27,6 +28,10 @@ echo "$out1" | grep -q "v1"
 # its copy-up into the framework) -- app.m's own directory is never
 # touched, so if bmake relinks it, that can only be because the
 # library's own resolved file is a real prerequisite.
+# bmake compares mtimes at one-second granularity: without this pause a fast
+# host rebuilds the library in the SAME second the app was linked, and the
+# new library file looks no newer than the app.
+sleep 1
 sed -i.bak 's/v1/v2/' Fw1/libfoo.m/src/foo.c
 cd Fw1/libfoo.m
 bmake >../../lib_rebuild.log 2>&1

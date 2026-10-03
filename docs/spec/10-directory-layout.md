@@ -62,7 +62,7 @@ myworkspace/                                  workspace root (REQ-workspace-is-s
     │   │                                      LIBS=              (link-time only, none needed here)
     │   │                                      INCL=grammar.h     (promotes this ONE generated header)
     │   ├── include/                          module-private hand-written headers
-    │   ├── src/                              greet.c, grammar.y — auto-discovered
+    │   ├── src/                              greet.c, grammar.y — auto-discovered (dot-files skipped)
     │   ├── share/{common,macos,freebsd_amd64}/
     │   └── build/
     │       └── macos-arm64/

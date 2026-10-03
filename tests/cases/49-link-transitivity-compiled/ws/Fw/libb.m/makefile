@@ -1,4 +1,4 @@
 LIB=b
 LIB_SHARED=NO
-LIBS=c
+LIBS=core
 .include <mk.lib.mk>

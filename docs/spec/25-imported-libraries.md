@@ -50,8 +50,14 @@ target key, and every source tried, with an install hint pointing at
 `IMPORT=` syntax: `pkg:<name>` (pkg-config), `prefix:<dir>` (direct, no
 pkg-config involved), or empty (only steps 1–2 can resolve it).
 
-**pkg-config details.** Step 3 captures `--cflags`, `--modversion`, and
-`--variable=libdir`. For `--libs`, which flavor depends on what was
+**pkg-config details.** Step 3 captures `--cflags`, `--modversion`,
+`--variable=libdir` and `--variable=includedir`. The last exists because
+pkg-config omits `-I<dir>` for a **system** include directory
+(`/usr/include` on Linux), so `--cflags` can be empty for a perfectly
+installed package — header staging searches the `-I` dirs and then
+`includedir`, never the compile flags, which are unchanged
+(`import-system-includedir-fallback-req`; found on Ubuntu with glm and
+glfw3). For `--libs`, which flavor depends on what was
 actually found at the resolved libdir
 (`shared-import-link-flags-fix-req`): a **shared** library (`.so`/
 `.dylib`) uses plain `pkg-config --libs` (just this package's own `-L`/
@@ -166,7 +172,14 @@ all), see `REQUIRES=header:<path>` in `27-prerequisite-software.md`
   earlier in this project's history, specifically because Cygwin's
   default symlinks are a text-marker file, not resolvable by a native
   Windows file browser or web server) without losing the version-symlink
-  chain a shared library's own link/load model actually needs.
+  chain a shared library's own link/load model actually needs. When the
+  chain ends at a real file in a **different directory** than the import's
+  `lib/` (a distro's `libglfw.so -> libglfw.so.3 -> libglfw.so.3.3 ->
+  /usr/lib/<triple>/libglfw.so.3.3`, every entry a symlink), that real
+  file is copied into the staged `lib/` once under its own name and each
+  other name becomes a relative link to it — a name is never linked to
+  itself (`staging-symlink-chain-real-file-req`; the old behaviour made
+  `libglfw.so.3.3 -> libglfw.so.3.3`, a loop).
 - **Re-staging** is driven by the existing inputs-hash mechanism
   (`REQ-inputs-hash-rebuild-req`): the resolved source, `IMPORT_CFLAGS`,
   and `IMPORT_LIBS` are folded into `INPUTS_HASH_EXTRA=`, so a changed
