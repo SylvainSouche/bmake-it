@@ -145,6 +145,9 @@ sh tests/harness/pack-cases.sh
 | 86 | `bmake test` alone, after a library source edit, tests the NEW library (atf/kyua; skips without them) |
 | 87 | Dot-files and dot-directories under `src/` (macOS AppleDouble `._x.cpp`) are not compiled |
 | 88 | A module overwriting its own rebuilt program prints no `copy-up collision`; a second module producing the same program name still does |
+| 89 | `PLATFORMS=`/`TOOLCHAINS=` on a module, run against the host's own OS/arch/toolchain: plain, `-`, `!`, `!-` entries, `os_arch` subsets, the validity rule (a negative must narrow a positive), error beating skip across both axes, `REASON.<entry>`, unknown names only warning, `-V` and `clean` never failing, and an excluded module never resolving its `IMPORT=`/`REQUIRES=` |
+| 90 | Framework-level exclusion skips the whole framework (no module entered); a framework needing an excluded one is an error naming both while one excluded itself is skipped; exclusions alone leave the exit status 0; a module linking a library its sibling excluded gets an error naming the library |
+| 91 | `.tst` test modules (atf/kyua; skips without them): `TEST_PROG=` only, `PROG=` utility + `TEST_PROG=` + `TEST_SRCS=` + scripts, scripts-only; built by a plain `bmake` (a test's compile error fails it) but never copied up into `bin/`; scripts see the utility, another module's program and `BMK_SHAREDIR`; `TEST=` selects by name; a failing script fails the run; both macros without `TEST_SRCS=` is an error; an excluded `.tst` module is skipped |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

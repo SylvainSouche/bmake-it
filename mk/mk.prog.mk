@@ -25,6 +25,8 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.constraints.mk"
+.if ${_BMK_BUILD} == "yes"
 .include "${BMK_MKDIR}/mk.requires.mk"
 
 # @impl 0f87-6a98-5ff4-1b42
@@ -258,6 +260,12 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 		fi; \
 	done; \
 	if [ "$$_found" = no ]; then \
+		for _d in ${_LIB_SEARCH_DIRS}; do \
+			if [ -f "$$_d/../.skipped/${_l}" ]; then \
+				echo "error: cannot link ${PROG}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${.CURDIR:T} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
+				exit 1; \
+			fi; \
+		done; \
 		echo "error: cannot link ${PROG}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS}" >&2; \
 		exit 1; \
 	fi
@@ -323,5 +331,9 @@ BMK_HELP_ROLE = prog
 .include "${BMK_MKDIR}/mk.help.mk"
 
 .PHONY: all clean help copy-up _create_dirs help
+.else
+_SK_ROLE = module
+.include "${BMK_MKDIR}/mk.skipped.mk"
+.endif
 .endif
 

@@ -191,6 +191,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "constraints-open-points-resolved-dec": {
+    "active": true,
+    "id": "0f87-6ac0-d883-6313",
+    "status": "recorded",
+    "type": "dec"
+  },
   "copy-up-collision-diff-aware": {
     "active": true,
     "id": "6f38-6a8d-1de3-846e",
@@ -491,6 +497,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "excluded-dependency-error-req": {
+    "active": true,
+    "id": "0f87-6ac0-d891-bf76",
+    "status": "confirmed",
+    "type": "req"
+  },
   "external-tool-generation-config-topic": {
     "active": true,
     "id": "0f87-6aa7-dd89-04d6",
@@ -651,6 +663,12 @@
     "active": false,
     "id": "6f38-6a88-1836-dd30",
     "status": "superseded",
+    "type": "req"
+  },
+  "framework-level-constraint-req": {
+    "active": true,
+    "id": "0f87-6ac0-d891-d1cd",
+    "status": "confirmed",
     "type": "req"
   },
   "framework-prereqs": {
@@ -971,6 +989,12 @@
     "status": "superseded",
     "type": "impl"
   },
+  "impl-excluded-dependency-error": {
+    "active": true,
+    "id": "0f87-6ac0-d892-32c8",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-failed-prereq-framework-skip": {
     "active": true,
     "id": "0f87-6abf-aeba-66f1",
@@ -1029,6 +1053,12 @@
     "active": true,
     "id": "0f87-6a98-77f0-fa5a",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-framework-level-constraint": {
+    "active": true,
+    "id": "0f87-6ac0-d892-5753",
+    "status": "verified",
     "type": "impl"
   },
   "impl-gen-mod-order-correct-curdir": {
@@ -1211,6 +1241,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-platform-toolchain-constraints": {
+    "active": true,
+    "id": "0f87-6ac0-d891-3000",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-prereqs-mandatory": {
     "active": true,
     "id": "0f87-6a98-76a7-f34f",
@@ -1346,6 +1382,18 @@
   "impl-transitive-linkdeps-l-rpath-fix": {
     "active": true,
     "id": "0f87-6abe-3f27-cde6",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-tst-modules": {
+    "active": true,
+    "id": "0f87-6ac0-d892-bc8f",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-tst-test-environment": {
+    "active": true,
+    "id": "0f87-6ac0-d893-88fa",
     "status": "verified",
     "type": "impl"
   },
@@ -2204,7 +2252,7 @@
   "platform-constraint-open-points-cand": {
     "active": true,
     "id": "0f87-6ac0-d593-03d4",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
   },
   "platform-list-grammar-req": {
@@ -2880,15 +2928,27 @@
     "type": "req"
   },
   "tst-module-layout-req": {
-    "active": true,
+    "active": false,
     "id": "0f87-6abf-cc07-51ac",
-    "status": "confirmed",
+    "status": "superseded",
     "type": "req"
+  },
+  "tst-module-layout-v2-req": {
+    "active": true,
+    "id": "0f87-6ac0-f483-2cce",
+    "status": "proposed",
+    "type": "req"
+  },
+  "tst-modules-built-not-shipped-dec": {
+    "active": true,
+    "id": "0f87-6ac0-f483-c1f3",
+    "status": "recorded",
+    "type": "dec"
   },
   "tst-prog-and-test-prog-sources-cand": {
     "active": true,
     "id": "0f87-6abf-cc0b-986a",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
   },
   "tst-scripts-are-tests-req": {
@@ -2918,6 +2978,12 @@
   "tst-test-prog-req": {
     "active": true,
     "id": "0f87-6abf-cc08-9d6c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "tst-test-srcs-req": {
+    "active": true,
+    "id": "0f87-6ac0-d891-bac7",
     "status": "confirmed",
     "type": "req"
   },

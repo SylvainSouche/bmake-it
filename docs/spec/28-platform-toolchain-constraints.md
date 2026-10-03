@@ -1,7 +1,10 @@
 # Bmake It — 28: Platform and Toolchain Constraints (`PLATFORMS=`, `TOOLCHAINS=`)
 
-Status: **specified, not yet implemented.** Decided in design discussion
-2026-10-03 (`platform-toolchain-constraints-dec`).
+Status: **implemented** (`mk/mk.constraints.mk`, `mk.constraint-axis.mk`,
+`mk.skipped.mk`) and covered by the test harness
+(`tests/cases/89-platform-constraints-module`,
+`90-platform-constraints-workspace`), run on macOS, Ubuntu 24.04 and Alpine.
+Decided in design discussion 2026-10-03 (`platform-toolchain-constraints-dec`).
 
 ## Scope and objective
 
@@ -27,13 +30,16 @@ makefile, before the `.include`:
 
 ```makefile
 PLATFORMS=macos linux              # only these; skipped quietly elsewhere
-PLATFORMS=-aix -windows            # everything except these; skipped quietly
+PLATFORMS=-netbsd -win             # everything except these; skipped quietly
 PLATFORMS=!macos                   # only macos; an ERROR on any other platform
 PLATFORMS=!-linux_arm64            # excluded on linux_arm64, loudly (error)
 TOOLCHAINS=-gcc                    # not built with gcc; skipped quietly
 TOOLCHAINS=!-gcc                   # building with gcc is an error
 REASON.gcc=miscompiles the raster kernels, use TOOLCHAIN=llvm
 ```
+
+The lists are consulted from the makefile that declares them, before its
+`.include`. They are not inherited across `PARENT_WS` workspaces.
 
 An entry is `[!][-]name`:
 
@@ -99,22 +105,39 @@ evaluated, and an error on either wins over a skip on the other.
   selected platform or toolchain.
 - An optional **`REASON.<entry>=text`** — a per-name variable, the entry
   spelled as in the list — is appended to either line
-  (`constraint-reason-message-req`). Without it a generic message is
-  used.
+  (`constraint-reason-message-req`). For an entry that matched (`-x`,
+  `!-x`) it is that entry's reason; when the target simply is not in a
+  positive set, the reasons of the positive entries are joined. Without
+  one a generic message is used.
+- **Unknown names only warn** (`unknown platform 'bogus'`): a typo must
+  not fail a future platform. Known platforms are `macos linux freebsd
+  netbsd win`, optionally `_<arch>`; known toolchains are those with an
+  `mk.toolchain.<name>.mk`.
+- **`-V`, `clean` and `help` never fail** because of a constraint, the same
+  guard `REQUIRES=` uses.
+- **An excluded module does not resolve imports or `REQUIRES=`**: the
+  constraints are evaluated before either, so a module that only makes
+  sense on another platform never fails on what it would need there.
 
 The difference: `PLATFORMS=`/`TOOLCHAINS=` without `!` say where a module
 *is part of the build*; with `!` they say that choosing the excluded
 combination is a mistake that should stop the build.
 
-## Open (`platform-constraint-open-points-cand`)
+## Dependents of an excluded module
 
-- **Dependents of an excluded module.** A module that depends on one
-  excluded here and is not itself excluded is an inconsistent declaration.
-  Proposed: an error naming both (`Geo needs GIS, which is not built on
-  linux_arm64; give Geo the same PLATFORMS=`) — unlike a *failed*
-  prerequisite, which cascades as a skip, because a failure is an accident
-  and an exclusion is something the author wrote.
-- Whether a framework-level `PLATFORMS=` is inherited by its modules.
-- Whether `PARENT_WS` workspaces' lists apply.
-- Whether the build key's toolchain suffix or the ABI may appear in a
-  platform entry.
+Decided at implementation (`constraints-open-points-resolved-dec`, flagged
+for review): depending on something excluded here is an **error naming
+both**, unlike a *failed* prerequisite, which cascades as a skip — a
+failure is an accident, an exclusion is something the author wrote.
+
+- A **module** whose `LIBS=` names a library its sibling excluded fails at
+  link time with `library x is not built here -- <why> -- app.m depends on
+  it, so give it the same PLATFORMS=/TOOLCHAINS=`. A skipped library
+  module leaves a `build/<KEY>/.skipped/<LIB>` marker for this check.
+- A **framework** whose `PREREQS=` names an excluded framework, and is not
+  itself excluded, is reported `framework FwB cannot be built: it needs
+  FwA, which is not built here (...)` and counts as failed. If it is
+  excluded too, it is simply skipped.
+- A `PLATFORMS=`/`TOOLCHAINS=` in a **framework** makefile excludes the
+  whole framework: none of its modules is entered.
+- Platform entries are an OS or `os_arch` only: no toolchain suffix, no ABI.

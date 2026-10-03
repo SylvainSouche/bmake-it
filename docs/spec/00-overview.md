@@ -116,7 +116,7 @@ style), `27-prerequisite-software.md` for `REQUIRES=` (declaring external
 software a module needs already installed, checked and errored on
 cleanly — not acquired by Bmake It), `28-platform-toolchain-constraints.md`
 for `PLATFORMS=`/`TOOLCHAINS=` (where a module is built, skipped, or an
-error; spec-only, not yet implemented), `30-build-sequence.md` for build
+error), `30-build-sequence.md` for build
 ordering, `40-cli-reference.md` for `make` usage, `50-makefile-macros.md`
 for the full macro reference, `70-documentation-generation.md` for
 `bmake docs`, `80-unit-testing.md` for `bmake test`, and

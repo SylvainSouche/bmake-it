@@ -52,10 +52,12 @@ All three kinds are registered in a generated `Kyuafile` and run via
 `kyua test`, agnostic to which kind produced the pass/fail
 (`REQ-unit-test-feature-for-built-software-req`).
 
-## Test modules (`.tst`) — specified, not yet implemented
+## Test modules (`.tst`)
 
-(`tst-test-modules-dec`, `tst-module-layout-req`,
-`tst-scripts-are-tests-req`, `tst-test-prog-req`)
+Implemented in `mk/mk.tst.mk` and the framework's `test` target, covered
+by `tests/cases/91-tst-modules` (`tst-test-modules-dec`,
+`tst-module-layout-req`, `tst-scripts-are-tests-req`, `tst-test-prog-req`,
+`tst-test-srcs-req`, `tst-test-environment-req`).
 
 The flat `tests/<name>.cpp` form above is the cheap default and stays.
 Its limit is that a loose test source has no makefile, so no build
@@ -81,9 +83,12 @@ GIS/
   and rejected: it would need recursive discovery and its own `PREREQS=`,
   where a `.tst` module inherits the framework's `PREREQS=`/`LIBS=`/header
   visibility as-is.
-- **Never shipped:** `.tst` modules are built and run only by `bmake test`
-  (module, framework and workspace scope as above). They take no part in
-  `all`, `copy-up`, `install` or `distrib`.
+- **Built, never shipped** (`tst-modules-built-not-shipped-dec`): a plain
+  `bmake` builds `.tst` modules too, after the `.m` modules, so a compile
+  error in a test surfaces at build time like any other module's. They take
+  no part in `copy-up`, `install` or `distrib`: their programs stay in the
+  module's own `build/<KEY>/` and never reach the framework's or workspace's
+  `bin/`. `bmake test` is what runs them.
 - **Scripts are the tests.** Every `testcases/*.sh` is auto-discovered
   (like `src/`; no `TESTS_SH=` list) and registered with Kyua as an
   atf-sh test program, so one program can serve many scenarios.
@@ -114,10 +119,21 @@ GIS/
   form does for a `PROG=` module (Viewer's tests in lasviewer). A program's
   internals are tested in-module, or by moving the logic into a library.
 
-**Open (`tst-prog-and-test-prog-sources-cand`):** when a module sets both
-`PROG=` and `TEST_PROG=`, how `src/` maps onto two programs — each needs
-its own `main`, and a module builds one program today. To be decided
-before this is implemented.
+**Sources when both are set** (`tst-test-srcs-req`, decided at
+implementation, flagged for review): `TEST_PROG=` alone builds the test
+program from all of `src/` (or `TEST_SRCS=`); with `PROG=` also set,
+`TEST_SRCS=` names the test program's sources (relative to `src/`) and
+`PROG` is built from the rest. Setting both without `TEST_SRCS=` is an
+error. A module with neither is scripts-only.
+
+**How it runs.** The framework's `test` first builds its `.m` modules, copies
+them up and aggregates `share/` (only when it has `.tst` modules, so a
+framework without them behaves exactly as before), then enters each `.tst`
+module. `TEST=<name>` matches a test program or a script name. The scripts
+get `PATH` = the module's test directory, its framework's `bin`, the
+workspace's `bin` and each `PARENT_WS`'s `bin`, and `BMK_SHAREDIR` = the
+matching `share` directories, colon-separated in the same order. Kyua passes
+the environment through unchanged.
 
 ## `make test` — one target, not two
 

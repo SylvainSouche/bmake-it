@@ -7,6 +7,12 @@ set -eu
 ROOT=$(pwd)
 
 cd ws/Fw/app.m
+# Skip where the compiler bmake uses has no OpenMP runtime installed (e.g. a
+# bare Alpine image without libomp): nothing to test then.
+_cc=$(bmake -V '${CC}')
+if ! printf '#include <omp.h>\nint main(void){return 0;}\n' | $_cc -fopenmp -x c - -o /dev/null >/dev/null 2>&1; then
+    exit 77
+fi
 bmake all OPENMP=yes >build.log 2>&1
 grep -q -- "-fopenmp" build.log
 out=$(./build/*/bin/app)

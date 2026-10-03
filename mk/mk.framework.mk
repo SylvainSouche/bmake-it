@@ -39,6 +39,12 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../mk ${.CURDIR}/mk
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
 
+# framework-level-constraint-req: a PLATFORMS=/TOOLCHAINS= declared here
+# applies to the whole framework -- none of its modules is entered.
+# @impl 0f87-6ac0-d892-5753
+.include "${BMK_MKDIR}/mk.constraints.mk"
+.if ${_BMK_BUILD} == "yes"
+
 # ---------------------------------------------------------------------------
 # Auto-discover modules (*.m) and generate topological order from LIBS=
 # ---------------------------------------------------------------------------
@@ -79,6 +85,13 @@ SUBDIR_MODULES := ${MODULE_SUBDIR}
 SUBDIR_MODULES != ls -d *.m 2>/dev/null || true
 .endif
 
+# tst-module-layout-v2-req: <name>.tst test modules sit beside the .m modules.
+# They are built by `all` (after every .m module) but never copied up or
+# installed -- never shipped; `test` is what runs them. Discovery is just
+# the suffix; they need no build order of their own.
+# @impl 0f87-6ac0-d892-bc8f
+SUBDIR_TESTMODS != ls -d *.tst 2>/dev/null || true
+
 # Surface order in verbose builds
 .if make(all) || make(_build_modules)
 .  info framework modules (build order): ${SUBDIR_MODULES}
@@ -108,7 +121,7 @@ all: _create_fw_dirs _build_modules _aggregate _check_build_failures
 # @impl 0f87-6ab5-81a2-7bb0
 _check_build_failures:
 	@_failed=""; \
-	for _m in ${SUBDIR_MODULES}; do \
+	for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
 		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
 			_failed="$$_failed $$_m"; \
 		fi; \
@@ -150,6 +163,29 @@ _build_modules:
 	rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
 	cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest
 .endfor
+# tst-modules-built-not-shipped-dec: .tst modules are built too, after every
+# .m module is built and copied up (they link its libraries), but with `all`
+# only -- no copy-up, so a test is never aggregated into the framework or
+# workspace bin/lib and never shipped.
+.for _m in ${SUBDIR_TESTMODS}
+	@echo "===> building module ${_m}"
+	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+	_rcfile=$$(mktemp); \
+	{ ${MAKE} -C ${_m} all \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
+	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
+	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
+	if [ "$$_rc" -eq 0 ]; then \
+		rm -f "$$_rundir/build.failed"; \
+	else \
+		touch "$$_rundir/build.failed"; \
+		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+	fi; \
+	rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
+	cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest
+.endfor
 
 # test: recurse into every module (test-workspace-aggregation-req). A
 # module with no TESTS_CXX=/TESTS_C=/TESTS_SH= just echoes and exits 0
@@ -163,12 +199,22 @@ _build_modules:
 # @impl 0f87-6aaa-6201-a430
 # @impl 0f87-6aaa-697c-4c30
 # @impl 0f87-6ab5-81a2-7bb0
-test: _run_tests _check_test_failures
+# A framework with .tst modules first brings its .m modules up to date and
+# copied up (a test module links their libraries from the framework's lib/),
+# then runs everything; one without .tst modules behaves exactly as before.
+test: _tst_prebuild _run_tests _check_test_failures
+
+.if !empty(SUBDIR_TESTMODS)
+_tst_prebuild: _create_fw_dirs _build_modules _aggregate
+.else
+_tst_prebuild:
+	@:
+.endif
 
 _run_tests:
-.for _m in ${SUBDIR_MODULES}
+.for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}
 	@if [ -n "${TEST}" ]; then \
-		_has=$$(${MAKE} -C ${_m} -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH}' 2>/dev/null); \
+		_has=$$(${MAKE} -C ${_m} -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH} $${_TST_TESTNAMES}' 2>/dev/null); \
 		case " $$_has " in \
 			*" ${TEST} "*) _run=yes ;; \
 			*) _run=no ;; \
@@ -198,7 +244,7 @@ _run_tests:
 # @impl 0f87-6ab5-81a2-7bb0
 _check_test_failures:
 	@_failed=""; \
-	for _m in ${SUBDIR_MODULES}; do \
+	for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
 		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/test.failed" ]; then \
 			_failed="$$_failed $$_m"; \
 		fi; \
@@ -258,7 +304,7 @@ copy-up: all
 
 clean:
 	@# modules: clean each *.m without relying on order generation
-	@for _m in *.m; do \
+	@for _m in *.m *.tst; do \
 		[ -d "$$_m" ] || continue; \
 		${MAKE} -C "$$_m" clean \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
@@ -286,7 +332,7 @@ add-prereq:
 	fi
 	@echo "Appended ${FW} to PREREQS"
 
-.PHONY: all clean help copy-up add-prereq _create_fw_dirs _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
+.PHONY: all clean help copy-up add-prereq _tst_prebuild _create_fw_dirs _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
 
 .include "${BMK_MKDIR}/mk.docs.mk"
 
@@ -296,4 +342,8 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = framework
 .include "${BMK_MKDIR}/mk.help.mk"
 
+.else
+_SK_ROLE = framework
+.include "${BMK_MKDIR}/mk.skipped.mk"
+.endif
 .endif # _MK_FRAMEWORK_MK_

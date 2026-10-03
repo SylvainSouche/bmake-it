@@ -177,10 +177,11 @@ SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
 _build_frameworks:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@_rundir=${.CURDIR}/${_f}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
-	_why=""; _root=""; _anyfail=no; \
+	_why=""; _root=""; _excl=""; _anyfail=no; \
 	for _x in ${SUBDIR_FRAMEWORKS}; do \
 		[ "$$_x" = "${_f}" ] && break; \
 		[ -f "${.CURDIR}/$$_x/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ] && _anyfail=yes; \
+		[ -f "${.CURDIR}/$$_x/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded" ] && _anyfail=yes; \
 	done; \
 	if [ "$$_anyfail" = yes ]; then \
 		for _p in $$(${MAKE} -C ${_f} -V PREREQS 2>/dev/null); do \
@@ -189,10 +190,17 @@ _build_frameworks:
 				_why=$$_p; \
 				if [ -f "$$_pd/build.skipped" ]; then _root=$$(cat "$$_pd/build.skipped"); else _root=$$_p; fi; \
 				break; \
+			elif [ -f "$$_pd/build.excluded" ] && [ -z "$$_excl" ]; then \
+				if [ "$$(${MAKE} -C ${_f} -V _BMK_BUILD 2>/dev/null)" != skip ]; then _excl=$$_p; fi; \
 			fi; \
 		done; \
 	fi; \
-	if [ -n "$$_why" ]; then \
+	if [ -n "$$_excl" ] && [ -z "$$_why" ]; then \
+		_msg="===> framework ${_f} cannot be built: it needs $$_excl, which is not built here ($$(cat "${.CURDIR}/$$_excl/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded")) -- give ${_f} the same PLATFORMS=/TOOLCHAINS="; \
+		echo "$$_msg" >&2; echo "$$_msg" > "$$_rundir/build.log"; \
+		touch "$$_rundir/build.failed"; \
+		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+	elif [ -n "$$_why" ]; then \
 		_msg="===> framework ${_f} skipped: prerequisite $$_why failed"; \
 		if [ "$$_root" != "$$_why" ]; then _msg="$$_msg (root cause: $$_root)"; fi; \
 		echo "$$_msg" >&2; echo "$$_msg" > "$$_rundir/build.log"; \

@@ -1,3 +1,3 @@
 PROG=app
-LIBS=util
+LIBS=utility
 .include <mk.prog.mk>

@@ -150,7 +150,7 @@ test: all _build_tests _gen_kyuafile
 	cp -a "$$_rundir" ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
 	exit $$_rc
 
-.else
+.elif !defined(_BMK_TST)
 test:
 .if !empty(TEST)
 	@echo "error: TEST=${TEST} requested but ${.CURDIR:T} declares no tests at all" >&2; exit 1
