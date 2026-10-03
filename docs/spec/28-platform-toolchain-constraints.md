@@ -51,6 +51,28 @@ and `local.<os>_<arch>.mk`, not with the build key's hyphen.
 `TOOLCHAINS=` names a toolchain as in `mk.toolchain.<name>.mk` (`llvm`,
 `gcc`, `msvc`).
 
+## What a valid list looks like
+
+Positive entries ("only these") and negative entries ("not these") do not
+mix — except that a negative entry may sit beside positive ones when it
+is a **subset** of one of them (`platform-list-validity-req`):
+
+```makefile
+PLATFORMS=linux -linux_arm64       # valid: linux_arm64 is part of linux
+PLATFORMS=linux macos -linux_arm64 # valid
+PLATFORMS=-aix -windows            # valid: negatives only
+PLATFORMS=macos -linux             # ERROR: -linux is outside "only macos", redundant
+PLATFORMS=linux -linux             # ERROR: removes everything
+PLATFORMS=linux_arm64 -linux       # ERROR: -linux is wider than linux_arm64
+TOOLCHAINS=llvm -gcc               # ERROR: toolchains have no hierarchy, so no mixing
+```
+
+An `os_arch` entry is a subset of its `os`; toolchain names have no such
+relation, so a `TOOLCHAINS=` list is all positive or all negative. The
+`!` modifier does not change validity. An invalid list is always an
+**error** — never a skip — and names the offending entry, so a mistake
+in the declaration cannot silently change what is built.
+
 ## How a target is evaluated
 
 For the selected target and toolchain, entries are checked in this order

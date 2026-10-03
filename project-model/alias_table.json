@@ -2213,6 +2213,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "platform-list-validity-req": {
+    "active": true,
+    "id": "0f87-6ac0-d5dd-ded3",
+    "status": "confirmed",
+    "type": "req"
+  },
   "platform-toolchain-constraints-dec": {
     "active": true,
     "id": "0f87-6ac0-d592-a5b7",
