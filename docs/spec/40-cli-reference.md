@@ -99,6 +99,7 @@ variables directly, appended via `+=` in a module's makefile:
 |---|---|
 | (default) | Fused compile+link build of the current directory's scope (module/framework/workspace) for the selected target |
 | `clean` | Removes the current/selected target's `build/<KEY>/` subtree only, by default. `TARGET=all` is a special value that wipes `build/` output for *every* target at once (`REQ-clean-target-scope-req`) |
+| `run` | `bmake run PROGRAM=<name> [ARGS="<args>"]` runs **any** program through the build environment, from any directory of the workspace (it walks up to the root): a built program, or `sh` for an interactive subshell with that environment. Does not build. See below (`run-build-environment-req`, `run-shell-keeps-environment-req`) |
 | `install` | `make install DESTDIR=<staging-root> PREFIX=<final-path>` — BSD make's own native `DESTDIR`/`PREFIX`, unchanged. Copies `build/<KEY>/{bin,lib,share}` into `$(DESTDIR)$(PREFIX)/{bin,lib,share}` (`REQ-destdir-prefix-confirmed-req`). Requires the target to already be built — does not implicitly trigger a build (`REQ-install-requires-prebuilt-target-req`). Cross-filesystem `DESTDIR` installs are deferred |
 | `pkg`, `deb`, `rpm`, `msi` | Binary packaging targets. Each stages `distrib/<KEY>/` by internally invoking the equivalent of `install DESTDIR=distrib/<KEY>` (reusing the install mechanism, not a separate copy step — `REQ-packaging-invokes-install-into-distrib-req`), then builds the actual package artifact from that staged tree. One named target per format, not a single parameterized target (`REQ-packaging-per-format-targets-req`) |
 | `port` | **Categorically different** from the binary-package targets above: produces a source-based BSD-ports-style recipe (port `Makefile`, `distinfo`, patches, `pkg-plist`) for the ports system to fetch and build itself — no pre-built binary is staged or embedded (`REQ-port-target-is-source-recipe-not-binary-package-req`). Exact generation mechanism is deferred to a later phase (`REQ-make-port-deferred-req`) |
@@ -106,6 +107,43 @@ variables directly, appended via `+=` in a module's makefile:
 | `add-parent WS=<abs-path>` | Convenience target: appends `<abs-path>` to the workspace's `PARENT_WS=` |
 | `docs` | Generates Doxygen documentation — just the enclosing framework from within a framework, or every framework plus a workspace aggregation page from the workspace root (`REQ-doc-generation-invocation-scope-req`). See `70-documentation-generation.md` |
 | `test` | Builds and runs this module's (or, at framework/workspace scope, every module's) declared `TESTS_CXX=`/`TESTS_C=`/`TESTS_SH=` tests via Kyua; writes a JUnit XML report; exits non-zero on any failure (`REQ-unit-test-feature-for-built-software-req`). See `80-unit-testing.md` |
+
+
+### `bmake run`: the build environment
+
+`bmake run PROGRAM=lasviewer ARGS="--snapshot out.png -v"`; `bmake run PROGRAM=sh`
+for a subshell in which the build outputs are on `PATH` and the program
+arguments are typed at the prompt. `ARGS` goes through the shell, so an argument
+with a space is quoted inside it: `ARGS="--title 'my scene' f.las"`.
+
+`PROGRAM` is resolved through the environment's own `PATH`: the workspace's
+`build/<KEY>/bin`, then each `PARENT_WS`'s, then the caller's `PATH` — so a
+project binary shadows a system one of the same name. The environment is
+**inherited, not replaced**; `run` only prepends:
+
+| Variable | Value |
+|---|---|
+| `PATH` | workspace `bin`, each `PARENT_WS` `bin`, then the caller's `PATH` |
+| `DYLD_LIBRARY_PATH` (macOS), `LD_LIBRARY_PATH` (elsewhere), `PATH` (Windows) | workspace `lib`, each `PARENT_WS` `lib`, then its previous value |
+| `BMK_BINDIR`, `BMK_LIBDIR`, `BMK_SHAREDIR` | the colon-separated `bin`, `lib` and `share` chains |
+| `BMK_TARGET`, `BMK_LIBVAR` | the target key, and the name of the library variable |
+
+A program that is not found anywhere on that `PATH` is an error naming the
+chain (`run` does not build). stdin and stdout pass through; a non-zero exit
+status of the program fails the make and is reported as its error code.
+
+**An interactive shell keeps the environment.** For `sh`, `dash`, `ash`, `ksh`,
+`mksh`, `bash` or `zsh` started with no arguments (or only `-i`/`-l`), the shell's
+own startup files — `$ENV` (usually `.shrc`) for the `sh` family, `~/.bashrc`,
+`~/.zshrc` — still run, unchanged, and commonly reset `PATH`. After them the
+build entries are re-asserted at the front of `PATH` and the library variable
+(`scripts/run-exec.sh`; the user's files are sourced, never replaced). Limits: a
+*login* shell reads `.profile` before this and is not handled; other shells get
+the environment but their rc files may override it; and macOS strips
+`DYLD_LIBRARY_PATH` from anything launched through a system binary such as
+`/bin/sh` (a user-set value never reaches `run`, and the variable is set only in
+the final `exec`), which our own programs do not need — their rpath finds the
+libraries.
 
 ## Reports and CI integration
 

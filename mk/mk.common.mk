@@ -377,6 +377,30 @@ _RUN_LDPATH_VAR = PATH
 _RUN_LDPATH_VAR = LD_LIBRARY_PATH
 .endif
 
+# run-build-environment-req (run-any-program-in-build-env-dec): `run` executes
+# PROGRAM through the build environment, so a built program, `sh` (an
+# interactive subshell with that environment), `env` or any other command
+# works -- no separate shell/env target. PROGRAM is resolved through PATH:
+# the workspace bin, then each PARENT_WS bin, then the caller's PATH, so a
+# project binary shadows a system one of the same name. The library search
+# variable gets the lib chain; BMK_BINDIR/BMK_LIBDIR/BMK_SHAREDIR are the
+# colon-separated bin/lib/share chains and BMK_TARGET the target key.
+# stdin/stdout/exit status pass through (exec). run does not build.
+# The library value travels in BMK_LIBVAL, not in the variable itself:
+# macOS strips DYLD_* from any process launched through a SIP-protected
+# binary (/bin/sh), so the real variable is set only by the final `exec env`
+# in scripts/run-exec.sh.
+.if ${_RUN_LDPATH_VAR} == "PATH"
+_RUN_LIBSET = PATH="$$_libs:$$PATH"; BMK_LIBVAL=
+.else
+_RUN_LIBSET = eval "_old=\$$${_RUN_LDPATH_VAR}"; BMK_LIBVAL="$$_libs$${_old:+:$$_old}"
+.endif
+
+# run-shell-keeps-environment-req: scripts/run-exec.sh is the last step -- an
+# ordinary program is simply exec'd with the inherited environment; an
+# interactive shell also gets a shim so its own startup files cannot
+# override the entries above.
+# @impl 0f87-6ac1-4ffc-37ef
 # @impl 0f87-6a98-7946-1d85
 run:
 .if !defined(PROGRAM) || empty(PROGRAM)
@@ -395,12 +419,17 @@ run:
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR}; \
 	fi; \
-	_BIN=$$_d/${BINDIR_LOCAL}/${PROGRAM}; \
-	if [ ! -x "$$_BIN" ]; then \
-		echo "error: $$_BIN does not exist — build first" >&2; exit 1; \
+	_bins="$$_d/${BINDIR_LOCAL}"; _libs="$$_d/${LIBDIR_LOCAL}"; _shares="$$_d/${SHAREDIR_LOCAL}"; \
+	for _p in ${PARENT_WS}; do \
+		_bins="$$_bins:$$_p/${BINDIR_LOCAL}"; _libs="$$_libs:$$_p/${LIBDIR_LOCAL}"; _shares="$$_shares:$$_p/${SHAREDIR_LOCAL}"; \
+	done; \
+	PATH="$$_bins$${PATH:+:$$PATH}"; \
+	if ! command -v "${PROGRAM}" >/dev/null 2>&1; then \
+		echo "error: ${PROGRAM} not found in $$_bins or on PATH -- build first (run does not build)" >&2; exit 1; \
 	fi; \
-	_LIBDIR=$$_d/${LIBDIR_LOCAL}; \
-	env ${_RUN_LDPATH_VAR}="$$_LIBDIR:$$${_RUN_LDPATH_VAR}" "$$_BIN" ${ARGS}
+	${_RUN_LIBSET}; \
+	export PATH BMK_BINDIR="$$_bins" BMK_LIBDIR="$$_libs" BMK_SHAREDIR="$$_shares" BMK_TARGET="${OS_ARCH}" BMK_LIBVAR="${_RUN_LDPATH_VAR}" BMK_LIBVAL; \
+	exec sh ${BMK_MKDIR}/../scripts/run-exec.sh "$$_d/${BUILD_ROOT}/.run-shell" ${PROGRAM} ${ARGS}
 
 .PHONY: run
 

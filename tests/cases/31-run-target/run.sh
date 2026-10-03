@@ -29,6 +29,6 @@ if bmake run PROGRAM=nope 2>err.log; then
     echo "run with a nonexistent PROGRAM= should have failed" >&2
     exit 1
 fi
-grep -qi "does not exist" err.log
+grep -qi "nope not found in .* or on PATH" err.log
 
 echo "run-target OK"
