@@ -39,7 +39,7 @@ all:
 	echo "${_BMK_SKIP_MSG}" > ${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded
 .endif
 
-copy-up test docs add-prereq:
+copy-up test docs add-prereq _fw_build_closure:
 	@:
 
 clean:
@@ -49,4 +49,4 @@ clean:
 	rm -rf ${.CURDIR}/${BUILD_ROOT}
 .endif
 
-.PHONY: all copy-up test docs add-prereq clean
+.PHONY: all copy-up test docs add-prereq _fw_build_closure clean

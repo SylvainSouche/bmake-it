@@ -49,6 +49,11 @@ bin=$(find . -type f -name app | head -1)
 out=$("$bin")
 echo "$out" | grep -q "^1$"
 
-grep -q "no resolved library directory" libglm_build.log
+# IMPORT_LIB=none declared that there is no library: the "no resolved library
+# directory ... skipping lib staging" boundary message is for the env/hook
+# CFLAGS+LIBS mode, not this one (misleading on Linux, lasviewer round 8).
+if grep -q "no resolved library directory" libglm_build.log build1.log; then
+    echo "IMPORT_LIB=none must not print the no-library-directory message" >&2; exit 1
+fi
 
 echo "header-only-import OK"

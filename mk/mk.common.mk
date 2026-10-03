@@ -437,6 +437,11 @@ CXXFLAGS += -std=${CXXSTD}
 # @impl 0f87-6ab6-00e8-b2f8
 # ---------------------------------------------------------------------------
 OPENMP ?= no
+# static-lib-openmp-linkdeps-req: exactly what this block adds to LDFLAGS,
+# kept apart so mk.lib.mk can record it in lib<LIB>.linkdeps -- a static
+# library carries no dependency info of its own, so a consumer linking it
+# through LIBS= needs the OpenMP runtime named for it.
+_OPENMP_LDFLAGS =
 .if ${OPENMP} == "yes"
 .  if ${TOOLCHAIN} == "msvc"
 _OPENMP_SUPPORTED = yes
@@ -450,10 +455,12 @@ _OPENMP_SUPPORTED = ${_OPENMP_PROBE}
 CFLAGS   += -fopenmp
 CXXFLAGS += -fopenmp
 LDFLAGS  += -fopenmp
+_OPENMP_LDFLAGS = -fopenmp
 .  if exists(/opt/local/include/libomp) && exists(/opt/local/lib/libomp)
 CFLAGS   += -I/opt/local/include/libomp
 CXXFLAGS += -I/opt/local/include/libomp
 LDFLAGS  += -L/opt/local/lib/libomp
+_OPENMP_LDFLAGS += -L/opt/local/lib/libomp
 .  endif
 .endif
 

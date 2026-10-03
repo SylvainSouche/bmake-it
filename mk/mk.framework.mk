@@ -199,17 +199,37 @@ _build_modules:
 # @impl 0f87-6aaa-6201-a430
 # @impl 0f87-6aaa-697c-4c30
 # @impl 0f87-6ab5-81a2-7bb0
-# A framework with .tst modules first brings its .m modules up to date and
-# copied up (a test module links their libraries from the framework's lib/),
-# then runs everything; one without .tst modules behaves exactly as before.
-test: _tst_prebuild _run_tests _check_test_failures
+# test-builds-prerequisite-closure-req: `test` is preceded by a build of
+# everything it can reach. Found in real use: from a clean tree, `bmake test`
+# at the workspace never entered a prerequisite framework that has no tests
+# (GIS, GUI), so the headers it imports were never staged and a tested
+# framework failed with "'glm/glm.hpp' file not found". Here, the framework
+# builds the PREREQS= closure found in the same workspace (depth first,
+# cycle-guarded; a prerequisite from a PARENT_WS is built in its own
+# workspace) and its own modules, copied up, plus share/. The workspace's
+# `test` builds everything once itself and passes BMK_TEST_BUILT=yes.
+# @impl 0f87-6ac1-0a1e-c402
+test: _fw_test_build _run_tests _check_test_failures
 
-.if !empty(SUBDIR_TESTMODS)
-_tst_prebuild: _create_fw_dirs _build_modules _aggregate
-.else
-_tst_prebuild:
+.if defined(BMK_TEST_BUILT) && ${BMK_TEST_BUILT} == "yes"
+_fw_test_build:
 	@:
+.else
+_fw_test_build: _fw_build_closure
 .endif
+
+_fw_build_closure: _fw_build_prereqs _create_fw_dirs _build_modules _aggregate _check_build_failures
+
+_fw_build_prereqs:
+.for _p in ${PREREQS}
+	@if [ -f "${.CURDIR}/../${_p}/makefile" ]; then \
+		case " ${BMK_CLOSURE} " in *" ${_p} "*) exit 0 ;; esac; \
+		${MAKE} -C ${.CURDIR}/../${_p} _fw_build_closure \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
+			RUN_ID="${RUN_ID}" BMK_CLOSURE="${BMK_CLOSURE} ${.CURDIR:T}" || exit 1; \
+	fi
+.endfor
 
 _run_tests:
 .for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}
@@ -332,7 +352,7 @@ add-prereq:
 	fi
 	@echo "Appended ${FW} to PREREQS"
 
-.PHONY: all clean help copy-up add-prereq _tst_prebuild _create_fw_dirs _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
+.PHONY: all clean help copy-up add-prereq _fw_test_build _fw_build_closure _fw_build_prereqs _create_fw_dirs _build_modules _aggregate _check_build_failures test _run_tests _check_test_failures
 
 .include "${BMK_MKDIR}/mk.docs.mk"
 

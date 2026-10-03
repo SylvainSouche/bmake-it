@@ -396,6 +396,21 @@ TEST_REPORT_DIR ?= test-report
 # @impl 0f87-6aaa-6201-a430
 # @impl 0f87-6aaa-697c-4c30
 # @impl 0f87-6aaa-72d2-8ffc
+# test-builds-prerequisite-closure-req: `test` is `all` followed by the
+# tests. The workspace test used to enter only frameworks it could run tests
+# in, so a prerequisite framework without tests (imported headers and
+# libraries only) was never built from a clean tree. A build failure stops
+# the run: tests of a tree that does not build would only fail again, later
+# and noisier. The frameworks below are told (BMK_TEST_BUILT=yes) not to
+# build again.
+# @impl 0f87-6ac1-0a1e-c402
+test: _ws_test_build
+_ws_test_build:
+	@${MAKE} all REPORT=no \
+		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+		|| { echo "===> tests not run: the build failed" >&2; exit 1; }
+
 test:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@if [ -z "${FW}" ] || [ "${_f}" = "${FW}" ]; then \
@@ -403,7 +418,7 @@ test:
 		${MAKE} -C ${_f} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}"; \
+			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}" BMK_TEST_BUILT=yes; \
 		_trc=$$?; \
 		if [ "$$_trc" -ne 0 ]; then \
 			touch "$$_rundir/test.failed"; \
@@ -467,7 +482,7 @@ test:
 		exit 1; \
 	fi
 
-.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test
+.PHONY: all clean help _build_frameworks _aggregate_ws add-parent install docs test _ws_test_build
 
 _LOCAL_MK_PHASE = local
 .include "${BMK_MKDIR}/mk.local.mk"
