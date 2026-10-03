@@ -792,6 +792,13 @@ _OWN_LINKDEPS += ${_LINKDEPS.${_l}}
 .      endif
 .    endfor
 .  endfor
+# static-lib-openmp-linkdeps-req: a compiled library built with OPENMP=yes
+# also records the OpenMP runtime it needs -- a static library has no
+# dependency info of its own, so the consumer must link the runtime. Only
+# the compiled branch: an imported library's own -l list already is the
+# right transitive set.
+# @impl 0f87-6ac1-0a1e-0831
+_OWN_LINKDEPS += ${_OPENMP_LDFLAGS}
 .endif
 
 # repeated-messages-fix-req: "built ..." is printed by the recipe that
@@ -868,6 +875,9 @@ _write_linkdeps:
 # no glob in the resolved libdir) produced libfoo.so.3.3 -> libfoo.so.3.3,
 # a loop, and "prerequisite library ... has not been built yet".
 # @impl 0f87-6ac0-c275-8658
+# import-lib-none-quiet-req: no message for IMPORT_LIB=none -- not staging a
+# library is exactly what it declared (the message was misleading on Linux).
+# @impl 0f87-6ac1-0a1e-546e
 # @impl 0f87-6abe-8e68-741b
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
@@ -898,7 +908,9 @@ _stage_import:
 		fi; \
 	done; \
 	if [ -z "${_IMPORT_LIBDIR}" ]; then \
-		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
+		if [ "${IMPORT_LIB}" != none ]; then \
+			echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
+		fi; \
 	else \
 		_found=no; _copied=""; \
 		for _f in "${_IMPORT_LIBDIR}"/lib${LIB}.*; do \

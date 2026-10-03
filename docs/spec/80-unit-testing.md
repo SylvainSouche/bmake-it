@@ -126,10 +126,9 @@ program from all of `src/` (or `TEST_SRCS=`); with `PROG=` also set,
 `PROG` is built from the rest. Setting both without `TEST_SRCS=` is an
 error. A module with neither is scripts-only.
 
-**How it runs.** The framework's `test` first builds its `.m` modules, copies
-them up and aggregates `share/` (only when it has `.tst` modules, so a
-framework without them behaves exactly as before), then enters each `.tst`
-module. `TEST=<name>` matches a test program or a script name. The scripts
+**How it runs.** The framework's `test` first builds its `PREREQS=` closure
+and its own `.m` modules (copied up) and `.tst` modules, aggregates `share/`,
+then enters each `.tst` module. `TEST=<name>` matches a test program or a script name. The scripts
 get `PATH` = the module's test directory, its framework's `bin`, the
 workspace's `bin` and each `PARENT_WS`'s `bin`, and `BMK_SHAREDIR` = the
 matching `share` directories, colon-separated in the same order. Kyua passes
@@ -137,11 +136,29 @@ the environment through unchanged.
 
 ## `make test` — one target, not two
 
-`test` first brings the module's own build up to date (it depends on
-`all`), then builds the test programs: without that, a library source
+`test` is preceded by a build of everything it can reach
+(`test-rebuilds-module-library-req`, `test-builds-prerequisite-closure-req`).
+At **module** scope it depends on `all`: without that, a library source
 edit followed by only `bmake test` ran the tests against the previous
-library (`test-rebuilds-module-library-req`; found in real use — a test
-written to fail on the old code passed).
+library (found in real use — a test written to fail on the old code
+passed). At **workspace** scope it is `all` followed by the tests; if the
+build fails the tests are not run (`===> tests not run: the build
+failed`). At **framework** scope it builds the `PREREQS=` closure found in
+the same workspace (depth first, cycle-guarded) and the framework's own
+modules, copied up, plus `share/`. This matters from a clean tree: a
+prerequisite framework with no tests of its own (one that only stages
+imported headers and libraries) used to be skipped by `test`, so a tested
+framework failed with `'glm/glm.hpp' file not found`
+(lasviewer rounds 7–8). A prerequisite that lives in a `PARENT_WS` is built
+in its own workspace.
+
+**A test that needs a capability the host may lack** (a display, a GPU) is
+not gated by `PLATFORMS=`/`TOOLCHAINS=`, which select by OS and toolchain
+only. Skip it at run time with a reason, which ATF supports directly:
+`atf_skip "no display"` in an atf-sh script (or `require.progs`,
+`require.config`), reported as skipped rather than failed. A declarative
+`NEEDS=` on a `.tst` module is recorded as an open candidate
+(`test-capability-gate-cand`) to revisit if several projects need it.
 
 There is no separate `test-all` target. `test` always builds, runs, and
 writes JUnit XML (`build/<KEY>/runs/<RUN_ID>/test-results.xml`, plus a

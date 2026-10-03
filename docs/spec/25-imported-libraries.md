@@ -180,6 +180,16 @@ all), see `REQUIRES=header:<path>` in `27-prerequisite-software.md`
   other name becomes a relative link to it — a name is never linked to
   itself (`staging-symlink-chain-real-file-req`; the old behaviour made
   `libglfw.so.3.3 -> libglfw.so.3.3`, a loop).
+- **A compiled static library built with `OPENMP=yes` records the OpenMP
+  runtime** (`-fopenmp`, and the runtime's `-L` where mk.common.mk adds one)
+  in `lib<LIB>.linkdeps` (`static-lib-openmp-linkdeps-req`). A static
+  library carries no dependency information of its own, so a module linking
+  it through `LIBS=` and not setting `OPENMP=` itself otherwise failed with
+  `undefined ___kmpc_fork_call` (lasviewer round 8).
+- **`IMPORT_LIB=none` prints no "no resolved library directory" message**
+  (`import-lib-none-quiet-req`): that boundary message is for the env/hook
+  `CFLAGS`+`LIBS` mode, where it is real; a header-only import declared that
+  there is no library, so it was misleading.
 - **Re-staging** is driven by the existing inputs-hash mechanism
   (`REQ-inputs-hash-rebuild-req`): the resolved source, `IMPORT_CFLAGS`,
   and `IMPORT_LIBS` are folded into `INPUTS_HASH_EXTRA=`, so a changed
