@@ -2843,6 +2843,48 @@
     "status": "confirmed",
     "type": "req"
   },
+  "tst-module-layout-req": {
+    "active": true,
+    "id": "0f87-6abf-cc07-51ac",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "tst-prog-and-test-prog-sources-cand": {
+    "active": true,
+    "id": "0f87-6abf-cc0b-986a",
+    "status": "open",
+    "type": "cand"
+  },
+  "tst-scripts-are-tests-req": {
+    "active": true,
+    "id": "0f87-6abf-cc07-9eea",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "tst-test-environment-dec": {
+    "active": true,
+    "id": "0f87-6abf-cc7e-e78c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "tst-test-environment-req": {
+    "active": true,
+    "id": "0f87-6abf-cc7e-88f8",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "tst-test-modules-dec": {
+    "active": true,
+    "id": "0f87-6abf-cc07-d57e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "tst-test-prog-req": {
+    "active": true,
+    "id": "0f87-6abf-cc08-9d6c",
+    "status": "confirmed",
+    "type": "req"
+  },
   "uniform-makefile-filename": {
     "active": true,
     "id": "6f38-6a8a-04ce-ed4a",
