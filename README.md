@@ -140,9 +140,13 @@ bmake docs             # Doxygen HTML for this framework (or every framework +
 bmake test             # build + run this module's TESTS_CXX=/TESTS_C=/TESTS_SH=
                        # via ATF/Kyua; JUnit XML report
 bmake test REPORT=yes  # same, plus a full HTML report
+bmake run PROGRAM=lasviewer ARGS="--snapshot out.png"
+                       # run any program with the build environment set (PATH,
+                       # library path, BMK_*); PROGRAM=sh opens a subshell in it
 ```
 
-See `docs/spec/70-documentation-generation.md` and `docs/spec/80-unit-testing.md`.
+See `docs/spec/70-documentation-generation.md`, `docs/spec/80-unit-testing.md` and,
+for `run`, `docs/spec/40-cli-reference.md`.
 
 ## Domain model
 

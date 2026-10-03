@@ -1313,6 +1313,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-run-build-environment": {
+    "active": true,
+    "id": "0f87-6ac1-4ffc-37ef",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-run-id-history": {
     "active": true,
     "id": "0f87-6aaa-72d2-8ffc",
@@ -2543,6 +2549,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "run-any-program-in-build-env-dec": {
+    "active": true,
+    "id": "0f87-6ac1-4ffc-445d",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "run-build-environment-req": {
+    "active": true,
+    "id": "0f87-6ac1-4ffc-44cb",
+    "status": "confirmed",
+    "type": "req"
+  },
   "run-history-not-overwritten-req": {
     "active": true,
     "id": "0f87-6aaa-72be-9e29",
@@ -2560,6 +2578,18 @@
     "id": "0f87-6aaa-72be-8624",
     "status": "recorded",
     "type": "dec"
+  },
+  "run-shell-keeps-environment-dec": {
+    "active": true,
+    "id": "0f87-6ac1-505d-3859",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "run-shell-keeps-environment-req": {
+    "active": true,
+    "id": "0f87-6ac1-505d-7993",
+    "status": "confirmed",
+    "type": "req"
   },
   "run-target": {
     "active": true,
