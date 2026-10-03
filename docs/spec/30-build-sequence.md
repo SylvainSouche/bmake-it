@@ -78,6 +78,14 @@ The copy-up mechanism (step 6/7) is **diff-aware**
 - **Differing content, genuine collision** (e.g. two modules or
   frameworks independently producing a same-named artifact) → a warning
   is emitted, but the build still proceeds (overwrite, not a hard stop).
+- **Differing content from the same producer** (a module or framework
+  overwriting its own earlier output after a legitimate rebuild) →
+  **silent**: a rebuilt artefact is expected to differ from its previous
+  copy. The previous producer of each name is recorded in
+  `build/<KEY>/.copy-up-origin/<bin|lib|share>.tsv`, beside the
+  aggregation directory rather than inside it so it is never shipped; a
+  name with no recorded producer still warns
+  (`copy-up-collision-different-modules-only-req`).
 - **Differing content, deliberate `share/` specificity overlay** (a
   platform-specific variant intentionally overwriting the generic one)
   → **no warning at all** — this is expected, by-design behavior, not a

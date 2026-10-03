@@ -197,6 +197,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "copy-up-collision-different-modules-only-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26d-b4dc",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cross-compile-check-scoped-to-actual-builds-req": {
     "active": true,
     "id": "0f87-6a98-5dca-b115",
@@ -518,6 +524,12 @@
   "fetch-build-prefix-stability-req": {
     "active": true,
     "id": "0f87-6abf-bef3-ba61",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-build-prologue-terminated-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26c-6925",
     "status": "confirmed",
     "type": "req"
   },
@@ -869,6 +881,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "hidden-files-not-sources-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26d-f0ec",
+    "status": "confirmed",
+    "type": "req"
+  },
   "impl-add-prereq-target": {
     "active": true,
     "id": "0f87-6a98-7918-e195",
@@ -891,6 +909,12 @@
     "active": true,
     "id": "0f87-6aaa-6a6e-00d0",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-copy-up-collision-different-modules-only": {
+    "active": true,
+    "id": "0f87-6ac0-c275-07a6",
+    "status": "verified",
     "type": "impl"
   },
   "impl-copy-up-diff-aware": {
@@ -965,6 +989,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-fetch-build-prologue-terminated": {
+    "active": true,
+    "id": "0f87-6ac0-c275-64e8",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-fetch-import": {
     "active": true,
     "id": "0f87-6ab6-4fe1-98d2",
@@ -1019,6 +1049,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-hidden-files-not-sources": {
+    "active": true,
+    "id": "0f87-6ac0-c275-ed0e",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-import-headers-glob": {
     "active": true,
     "id": "0f87-6abe-3f41-3d0f",
@@ -1052,6 +1088,12 @@
   "impl-import-staging-symlink-fix": {
     "active": true,
     "id": "0f87-6ab6-60c6-d25a",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-import-system-includedir-fallback": {
+    "active": true,
+    "id": "0f87-6ac0-c275-d578",
     "status": "verified",
     "type": "impl"
   },
@@ -1271,6 +1313,18 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-staging-symlink-chain-real-file": {
+    "active": true,
+    "id": "0f87-6ac0-c275-8658",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-test-rebuilds-module-library": {
+    "active": true,
+    "id": "0f87-6ac0-c275-6edd",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-test-single-selection": {
     "active": true,
     "id": "0f87-6aaa-697c-4c30",
@@ -1376,6 +1430,12 @@
   "import-staging-req": {
     "active": true,
     "id": "0f87-6ab5-8a9c-1d21",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "import-system-includedir-fallback-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26c-f367",
     "status": "confirmed",
     "type": "req"
   },
@@ -1508,6 +1568,12 @@
   "lasviewer-second-round-bugs-obs": {
     "active": true,
     "id": "0f87-6aba-a265-f2ae",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "lasviewer-sixth-round-issues-obs": {
+    "active": true,
+    "id": "0f87-6ac0-c26c-ee92",
     "status": "recorded",
     "type": "obs"
   },
@@ -2501,6 +2567,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "staging-symlink-chain-real-file-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26c-adaf",
+    "status": "confirmed",
+    "type": "req"
+  },
   "supported-languages": {
     "active": true,
     "id": "6f38-6a89-b79d-c3c3",
@@ -2602,6 +2674,12 @@
     "id": "0f87-6a9a-d35b-6e0a",
     "status": "passing",
     "type": "test"
+  },
+  "test-rebuilds-module-library-req": {
+    "active": true,
+    "id": "0f87-6ac0-c26d-2c36",
+    "status": "confirmed",
+    "type": "req"
   },
   "test-single-selection-req": {
     "active": true,

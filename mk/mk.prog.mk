@@ -42,7 +42,11 @@ PROG := ${PROG}.exe
 .endif
 
 .if !defined(SRCS) || empty(SRCS)
-SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
+# hidden-files-not-sources-req: `! -path '*/.*'` skips dot-files and
+# dot-directories -- macOS AppleDouble sidecars (._raster.cpp, created by a
+# tar extraction elsewhere) are not source and failed to compile.
+# @impl 0f87-6ac0-c275-ed0e
+SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) ! -path '*/.*' 2>/dev/null | sed 's|^src/||' || true
 .endif
 
 # Link driver selection (cxx-link-driver-selection-req): ${CXX} when SRCS

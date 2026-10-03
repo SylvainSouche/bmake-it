@@ -83,7 +83,11 @@ SHLIB_MAJOR = 1
 .  endif
 .elif ${IMPORT:Uno:C/:.*//} == "fetch"
 .elif !defined(SRCS) || empty(SRCS)
-SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) 2>/dev/null | sed 's|^src/||' || true
+# hidden-files-not-sources-req: `! -path '*/.*'` skips dot-files and
+# dot-directories -- macOS AppleDouble sidecars (._raster.cpp, created by a
+# tar extraction elsewhere) are not source and failed to compile.
+# @impl 0f87-6ac0-c275-ed0e
+SRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' -o -name '*.cxx' -o -name '*.y' -o -name '*.l' \) ! -path '*/.*' 2>/dev/null | sed 's|^src/||' || true
 .endif
 
 # Link driver selection (cxx-link-driver-selection-req): ${CXX} when SRCS
@@ -309,7 +313,12 @@ _FETCH_MACOS_MIN_VERSION != _t=$$(mktemp 2>/dev/null || echo /tmp/bmk-deploy-pro
 # shell script on every TARGET.
 _FETCH_DEPLOY_EXPORT = export MACOSX_DEPLOYMENT_TARGET="${_FETCH_MACOS_MIN_VERSION}";
 .else
-_FETCH_DEPLOY_EXPORT = :
+# fetch-build-prologue-terminated-req: BOTH values end in ';' -- the recipe
+# line continues straight into `case "$BUILD" in ...`, so a bare ':' made
+# that `: case ...` (case swallowed as an argument of ':'), a syntax error
+# under dash on every non-macOS host.
+# @impl 0f87-6ac0-c275-64e8
+_FETCH_DEPLOY_EXPORT = :;
 .endif
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
@@ -473,7 +482,7 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # such change -- a known, narrower limitation than a content-aware
 # cache, not a correctness bug for what it does cover.
 _IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
-_IMPORT_FP != printf '%s' "IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH}" | cksum
+_IMPORT_FP != printf '%s' "V=2 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH}" | cksum
 .    if exists(${_IMPORT_CACHE_FILE})
 _IMPORT_FP_CACHED != sed -n '1p' ${_IMPORT_CACHE_FILE} 2>/dev/null
 .    else
@@ -492,6 +501,7 @@ _IMPORT_SOURCE  != sed -n '4p' ${_IMPORT_CACHE_FILE}
 _IMPORT_CFLAGS  != sed -n '5p' ${_IMPORT_CACHE_FILE}
 _IMPORT_LIBS    != sed -n '6p' ${_IMPORT_CACHE_FILE}
 _IMPORT_LIBDIR  != sed -n '7p' ${_IMPORT_CACHE_FILE}
+_IMPORT_INCDIR  != sed -n '8p' ${_IMPORT_CACHE_FILE}
 .      endif
 .    else
 _IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
@@ -500,6 +510,14 @@ _IMPORT_VERSION != ${_IMPORT_PC_ENV} pkg-config --modversion ${_IMPORT_PKGNAME} 
 _IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
 _IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+# import-system-includedir-fallback-req: pkg-config omits -I<dir> for a
+# SYSTEM directory (/usr/include on Linux), so --cflags can be empty for
+# a perfectly installed package and header staging had nothing to search
+# (found on Ubuntu: glm, glfw3). includedir is where the headers are
+# regardless; staging searches it after the -I dirs. Compile flags are
+# NOT changed -- the compiler finds a system directory on its own.
+# @impl 0f87-6ac0-c275-d578
+_IMPORT_INCDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=includedir ${_IMPORT_PKGNAME} 2>/dev/null
 # shared-import-link-flags-fix-req: a shared library (.so/.dylib) embeds
 # its own dependency references (install_name/rpath on macOS, DT_NEEDED
 # on ELF), resolved by the dynamic linker at LOAD time, not link time --
@@ -524,7 +542,7 @@ _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAM
 # a genuine "not found" is just as valid to cache as a genuine "found"
 # (a second build shouldn't re-probe pkg-config just to re-learn the
 # same absence either).
-_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && { echo '${_IMPORT_FP}'; echo '${_IMPORT_PC_FOUND}'; echo '${_IMPORT_VERSION}'; echo '${_IMPORT_SOURCE}'; echo '${_IMPORT_CFLAGS}'; echo '${_IMPORT_LIBS}'; echo '${_IMPORT_LIBDIR}'; } > ${_IMPORT_CACHE_FILE}; echo ok
+_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && { echo '${_IMPORT_FP}'; echo '${_IMPORT_PC_FOUND}'; echo '${_IMPORT_VERSION}'; echo '${_IMPORT_SOURCE}'; echo '${_IMPORT_CFLAGS}'; echo '${_IMPORT_LIBS}'; echo '${_IMPORT_LIBDIR}'; echo '${_IMPORT_INCDIR:U}'; } > ${_IMPORT_CACHE_FILE}; echo ok
 .    endif
 .  elif ${IMPORT:C/:.*//} == "prefix"
 _IMPORT_PREFIX_VAL = ${IMPORT:C/^[^:]*://}
@@ -838,17 +856,26 @@ _write_linkdeps:
 # non-matching literal pattern untouched, so `[ -e ... ]` on it
 # correctly reports "not found" the same way it always has.
 # @impl 0f87-6abe-3f41-3d0f
+# staging-symlink-chain-real-file-req: when the symlink chain ends at a
+# real file in ANOTHER directory (a distro's libfoo.so -> libfoo.so.3 ->
+# libfoo.so.3.3 -> /usr/lib/<triple>/libfoo.so.3.3), that file is copied
+# into the staged lib dir ONCE under its own name and every other name is
+# a relative link to it. Linking the real file's own name to itself (what
+# this did before, when the real file was never copied because it matched
+# no glob in the resolved libdir) produced libfoo.so.3.3 -> libfoo.so.3.3,
+# a loop, and "prerequisite library ... has not been built yet".
+# @impl 0f87-6ac0-c275-8658
 # @impl 0f87-6abe-8e68-741b
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
-	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
+	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
 	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fp)" = "$$_fp" ]; then \
 		exit 0; \
 	fi; \
 	echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"; \
 	for _h in ${IMPORT_HEADERS}; do \
 		_found=no; \
-		for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//}; do \
+		for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//} ${_IMPORT_INCDIR:U}; do \
 			_matched=no; \
 			for _f in "$$_d"/$$_h; do \
 				if [ -e "$$_f" ]; then \
@@ -863,14 +890,14 @@ _stage_import:
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
-			echo "error: IMPORT_HEADERS=$$_h: not found under any resolved include dir (${_IMPORT_CFLAGS})" >&2; \
+			echo "error: IMPORT_HEADERS=$$_h: not found under any resolved include dir (${_IMPORT_CFLAGS:M-I*:S/-I//} ${_IMPORT_INCDIR:U})" >&2; \
 			exit 1; \
 		fi; \
 	done; \
 	if [ -z "${_IMPORT_LIBDIR}" ]; then \
 		echo "===> IMPORT=${IMPORT}: no resolved library directory (env/hook CFLAGS+LIBS mode) -- skipping lib${LIB}.* staging; consumers relying on LIBS=${LIB} need _PREFIX-style resolution instead" >&2; \
 	else \
-		_found=no; \
+		_found=no; _copied=""; \
 		for _f in "${_IMPORT_LIBDIR}"/lib${LIB}.*; do \
 			[ -e "$$_f" ] || continue; \
 			_base=$$(basename "$$_f"); \
@@ -889,7 +916,12 @@ _stage_import:
 					esac; \
 				done; \
 				if [ -f "$$_real" ]; then \
-					ln -sf "$$(basename "$$_real")" "${_LIBOUT_DIR}/$$_base"; \
+					_rb=$$(basename "$$_real"); \
+					case " $$_copied " in \
+						*" $$_rb "*) ;; \
+						*) rm -f "${_LIBOUT_DIR}/$$_rb"; cp -p "$$_real" "${_LIBOUT_DIR}/$$_rb"; _copied="$$_copied $$_rb" ;; \
+					esac; \
+					if [ "$$_base" != "$$_rb" ]; then ln -sf "$$_rb" "${_LIBOUT_DIR}/$$_base"; fi; \
 				fi; \
 			else \
 				cp -a "$$_f" "${_LIBOUT_DIR}/$$_base"; \

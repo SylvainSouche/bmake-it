@@ -54,6 +54,12 @@ All three kinds are registered in a generated `Kyuafile` and run via
 
 ## `make test` — one target, not two
 
+`test` first brings the module's own build up to date (it depends on
+`all`), then builds the test programs: without that, a library source
+edit followed by only `bmake test` ran the tests against the previous
+library (`test-rebuilds-module-library-req`; found in real use — a test
+written to fail on the old code passed).
+
 There is no separate `test-all` target. `test` always builds, runs, and
 writes JUnit XML (`build/<KEY>/runs/<RUN_ID>/test-results.xml`, plus a
 `runs/latest` copy — `40-cli-reference.md`); `REPORT=yes` additionally

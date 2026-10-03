@@ -128,9 +128,15 @@ _gen_kyuafile:
 # exactly when you most want the report). REPORT=yes additionally builds
 # the HTML report there too (report-flag-uniform-trigger-v2) --
 # `test-all` no longer exists as a separate target.
+# test-rebuilds-module-library-req: `all` comes first, so the library (or
+# the program's objects) a test links is current. _build_tests only
+# builds the test programs; without this a source edit followed by just
+# `bmake test` ran the tests against the OLD library, silently (found in
+# real use: a test written to fail on the old code passed).
+# @impl 0f87-6ac0-c275-6edd
 # @impl 0f87-6aa9-0267-4adc
 # @impl 0f87-6aaa-72d2-8ffc
-test: _build_tests _gen_kyuafile
+test: all _build_tests _gen_kyuafile
 	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rc=0; \
 	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
