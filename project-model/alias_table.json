@@ -557,6 +557,24 @@
     "status": "confirmed",
     "type": "req"
   },
+  "docs-input-extra-warn-knobs": {
+    "active": true,
+    "id": "0f87-6acd-d917-bad4",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "docs-input-extra-warn-knobs-req": {
+    "active": true,
+    "id": "0f87-6acd-d91c-9af6",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "docs-local-include-undocumented-obs": {
+    "active": true,
+    "id": "0f87-6acd-d917-993e",
+    "status": "recorded",
+    "type": "obs"
+  },
   "duplicate-linkdeps-fix-req": {
     "active": true,
     "id": "0f87-6abe-3f50-4cd6",
@@ -1064,6 +1082,12 @@
   "impl-cxxstd-openmp": {
     "active": true,
     "id": "0f87-6ab6-00e8-b2f8",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-docs-input-extra-warn-knobs": {
+    "active": true,
+    "id": "0f87-6acd-d9fe-4238",
     "status": "verified",
     "type": "impl"
   },

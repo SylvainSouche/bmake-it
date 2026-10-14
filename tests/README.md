@@ -151,6 +151,7 @@ sh tests/harness/pack-cases.sh
 | 92 | From a clean tree, `bmake test` alone at the workspace builds an untested prerequisite framework that only stages an imported header (the tested framework's test needs it), and `bmake test` at framework scope builds its `PREREQS=` closure (atf/kyua; skips without them) |
 | 93 | A static `OPENMP=yes` library used through `LIBS=` by a module that does not set `OPENMP=` links, and `.linkdeps` records `-fopenmp` (skips without an OpenMP runtime) |
 | 94 | `bmake run PROGRAM=<x>` runs any program through the build environment: a built program with arguments (from the workspace and from a module dir), the `PATH`/library/`BMK_*` chains, the caller's environment inherited, a program built only in a `PARENT_WS` found, an error naming the chain for a missing one, and an interactive `sh`/`bash`/`zsh` whose own startup file resets `PATH` still ends up with the workspace bin first and the user's rc having run (with a control proving the rc really resets it) |
+| 95 | `bmake docs` opt-in knobs: a framework with no public `include/` but `DOC_INPUT_EXTRA=` (local/include + a module's `src/`) is documented, headers only, and `DOC_WARN_IF_UNDOCUMENTED=YES` reports exactly its one undocumented entity; a framework setting nothing gets the unchanged Doxyfile; `DOC_EXTRACT_PRIVATE=YES` is passed through (skips doxygen if not installed) |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

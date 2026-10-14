@@ -86,12 +86,37 @@ DOC_LICENSE_NOTICE =
 # project's own Doxygen comments to document, only a re-export of
 # someone else's headers.
 DOCS ?= yes
+
+# docs-input-extra-warn-knobs-req: opt-in Doxygen knobs, defaults
+# reproducing the previous Doxyfile exactly.
+#  - DOC_INPUT_EXTRA: framework-relative directories appended to INPUT
+#    (e.g. `local/include openrider.m/src`), so a framework keeping most
+#    of its code in local/include can document it. With it set, a
+#    framework with no public include/ is documented from these alone
+#    rather than skipped. FILE_PATTERNS restricts the scan to headers.
+#  - DOC_WARN_IF_UNDOCUMENTED: passed through to WARN_IF_UNDOCUMENTED.
+#  - DOC_EXTRACT_PRIVATE: passed through to EXTRACT_PRIVATE.
+# @impl 0f87-6acd-d9fe-4238
+DOC_INPUT_EXTRA ?=
+DOC_FILE_PATTERNS ?= *.h *.hh *.hpp *.hxx *.h++
+DOC_WARN_IF_UNDOCUMENTED ?= NO
+DOC_EXTRACT_PRIVATE ?= NO
+
+_DOXY_INPUT =
+.if exists(${.CURDIR}/include)
+_DOXY_INPUT += ${.CURDIR}/include
+.endif
+.for _d in ${DOC_INPUT_EXTRA}
+_DOXY_INPUT += ${.CURDIR}/${_d}
+.endfor
+
 # @impl 0f87-6aa9-025e-d5c5
 # @impl 0f87-6abe-3f73-763e
+# @impl 0f87-6acd-d9fe-4238
 docs:
 .if ${DOCS} == "no"
 	@echo "===> docs skipped for ${.CURDIR:T}: DOCS=no"
-.elif !exists(${.CURDIR}/include)
+.elif !exists(${.CURDIR}/include) && empty(DOC_INPUT_EXTRA)
 	@echo "===> docs skipped for ${.CURDIR:T}: no public include/ (local/include-only or imported-library framework)"
 .else
 	@mkdir -p ${.CURDIR}/${DOCS_DIR}
@@ -106,13 +131,19 @@ docs:
 	@echo "PROJECT_LOGO = ${DOC_LOGO}" >> ${_DOXYFILE}
 .endif
 	@echo "OUTPUT_DIRECTORY = ${.CURDIR}/${DOCS_DIR}" >> ${_DOXYFILE}
-	@echo "INPUT = ${.CURDIR}/include" >> ${_DOXYFILE}
+	@echo "INPUT = ${_DOXY_INPUT:M*}" >> ${_DOXYFILE}
+.if !empty(DOC_INPUT_EXTRA)
+	@echo "FILE_PATTERNS = ${DOC_FILE_PATTERNS}" >> ${_DOXYFILE}
+.endif
 	@echo "RECURSIVE = YES" >> ${_DOXYFILE}
 	@echo "GENERATE_HTML = YES" >> ${_DOXYFILE}
 	@echo "GENERATE_LATEX = NO" >> ${_DOXYFILE}
 	@echo "GENERATE_TAGFILE = ${_TAGFILE}" >> ${_DOXYFILE}
 	@echo "QUIET = YES" >> ${_DOXYFILE}
-	@echo "WARN_IF_UNDOCUMENTED = NO" >> ${_DOXYFILE}
+	@echo "WARN_IF_UNDOCUMENTED = ${DOC_WARN_IF_UNDOCUMENTED}" >> ${_DOXYFILE}
+.if ${DOC_EXTRACT_PRIVATE} != "NO"
+	@echo "EXTRACT_PRIVATE = ${DOC_EXTRACT_PRIVATE}" >> ${_DOXYFILE}
+.endif
 .for _t in ${_DOXY_TAGFILES}
 	@echo "TAGFILES += ${_t}" >> ${_DOXYFILE}
 .endfor
