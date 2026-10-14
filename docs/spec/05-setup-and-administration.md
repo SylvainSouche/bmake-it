@@ -1,9 +1,10 @@
 # Bmake It — 05: Setup and Administration
 
-Status: **DRAFT.** Items are marked **decided**, **proposed** (written down,
-not yet confirmed) or **open**. Nothing in this chapter is implemented beyond
-what "What exists today" lists. Decided in design discussion 2026-10-14
-(`environment-management-levels-dec`).
+Status: **DRAFT, specified, not implemented** beyond what "What exists today"
+lists. Items are **decided** (design discussion 2026-10-14,
+`environment-management-levels-dec`, `config-makefile-dec`,
+`working-and-deployed-config-dec`; the earlier proposals were validated) or
+carry an explicit **Open** question.
 
 ## Scope
 
@@ -119,13 +120,38 @@ BMK_LINUX_SYSROOT = ${CACHE_DIR}/sysroots/linux-arm64
 - **Each environment is a file**, so make's own "present and current" logic
   does the work, and the declarations are ordinary macros beside the targets.
 
-**Open** (`config-makefile-consumption-cand`): how a *project build* reads what
-this makefile sets — for instance `BMK_LINUX_SYSROOT` — without also pulling in
-the administrative targets. Either the variables live in a section that both
-the build's hook cascade and the administrative makefile include, or a build
-includes the configuration makefile with its targets suppressed.
+A project build never reads this makefile: it reads the **deployed set**
+described next.
 
-## Configuration levels (proposed)
+## Working set and deployed set (decided)
+
+(`working-and-deployed-config-dec`, `deployed-config-read-by-builds-req`)
+
+Administrative configuration exists in two forms.
+
+- **The local working set** is the configuration makefile and the cache being
+  built up beside it. The administrator edits it and exercises it with the
+  administrative targets; it may be incomplete or in flux.
+- **The deployed configuration set** is what the Bmake It machinery reads. A
+  project build, a cross-compile, `bmake run` and the rest read the deployed
+  set **only**, never the working makefile. A build therefore cannot see a
+  half-edited configuration, and never loads the administrative targets —
+  which is how a build gets `BMK_LINUX_SYSROOT` and the other locations.
+
+Proposed mechanics (`config-deploy-mechanics-cand`, to confirm): a `deploy`
+target runs verification first (checksums; each image still matches its
+declaration) and only then replaces the deployed set **atomically**, keeping
+the previous one for `rollback`; `diff` shows working against deployed, and
+`status` shows both. The deployed set is plain variable files readable by bmake
+— locations, sysroots, tool prefixes, and the environments with their hashes and
+checksums — in a place builds can read and users cannot write. A team or an
+enterprise distributes the **deployed set**, copying it together with the cache
+entries it names, rather than the working makefile; that is also what makes a
+managed baseline reproducible.
+Open: where the deployed set lives, its exact format, and how a site and a user
+deployed set combine.
+
+## Configuration levels (decided; open sub-questions marked)
 
 Two levels outside any project, read by the existing hook cascade, outermost
 first: **site** (the administrator: `<prefix>/etc/bmake-it/mk/` following the
@@ -141,7 +167,7 @@ configuration makefile above, once per machine rather than in every project.
 Open: install prefix versus fixed directory; the Windows location
 (`config-levels-site-user-cand`).
 
-## Declaration, cache and reproducibility (proposed)
+## Declaration, cache and reproducibility (decided; open sub-question marked)
 
 An environment is described by a **declaration** (distro and version, packages,
 toolchain). The built image is named by the **hash of its declaration**, so the
