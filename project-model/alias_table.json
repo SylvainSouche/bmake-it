@@ -71,6 +71,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "bmakeit-config-makefile-req": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-2389",
+    "status": "confirmed",
+    "type": "req"
+  },
   "bmk-mkdir-discovery-via-makesyspath": {
     "active": true,
     "id": "0f87-6aaa-d63e-839a",
@@ -184,6 +190,54 @@
     "id": "6f38-6a91-4c89-ba40",
     "status": "superseded",
     "type": "req"
+  },
+  "computer-level-environment-store-req": {
+    "active": true,
+    "id": "0f87-6acf-5c07-ba60",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "config-deploy-mechanics-cand": {
+    "active": true,
+    "id": "0f87-6acf-63e7-7484",
+    "status": "accepted",
+    "type": "cand"
+  },
+  "config-deploy-mechanics-dec": {
+    "active": true,
+    "id": "0f87-6acf-6527-ad7b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "config-deploy-req": {
+    "active": true,
+    "id": "0f87-6acf-6527-c721",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "config-levels-site-user-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-ab35",
+    "status": "accepted",
+    "type": "cand"
+  },
+  "config-locations-in-config-makefile-req": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-d7d4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "config-makefile-consumption-cand": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-e862",
+    "status": "accepted",
+    "type": "cand"
+  },
+  "config-makefile-dec": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-c081",
+    "status": "recorded",
+    "type": "dec"
   },
   "constraint-reason-message-req": {
     "active": true,
@@ -389,6 +443,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "deployed-config-read-by-builds-req": {
+    "active": true,
+    "id": "0f87-6acf-63e7-c3cd",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "deployed-set-format-and-distribution-req": {
+    "active": true,
+    "id": "0f87-6acf-6527-d829",
+    "status": "confirmed",
+    "type": "req"
+  },
   "destdir-prefix-confirmed": {
     "active": true,
     "id": "6f38-6a8b-dfb1-18e7",
@@ -496,6 +562,24 @@
     "id": "0f87-6abe-3f50-4cd6",
     "status": "confirmed",
     "type": "req"
+  },
+  "environment-declaration-and-cache-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-9516",
+    "status": "accepted",
+    "type": "cand"
+  },
+  "environment-management-levels-dec": {
+    "active": true,
+    "id": "0f87-6acf-5c06-a7be",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "environment-remote-and-verification-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-9a86",
+    "status": "open",
+    "type": "cand"
   },
   "excluded-dependency-error-req": {
     "active": true,
@@ -2633,6 +2717,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "setup-documents-placements-req": {
+    "active": true,
+    "id": "0f87-6acf-5c07-3612",
+    "status": "confirmed",
+    "type": "req"
+  },
   "share-dir-fallback-hierarchy": {
     "active": true,
     "id": "6f38-6a89-bccb-d5b8",
@@ -3369,6 +3459,12 @@
     "active": false,
     "id": "6f38-6a89-b810-8ff2",
     "status": "superseded",
+    "type": "dec"
+  },
+  "working-and-deployed-config-dec": {
+    "active": true,
+    "id": "0f87-6acf-63e7-fda3",
+    "status": "recorded",
     "type": "dec"
   },
   "workspace-build-sequence": {
