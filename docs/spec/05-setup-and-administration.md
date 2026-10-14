@@ -138,12 +138,13 @@ Administrative configuration exists in two forms.
   half-edited configuration, and never loads the administrative targets —
   which is how a build gets `BMK_LINUX_SYSROOT` and the other locations.
 
-Proposed mechanics (`config-deploy-mechanics-cand`, to confirm): a `deploy`
+**Deploy mechanics** (decided: `config-deploy-mechanics-dec`,
+`config-deploy-req`, `deployed-set-format-and-distribution-req`): a `deploy`
 target runs verification first (checksums; each image still matches its
-declaration) and only then replaces the deployed set **atomically**, keeping
-the previous one for `rollback`; `diff` shows working against deployed, and
-`status` shows both. The deployed set is plain variable files readable by bmake
-— locations, sysroots, tool prefixes, and the environments with their hashes and
+declaration) and only then replaces the deployed set **atomically**, keeping the
+previous one for `rollback`; `diff` shows working against deployed, and `status`
+shows both. The deployed set is plain variable files readable by bmake —
+locations, sysroots, tool prefixes, and the environments with their hashes and
 checksums — in a place builds can read and users cannot write. A team or an
 enterprise distributes the **deployed set**, copying it together with the cache
 entries it names, rather than the working makefile; that is also what makes a

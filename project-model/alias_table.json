@@ -200,8 +200,20 @@
   "config-deploy-mechanics-cand": {
     "active": true,
     "id": "0f87-6acf-63e7-7484",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
+  },
+  "config-deploy-mechanics-dec": {
+    "active": true,
+    "id": "0f87-6acf-6527-ad7b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "config-deploy-req": {
+    "active": true,
+    "id": "0f87-6acf-6527-c721",
+    "status": "confirmed",
+    "type": "req"
   },
   "config-levels-site-user-cand": {
     "active": true,
@@ -434,6 +446,12 @@
   "deployed-config-read-by-builds-req": {
     "active": true,
     "id": "0f87-6acf-63e7-c3cd",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "deployed-set-format-and-distribution-req": {
+    "active": true,
+    "id": "0f87-6acf-6527-d829",
     "status": "confirmed",
     "type": "req"
   },
