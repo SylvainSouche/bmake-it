@@ -71,6 +71,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "bmakeit-config-makefile-req": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-2389",
+    "status": "confirmed",
+    "type": "req"
+  },
   "bmk-mkdir-discovery-via-makesyspath": {
     "active": true,
     "id": "0f87-6aaa-d63e-839a",
@@ -196,6 +202,24 @@
     "id": "0f87-6acf-5c07-ab35",
     "status": "open",
     "type": "cand"
+  },
+  "config-locations-in-config-makefile-req": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-d7d4",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "config-makefile-consumption-cand": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-e862",
+    "status": "open",
+    "type": "cand"
+  },
+  "config-makefile-dec": {
+    "active": true,
+    "id": "0f87-6acf-5fd8-c081",
+    "status": "recorded",
+    "type": "dec"
   },
   "constraint-reason-message-req": {
     "active": true,

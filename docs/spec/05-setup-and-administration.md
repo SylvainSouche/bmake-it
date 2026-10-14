@@ -86,6 +86,45 @@ corrupts kernel headers that differ only by case.
 
 These targets can be described and verified but not built unattended.
 
+## The configuration makefile (decided)
+
+(`config-makefile-dec`, `bmakeit-config-makefile-req`,
+`config-locations-in-config-makefile-req`)
+
+Administration is a makefile, like everything else in Bmake It. A
+**configuration directory** holds a `makefile` that includes the role file
+`mk.bmakeit.mk`, exactly as a module's makefile includes `mk.prog.mk`:
+
+```makefile
+# <configuration directory>/makefile
+CACHE_DIR = /var/cache/bmake-it
+BMK_LINUX_SYSROOT = ${CACHE_DIR}/sysroots/linux-arm64
+.include <mk.bmakeit.mk>
+```
+
+- **It is where every location is set.** The cache directory, and any or all
+  other configuration variables naming where things used and needed live —
+  images, sysroots, tool prefixes — are variables in this makefile. There is
+  no default location outside it, so nothing is hidden: to find where
+  something is, read this file.
+- **`mk.bmakeit.mk` defines the administrative targets** an administrator runs
+  from that directory: list what is present and what is not, fetch, build and
+  delete, and check checksums. Names proposed, not fixed: `status`, `fetch`,
+  `build`, `delete`, `prune`, `verify`, `copy-from` (copy entries from another
+  machine's cache over ssh/rsync, then verify them), `config` (print which
+  configuration files were read, in order) and `help`.
+- **One role, two scopes.** The same makefile serves the machine (site) scope
+  and the user scope; the scope is just where the makefile sits, and the
+  variables in it say where its cache is.
+- **Each environment is a file**, so make's own "present and current" logic
+  does the work, and the declarations are ordinary macros beside the targets.
+
+**Open** (`config-makefile-consumption-cand`): how a *project build* reads what
+this makefile sets — for instance `BMK_LINUX_SYSROOT` — without also pulling in
+the administrative targets. Either the variables live in a section that both
+the build's hook cascade and the administrative makefile include, or a build
+includes the configuration makefile with its targets suppressed.
+
 ## Configuration levels (proposed)
 
 Two levels outside any project, read by the existing hook cascade, outermost
@@ -96,8 +135,9 @@ workspace, framework and module. An inner level overrides an outer one, so a
 project can always override a machine setting. `BMK_CONFIG_DIRS` replaces or
 extends the list, because CI and containers cannot write under `/etc`. A
 command prints which files were read, in order, so the effective setup is never
-a guess. Sysroot paths, the cache location and an execution backend are set
-here once per machine rather than in every project.
+a guess. These two levels are the *locations* of configuration directories;
+what is set in them, and the cache location in particular, is set in the
+configuration makefile above, once per machine rather than in every project.
 Open: install prefix versus fixed directory; the Windows location
 (`config-levels-site-user-cand`).
 
