@@ -137,6 +137,8 @@ Full detail, including the `test`/`test-all` targets: `80-unit-testing.md`.
 | Macro | Meaning | Status |
 |---|---|---|
 | `DOC_PROJECT_NAME=`, `DOC_PROJECT_VERSION=`, `DOC_PROJECT_BRIEF=`, `DOC_LOGO=`, `DOC_LICENSE_NOTICE=` | Override the auto-detected Doxygen project-identity fields (from `VERSION`/`LICENSE`/`docs/logo.*`); set in a `pre.mk` (above) | New (`REQ-doc-project-metadata-conventions-req`) |
+| `DOC_INPUT_EXTRA=<dir> ...` | Framework-relative directories added to Doxygen's `INPUT` (headers only, via `DOC_FILE_PATTERNS=`); a framework with no public `include/` but this set is documented rather than skipped | New (`REQ-docs-input-extra-warn-knobs-req`) |
+| `DOC_WARN_IF_UNDOCUMENTED=YES\|NO`, `DOC_EXTRACT_PRIVATE=YES\|NO` | Passed through to Doxygen's `WARN_IF_UNDOCUMENTED`/`EXTRACT_PRIVATE`; both default `NO` | New (`REQ-docs-input-extra-warn-knobs-req`) |
 
 Full detail: `70-documentation-generation.md`.
 

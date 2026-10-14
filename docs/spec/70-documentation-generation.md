@@ -11,8 +11,9 @@ pluggable per language: extending Bmake It's language support must be able
 to bring that language's own appropriate mainstream doc tool rather than
 being forced through Doxygen (`REQ-doc-generation-per-language-tool-pluggable-req`).
 
-Default scope is **public headers only** (a framework's `include/`).
-Internal (public+local scope) generation is a distinct trigger — see
+Default scope is **public headers only** (a framework's `include/`);
+a framework may add directories with `DOC_INPUT_EXTRA=` (see "Extra
+inputs and warnings" below). Internal (public+local scope) generation is a distinct trigger — see
 "QA-enforcement mode" below.
 
 ## Invocation and cross-framework linking
@@ -64,6 +65,34 @@ where a project's own hand-written docs might already be:
   docs live — is unchanged; the landing page's own relative links are
   computed from `WS_DOCS_DIR`'s own path depth, and only list a
   framework whose docs were actually generated.
+
+## Extra inputs and warnings (`docs-input-extra-warn-knobs-req`)
+
+Opt-in, per-framework knobs, set in the framework's `makefile` before
+`.include <mk.framework.mk>`. Their defaults reproduce the plain
+public-headers Doxyfile exactly:
+
+| Macro | Default | Effect |
+|---|---|---|
+| `DOC_INPUT_EXTRA=` | empty | Directories, relative to the framework, appended to `INPUT` after `include/` (e.g. `local/include openrider.m/src`). When set, `FILE_PATTERNS` is restricted to headers (`DOC_FILE_PATTERNS`, default `*.h *.hh *.hpp *.hxx *.h++`), so a module's `.c`/`.cpp` sources in the same directory are not scanned. |
+| `DOC_WARN_IF_UNDOCUMENTED=` | `NO` | Passed through to Doxygen's `WARN_IF_UNDOCUMENTED`; `YES` makes Doxygen report every undocumented entity in `INPUT`. |
+| `DOC_EXTRACT_PRIVATE=` | `NO` | Passed through to `EXTRACT_PRIVATE` (written only when not `NO`). |
+
+A framework with no public `include/` but a non-empty `DOC_INPUT_EXTRA`
+is **documented**, from the extra directories alone, rather than skipped
+(see "Scoping" above): an app-only framework that keeps its code in
+`local/include` can opt into documentation without inventing a public
+`include/`. Example:
+
+```make
+PREREQS=System
+DOC_INPUT_EXTRA=local/include openrider.m/src
+DOC_WARN_IF_UNDOCUMENTED=YES
+.include <mk.framework.mk>
+```
+
+These knobs make undocumented entities *visible*; escalating them to
+hard failures is the separate QA trigger below.
 
 ## PDF grouping (`DOCWITH=`)
 
