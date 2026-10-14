@@ -185,6 +185,18 @@
     "status": "superseded",
     "type": "req"
   },
+  "computer-level-environment-store-req": {
+    "active": true,
+    "id": "0f87-6acf-5c07-ba60",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "config-levels-site-user-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-ab35",
+    "status": "open",
+    "type": "cand"
+  },
   "constraint-reason-message-req": {
     "active": true,
     "id": "0f87-6ac0-d593-d1c3",
@@ -496,6 +508,24 @@
     "id": "0f87-6abe-3f50-4cd6",
     "status": "confirmed",
     "type": "req"
+  },
+  "environment-declaration-and-cache-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-9516",
+    "status": "open",
+    "type": "cand"
+  },
+  "environment-management-levels-dec": {
+    "active": true,
+    "id": "0f87-6acf-5c06-a7be",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "environment-remote-and-verification-cand": {
+    "active": true,
+    "id": "0f87-6acf-5c07-9a86",
+    "status": "open",
+    "type": "cand"
   },
   "excluded-dependency-error-req": {
     "active": true,
@@ -2630,6 +2660,12 @@
   "sanitizer-support-req": {
     "active": true,
     "id": "0f87-6aa8-06c8-38b1",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "setup-documents-placements-req": {
+    "active": true,
+    "id": "0f87-6acf-5c07-3612",
     "status": "confirmed",
     "type": "req"
   },

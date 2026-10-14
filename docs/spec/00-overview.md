@@ -107,7 +107,8 @@ is deferred (`REQ-app-bundle-deferred-req`).
   header visibility — **rejected outright**, not deferred (see NREQs
   above)
 
-See `10-directory-layout.md` for the concrete tree, `20-headers-and-linking.md`
+See `05-setup-and-administration.md` for installing and configuring Bmake It
+and the environments it builds and tests in (draft), `10-directory-layout.md` for the concrete tree, `20-headers-and-linking.md`
 for header/library resolution, `25-imported-libraries.md` for `IMPORT=`
 (a library module importing a prebuilt library instead of compiling one),
 `26-fetched-external-sources.md` for `IMPORT=fetch:`/`fetch-bin:` (fetching
