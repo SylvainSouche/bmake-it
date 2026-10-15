@@ -73,9 +73,21 @@ _REQUIRES_FOUND.${_r} = yes
 .      error "REQUIRES=${_r}: header ${_REQUIRES_HDR.${_r}} not found -- tried ${CC}/${CXX} with the current CFLAGS/CXXFLAGS, and <prefix>/include for: ${_TOOL_PREFIXES:H:O:u} -- add its include directory to CFLAGS or CXXFLAGS or install the providing package (see README.md Prerequisites) before building"
 .    endif
 .  else
-_REQUIRES_FOUND.${_r} != (command -v pkg-config >/dev/null 2>&1 && pkg-config --exists ${_r} 2>/dev/null && echo yes) || (command -v ${_r} >/dev/null 2>&1 && echo yes) || echo no
+# pkg-config-matches-output-abi-req: the pkg-config describing the output
+# being built (mk.common.mk), not always the host's -- for ABI=mingw on
+# Cygwin, plain pkg-config would find Cygwin's libcurl and pass.
+# @impl 7854-6ad1-10ad-4843
+.    if empty(_BMK_PKG_CONFIG)
+_REQUIRES_FOUND.${_r} != command -v ${_r} >/dev/null 2>&1 && echo yes || echo no
+.    else
+_REQUIRES_FOUND.${_r} != (command -v ${_BMK_PKG_CONFIG} >/dev/null 2>&1 && env ${_BMK_PKG_CONFIG_ENV} ${_BMK_PKG_CONFIG} --exists ${_r} 2>/dev/null && echo yes) || (command -v ${_r} >/dev/null 2>&1 && echo yes) || echo no
+.    endif
 .    if ${_REQUIRES_FOUND.${_r}} != "yes"
-.      error "REQUIRES=${_r}: not found via pkg-config or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.      if empty(_BMK_PKG_CONFIG)
+.        error "REQUIRES=${_r}: not found on PATH, and not checked with pkg-config -- ${_BMK_PKG_CONFIG_MISSING}"
+.      else
+.        error "REQUIRES=${_r}: not found via ${_BMK_PKG_CONFIG} ${_BMK_PKG_CONFIG_ENV} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.      endif
 .    endif
 .  endif
 .endfor

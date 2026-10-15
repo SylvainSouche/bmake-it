@@ -225,6 +225,31 @@ _TARGET_KEY := ${_TARGET_KEY}-${_KEY_ABI}
 .endif
 OS_ARCH := ${_TARGET_KEY}
 
+# pkg-config-matches-output-abi-req: the pkg-config IMPORT=pkg: and REQUIRES=
+# ask must describe the libraries of the output being built. On a Cygwin
+# host, plain pkg-config describes Cygwin's libraries -- with ABI=mingw it
+# resolved libcurl to Cygwin's libcurl.pc (2026-10-15). mingw-w64 output
+# uses <triple>-pkg-config (Cygwin's pkg-config package ships
+# x86_64-w64-mingw32-pkg-config, reading sys-root/mingw/lib/pkgconfig), or
+# plain pkg-config limited to BMK_MINGW_SYSROOT's lib/pkgconfig; PKG_CONFIG=
+# overrides both. Empty _BMK_PKG_CONFIG means "none usable" -- consumers
+# fail naming it rather than fall back to the host's .pc files.
+# @impl 7854-6ad1-10ad-4843
+_BMK_PKG_CONFIG_ENV =
+.if defined(PKG_CONFIG) && !empty(PKG_CONFIG)
+_BMK_PKG_CONFIG = ${PKG_CONFIG}
+.elif ${_BMK_WIN_MINGW} == "yes"
+.  if !empty(BMK_MINGW_SYSROOT)
+_BMK_PKG_CONFIG = pkg-config
+_BMK_PKG_CONFIG_ENV = PKG_CONFIG_LIBDIR=${BMK_MINGW_SYSROOT}/lib/pkgconfig
+.  else
+_BMK_PKG_CONFIG != command -v ${_MINGW_TRIPLE}-pkg-config 2>/dev/null || true
+.  endif
+.else
+_BMK_PKG_CONFIG = pkg-config
+.endif
+_BMK_PKG_CONFIG_MISSING = no pkg-config for ${_MINGW_TRIPLE} output: ${_MINGW_TRIPLE}-pkg-config is not on PATH (Cygwin: package pkg-config), and neither BMK_MINGW_SYSROOT= nor PKG_CONFIG= is set -- the build host's own pkg-config would describe its libraries, not mingw-w64 ones
+
 # ---------------------------------------------------------------------------
 # Common flags reuse (REQ-flags-reuse-bsd-native-vars-req-v2)
 # ---------------------------------------------------------------------------

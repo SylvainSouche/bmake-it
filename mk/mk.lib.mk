@@ -448,13 +448,23 @@ _IMPORT_LIBS    = -L${_IMPORT_WRKSRC}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${_IMPORT_WRKSRC}/lib
 .  elif ${IMPORT:C/:.*//} == "pkg"
 _IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
+# pkg-config-matches-output-abi-req: mingw-w64 output (a cross build to win,
+# or ABI=mingw on Cygwin) asks mk.common.mk's _BMK_PKG_CONFIG --
+# <triple>-pkg-config, or pkg-config limited to BMK_MINGW_SYSROOT -- never
+# the host's own .pc files. This also replaces the cross branch below for
+# win, which read a BMK_WIN_SYSROOT nothing else uses (the mingw sysroot
+# variable is BMK_MINGW_SYSROOT).
+# @impl 7854-6ad1-10ad-4843
+.    if ${_BMK_WIN_MINGW:Uno} == "yes"
+_IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
+_IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV} PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # Cross-compilation: never read host .pc files; sysroot-aware per
 # BMK_<OS>_SYSROOT= (the same variable mk.toolchain.llvm.mk's own cross
 # branches already require) -- implemented per the brief's own explicit
 # requirement, not empirically verified end-to-end (no foreign sysroot
 # with real .pc files available from this host; cross-compilation itself
 # is out of scope this round beyond keeping this behavior correct).
-.    if ${TARGET} != ${_HOST_OS_LABEL}
+.    elif ${TARGET} != ${_HOST_OS_LABEL}
 _IMPORT_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT}
 _IMPORT_PC_ENV  = env PKG_CONFIG_SYSROOT_DIR="${_IMPORT_SYSROOT}" PKG_CONFIG_LIBDIR="${_IMPORT_SYSROOT}/usr/lib/pkgconfig:${_IMPORT_SYSROOT}/usr/share/pkgconfig" PKG_CONFIG_PATH=
 .    else
@@ -493,32 +503,60 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # and libtiff on Cygwin). A miss costs one pkg-config call on a build that
 # fails anyway; a cache recording one, written by an earlier version, is
 # treated as absent and removed.
-_IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
-_IMPORT_FP != printf '%s' "V=2 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH}" | cksum
+#
+# import-resolution-cache-req-v3: the key also covers OS_ARCH (ABI and
+# toolchain), CC and the pkg-config used -- on Cygwin a mingw build reused
+# the Cygwin build's answer, both being TARGET=win (2026-10-15). And the
+# chicken-and-egg above only holds for the FIRST lookup: a hit records the
+# .pc file it came from (pcfiledir, which pkgconf and freedesktop
+# pkg-config both report) and its mtime, and is discarded when that file
+# is gone or changed -- an upgraded or removed package is re-resolved, at
+# the cost of an exists() and a :mtime, no subprocess. The cache is a
+# makefile fragment, .include'd: reading it forks nothing either (it was
+# eight sed calls). The old line-based .import-resolve-cache is removed.
+# @impl 0f87-6ab6-0d63-eb19
+_IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache.mk
+_IMPORT_CACHE_OLD  = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
+_IMPORT_KEY = V=3 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} OS_ARCH=${OS_ARCH} CC=${CC} PC=${_BMK_PKG_CONFIG} PCENV=${_BMK_PKG_CONFIG_ENV}
+_IMPORT_FP := ${_IMPORT_KEY:hash}
+_IC_FP =
 .    if exists(${_IMPORT_CACHE_FILE})
-_IMPORT_FP_CACHED != sed -n '1p' ${_IMPORT_CACHE_FILE} 2>/dev/null
-_IMPORT_PC_CACHED != sed -n '2p' ${_IMPORT_CACHE_FILE} 2>/dev/null
-.    else
-_IMPORT_FP_CACHED =
-_IMPORT_PC_CACHED =
+.      include "${_IMPORT_CACHE_FILE}"
 .    endif
-.    if ${_IMPORT_FP_CACHED} == ${_IMPORT_FP} && ${_IMPORT_PC_CACHED} == "yes"
-# Cache hit: read the previously-resolved values back, no pkg-config
-# call this time.
+_IMPORT_CACHE_VALID = no
+.    if "${_IC_FP}" == "${_IMPORT_FP}" && "${_IC_FOUND:Uno}" == "yes"
+.      if empty(_IC_PCFILE)
+_IMPORT_CACHE_VALID = yes
+.      elif exists(${_IC_PCFILE}) && "${_IC_PCFILE:mtime}" == "${_IC_PCMTIME:U0}"
+_IMPORT_CACHE_VALID = yes
+.      endif
+.    endif
+.    if ${_IMPORT_CACHE_VALID} == "yes"
+# Cache hit: the previously-resolved values, no pkg-config call this time.
 _IMPORT_PC_FOUND = yes
-_IMPORT_VERSION != sed -n '3p' ${_IMPORT_CACHE_FILE}
-_IMPORT_SOURCE  != sed -n '4p' ${_IMPORT_CACHE_FILE}
-_IMPORT_CFLAGS  != sed -n '5p' ${_IMPORT_CACHE_FILE}
-_IMPORT_LIBS    != sed -n '6p' ${_IMPORT_CACHE_FILE}
-_IMPORT_LIBDIR  != sed -n '7p' ${_IMPORT_CACHE_FILE}
-_IMPORT_INCDIR  != sed -n '8p' ${_IMPORT_CACHE_FILE}
+_IMPORT_VERSION = ${_IC_VERSION}
+_IMPORT_SOURCE  = ${_IC_SOURCE}
+_IMPORT_CFLAGS  = ${_IC_CFLAGS}
+_IMPORT_LIBS    = ${_IC_LIBS}
+_IMPORT_LIBDIR  = ${_IC_LIBDIR}
+_IMPORT_INCDIR  = ${_IC_INCDIR}
+.    elif empty(_BMK_PKG_CONFIG)
+# pkg-config-matches-output-abi-req: no pkg-config for this output -- the
+# final "cannot resolve" error below says so (_BMK_PKG_CONFIG_MISSING).
+_IMPORT_PC_FOUND = no
+_IMPORT_PC_NONE  = ${_BMK_PKG_CONFIG_MISSING}
 .    else
-_IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
+_IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
 .      if ${_IMPORT_PC_FOUND} == "yes"
-_IMPORT_VERSION != ${_IMPORT_PC_ENV} pkg-config --modversion ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_VERSION != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --modversion ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
-_IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} pkg-config --cflags ${_IMPORT_PKGNAME} 2>/dev/null
-_IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --cflags ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=libdir ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_PCDIR   != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=pcfiledir ${_IMPORT_PKGNAME} 2>/dev/null
+.        if !empty(_IMPORT_PCDIR) && exists(${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc)
+_IMPORT_PCFILE  = ${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc
+_IMPORT_PCMTIME := ${_IMPORT_PCFILE:mtime}
+.        endif
 # import-system-includedir-fallback-req: pkg-config omits -I<dir> for a
 # SYSTEM directory (/usr/include on Linux), so --cflags can be empty for
 # a perfectly installed package and header staging had nothing to search
@@ -526,7 +564,7 @@ _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=libdir ${_IMPORT_PKGN
 # regardless; staging searches it after the -I dirs. Compile flags are
 # NOT changed -- the compiler finds a system directory on its own.
 # @impl 0f87-6ac0-c275-d578
-_IMPORT_INCDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=includedir ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_INCDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=includedir ${_IMPORT_PKGNAME} 2>/dev/null
 # shared-import-link-flags-fix-req: a shared library (.so/.dylib) embeds
 # its own dependency references (install_name/rpath on macOS, DT_NEEDED
 # on ELF), resolved by the dynamic linker at LOAD time, not link time --
@@ -544,17 +582,23 @@ _IMPORT_INCDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=includedir ${_IMPORT_
 # @impl 0f87-6abe-3ef3-cd79
 # @impl 7854-6ad0-fb85-c2c6
 .      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dll.a)
-_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs ${_IMPORT_PKGNAME} 2>/dev/null
 .      else
-_IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
+_IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
 .      endif
 .      endif
 # Cache a hit only; a miss removes any cache file (including a stale
 # "not found" an earlier version wrote), so the next build asks again.
 .      if ${_IMPORT_PC_FOUND} == "yes"
-_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && { echo '${_IMPORT_FP}'; echo '${_IMPORT_PC_FOUND}'; echo '${_IMPORT_VERSION}'; echo '${_IMPORT_SOURCE}'; echo '${_IMPORT_CFLAGS}'; echo '${_IMPORT_LIBS}'; echo '${_IMPORT_LIBDIR}'; echo '${_IMPORT_INCDIR:U}'; } > ${_IMPORT_CACHE_FILE}; echo ok
+_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && rm -f ${_IMPORT_CACHE_OLD} && { \
+	echo '_IC_FP = ${_IMPORT_FP}'; echo '_IC_FOUND = yes'; \
+	echo '_IC_VERSION = ${_IMPORT_VERSION}'; echo '_IC_SOURCE = ${_IMPORT_SOURCE}'; \
+	echo '_IC_CFLAGS = ${_IMPORT_CFLAGS}'; echo '_IC_LIBS = ${_IMPORT_LIBS}'; \
+	echo '_IC_LIBDIR = ${_IMPORT_LIBDIR}'; echo '_IC_INCDIR = ${_IMPORT_INCDIR:U}'; \
+	echo '_IC_PCFILE = ${_IMPORT_PCFILE:U}'; echo '_IC_PCMTIME = ${_IMPORT_PCMTIME:U}'; \
+	} > ${_IMPORT_CACHE_FILE}; echo ok
 .      else
-_IMPORT_CACHE_WRITE != rm -f ${_IMPORT_CACHE_FILE}; echo ok
+_IMPORT_CACHE_WRITE != rm -f ${_IMPORT_CACHE_FILE} ${_IMPORT_CACHE_OLD}; echo ok
 .      endif
 .    endif
 .  elif ${IMPORT:C/:.*//} == "prefix"
@@ -569,8 +613,18 @@ _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 # header-only-import-req: IMPORT_LIB=none switches the success criterion
 # from "a lib file exists" to "the first IMPORT_HEADERS= entry exists
 # under this prefix's include/" -- there is no lib file to probe for.
+# pkg-config-matches-output-abi-req: for mingw-w64 output, probe the mingw
+# prefixes, never the host's -- Cygwin's own /usr/lib has a libcurl.dll.a
+# too, for Cygwin. BMK_MINGW_SYSROOT if set, else the layouts mingw-w64 gcc
+# packages use (Cygwin/Fedora sys-root/mingw, Debian /usr/<triple>).
+# @impl 7854-6ad1-10ad-4843
+.  if ${_BMK_WIN_MINGW:Uno} == "yes"
+_IMPORT_PROBE_PREFIXES = ${BMK_MINGW_SYSROOT:U/usr/${_MINGW_TRIPLE}/sys-root/mingw /usr/${_MINGW_TRIPLE}}
+.  else
+_IMPORT_PROBE_PREFIXES = ${_TOOL_PREFIXES:H:O:u}
+.  endif
 .  if !defined(_IMPORT_SOURCE)
-.    for _p in ${_TOOL_PREFIXES:H:O:u}
+.    for _p in ${_IMPORT_PROBE_PREFIXES}
 .      if ${IMPORT_LIB} == "none"
 .        if !defined(_IMPORT_SOURCE) && exists(${_p}/include/${IMPORT_HEADERS:[1]})
 _IMPORT_SOURCE  = probe:${_p}
@@ -598,7 +652,19 @@ _IMPORT_LIBDIR  = ${_p}/lib
 # every other module and framework of the workspace.
 # @impl 7854-6ad0-c3e9-3ad5
 .  if !defined(_IMPORT_SOURCE) && empty(.MAKEFLAGS:M-V*)
-.error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), pkg-config, and probing ${_TOOL_PREFIXES:H:O:u} -- install the library via your host's package manager (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
+.    if !empty(_IMPORT_PC_NONE)
+_IMPORT_ERR_PC = pkg-config (none: ${_IMPORT_PC_NONE})
+.    elif !empty(_BMK_PKG_CONFIG_ENV)
+_IMPORT_ERR_PC = ${_BMK_PKG_CONFIG} (with ${_BMK_PKG_CONFIG_ENV})
+.    else
+_IMPORT_ERR_PC = ${_BMK_PKG_CONFIG}
+.    endif
+.    if ${_BMK_WIN_MINGW:Uno} == "yes"
+_IMPORT_ERR_HOW = install it as a mingw-w64 package (on Cygwin: mingw64-${_MINGW_TRIPLE:C/-.*//}-<name>)
+.    else
+_IMPORT_ERR_HOW = install the library via your host's package manager
+.    endif
+.error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), ${_IMPORT_ERR_PC}, and probing ${_IMPORT_PROBE_PREFIXES} -- ${_IMPORT_ERR_HOW} (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
 .  endif
 
 # header-only-import-req: whatever DID resolve (pkg:/prefix:/env/hook/

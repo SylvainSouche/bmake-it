@@ -1451,6 +1451,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-pkg-config-matches-output-abi": {
+    "active": true,
+    "id": "7854-6ad1-10ad-4843",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-platform-toolchain-constraints": {
     "active": true,
     "id": "0f87-6ac0-d891-3000",
@@ -1691,6 +1697,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "import-pkg-config-per-abi-dec": {
+    "active": true,
+    "id": "7854-6ad1-10aa-5568",
+    "status": "recorded",
+    "type": "dec"
+  },
   "import-resolution-cache-dec": {
     "active": true,
     "id": "0f87-6ab6-0d4a-8a15",
@@ -1704,8 +1716,14 @@
     "type": "req"
   },
   "import-resolution-cache-req-v2": {
-    "active": true,
+    "active": false,
     "id": "7854-6ad0-dd61-31fd",
+    "status": "superseded",
+    "type": "req"
+  },
+  "import-resolution-cache-req-v3": {
+    "active": true,
+    "id": "7854-6ad1-10ab-9c84",
     "status": "confirmed",
     "type": "req"
   },
@@ -2165,6 +2183,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "mingw-import-resolved-from-host-pc-obs": {
+    "active": true,
+    "id": "7854-6ad1-10aa-7ca0",
+    "status": "recorded",
+    "type": "obs"
+  },
   "mingw-on-cygwin-and-abi-from-compiler-dec": {
     "active": true,
     "id": "7854-6ad0-e96c-a03f",
@@ -2614,6 +2638,12 @@
     "id": "6f38-6a89-bb64-d9ed",
     "status": "recorded",
     "type": "dec"
+  },
+  "pkg-config-matches-output-abi-req": {
+    "active": true,
+    "id": "7854-6ad1-10ab-8339",
+    "status": "confirmed",
+    "type": "req"
   },
   "platform-constraint-evaluation-req": {
     "active": true,

@@ -308,14 +308,16 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
 ## Resolution caching
 
 A second build with nothing relevant changed does not re-invoke
-`pkg-config` at all (`REQ-import-resolution-cache-req-v2`) — a real,
+`pkg-config` at all (`REQ-import-resolution-cache-req-v3`) — a real,
 separate question from item 4's own staging cache (which already
 skipped redundant *file copies*, not the resolution call itself). A
 per-module fingerprint (`IMPORT=`, `PKG_CONFIG_PATH`,
-`_PKG_CONFIG_EXTRA_DIRS`, `TARGET`/`TARGET_ARCH`) is checked against a
-stored cache before calling `pkg-config`; a match reads the previously
-resolved values back, a mismatch (or no cache) resolves for real and
-writes the new cache. Verified with a genuine call-counting `pkg-config`
+`_PKG_CONFIG_EXTRA_DIRS`, `TARGET`/`TARGET_ARCH`, `OS_ARCH` — so the
+ABI and toolchain — `CC`, and which `pkg-config` runs) is checked
+against a stored cache (`build/<key>/.import-resolve-cache.mk`, a
+makefile fragment `.include`d without any subprocess) before calling
+`pkg-config`; a match reads the previously resolved values back, a
+mismatch (or no cache) resolves for real and writes the new cache. Verified with a genuine call-counting `pkg-config`
 stub, not just by inspecting the cache file: the first build makes real
 calls, an unchanged second build makes zero additional calls, and a
 changed `PKG_CONFIG_PATH` triggers real re-resolution again.
@@ -330,11 +332,33 @@ version, and costs one `pkg-config` call on a build that fails anyway.
 Case 59 proves it: a build before the package's `.pc` exists fails and
 leaves no cache, and the next build after it is written succeeds.
 
-This does **not** detect a package silently upgraded in place with no
-env/hook/`PKG_CONFIG_PATH` change (the fingerprint doesn't cover the
-resolved `.pc` file's own content or mtime — locating it at all would
-require the very `pkg-config` call being skipped, a chicken-and-egg
-problem a simple fingerprint avoids by not trying). A real bug was
+A hit is also **checked**: the resolution records the `.pc` file it
+came from (`pkg-config --variable=pcfiledir`, which pkgconf and
+freedesktop pkg-config both report) and that file's mtime; a later
+build discards the hit when the file is gone or its mtime differs
+(bmake's `exists()` and `:mtime`, no subprocess), so an upgraded or
+removed package is re-resolved. Locating the `.pc` file needs a
+`pkg-config` call only the first time, when one is made anyway. (Until
+2026-10-15 none of this was checked, and the key lacked the ABI: on
+Cygwin a mingw build reused the Cygwin build's answer, both being
+`TARGET=win`.)
+
+**Which pkg-config** (`REQ-pkg-config-matches-output-abi-req`): the one
+describing the output being built, chosen once in `mk.common.mk` and used
+by `IMPORT=pkg:` and `REQUIRES=` — `PKG_CONFIG=` if set; for mingw-w64
+output `<triple>-pkg-config` (Cygwin's `pkg-config` package ships
+`x86_64-w64-mingw32-pkg-config`, reading `sys-root/mingw/lib/pkgconfig`),
+or plain `pkg-config` limited to `BMK_MINGW_SYSROOT`'s `lib/pkgconfig`;
+otherwise `pkg-config`. Probing for mingw-w64 output searches the mingw
+prefixes (`BMK_MINGW_SYSROOT`, else `/usr/<triple>/sys-root/mingw` and
+`/usr/<triple>`), never the host's — Cygwin's own `/usr/lib` has a
+`libcurl.dll.a` too, for Cygwin. With no usable mingw `pkg-config`, a
+`REQUIRES=` check fails naming what is missing. Verified on Cygwin with
+`mingw64-x86_64-curl`: `ABI=mingw` resolves `libcurl` to
+`sys-root/mingw`, the Cygwin build still to `/usr/lib`, and the
+resulting `app.exe` runs against the mingw curl.
+
+A real bug was
 found and fixed while building this: the cache's read-back path
 originally set the resolved values unconditionally, even for a cached
 *miss* — turning a correctly-undefined resolution (which should fall

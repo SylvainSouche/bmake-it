@@ -217,11 +217,12 @@ progress messages print only when work happened.
   parsing not built yet).
 - Imported libraries (`IMPORT=`, see `docs/spec/25-imported-libraries.md`)
   cache their `pkg-config` resolution per module (a second build with
-  nothing relevant changed makes no `pkg-config` calls at all), but the
-  cache doesn't detect a package silently upgraded in place with no
-  env/hook/`PKG_CONFIG_PATH` change. Only a successful resolution is
-  cached: a package installed after a failed build is found by the next
-  one, with no cache to clear. `LIBS=<name>` link transitivity
+  nothing relevant changed makes no `pkg-config` calls at all). Only a
+  successful resolution is cached, and a cached one is dropped when its
+  `.pc` file changes or disappears: installing, upgrading or removing a
+  package needs no cache to clear. The `pkg-config` asked is the one for
+  the output being built (`x86_64-w64-mingw32-pkg-config` for
+  `ABI=mingw`; `PKG_CONFIG=` overrides). `LIBS=<name>` link transitivity
   (own and imported libraries alike) is implemented; header transitivity
   is not — a framework must list every framework whose headers it
   actually `#include`s, not just its direct one. A `PROG`/shared `LIB`
