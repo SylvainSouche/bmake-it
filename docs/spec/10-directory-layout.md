@@ -136,11 +136,20 @@ probing; `lib<n>.dll.a` also counts as shared when choosing
 `pkg-config --libs` over `--libs --static`
 (`REQ-lib-file-forms-include-mingw-import-req`).
 
-**Not yet handled:** a mingw-w64 program's runtime DLLs — imported
-libraries' (`libcurl-4.dll`, …) and, for C++, `libstdc++-6.dll`,
-`libgcc_s_seh-1.dll`, `libwinpthread-1.dll` from the toolchain's
-`bin/` — are neither staged next to it nor put on `PATH` by `bmake run`
-(`OBS-mingw-runtime-dlls-not-staged-obs`, open).
+A mingw-w64 program's runtime DLLs — for C++ `libstdc++-6.dll`,
+`libgcc_s_seh-1.dll`, `libwinpthread-1.dll`, and mingw packages' own
+(`libcurl-4.dll`, …) — live in the mingw sysroot's `bin/`. **`bmake
+run`** puts that directory on `PATH` after the workspace's own lib
+chain (`REQ-mingw-run-path-includes-runtime-req`): `BMK_MINGW_SYSROOT/bin`
+when given, else the installed mingw-w64 gcc's `<sysroot>/mingw/bin`
+and `/usr/<triple>/bin`, whichever exist. `run` invoked from a framework
+or module directory keeps `ABI=` when it re-executes at the workspace
+root.
+
+**Not yet handled:** `bmake install` and packaging do not include these
+runtime DLLs, so an installed or packaged mingw program needs the
+toolchain on `PATH` (`OBS-install-packaging-runtime-distributables-obs`,
+open, deferred).
 
 Phase-1 concrete keys: `macos-arm64`, `macos-arm64-gcc`, `freebsd-amd64`,
 `freebsd-amd64-gcc`. Architecture labels use each platform's native name

@@ -502,8 +502,38 @@ _RUN_LDPATH_VAR = LD_LIBRARY_PATH
 # macOS strips DYLD_* from any process launched through a SIP-protected
 # binary (/bin/sh), so the real variable is set only by the final `exec env`
 # in scripts/run-exec.sh.
+# mingw-run-path-includes-runtime-req: a mingw-w64 program also needs the
+# mingw runtime's DLLs -- libstdc++-6.dll, libgcc_s_seh-1.dll,
+# libwinpthread-1.dll, and mingw packages' own (libcurl-4.dll, ...) --
+# which live in the mingw sysroot's bin/, not in the workspace; without it
+# on PATH OpenRider's run failed loading libstdc++-6.dll (2026-10-15).
+# BMK_MINGW_SYSROOT/bin when given, else the installed mingw-w64 gcc's
+# <sysroot>/mingw/bin (Cygwin, Fedora) and /usr/<triple>/bin, whichever
+# exist. Computed only for `run`, so ordinary builds pay no subprocess.
+# Placed after the workspace's own lib chain: a project DLL of the same
+# name still wins.
+# @impl 7854-6ad1-437f-70a7
+_RUN_MINGW_BIN =
+.if make(run) && ${_BMK_WIN_MINGW} == "yes"
+.  if !empty(BMK_MINGW_SYSROOT)
+_RUN_MINGW_CAND = ${BMK_MINGW_SYSROOT}/bin
+.  else
+_RUN_MINGW_SYSROOT != ${_MINGW_TRIPLE}-gcc -print-sysroot 2>/dev/null || true
+_RUN_MINGW_CAND = ${_RUN_MINGW_SYSROOT:D${_RUN_MINGW_SYSROOT}/mingw/bin} /usr/${_MINGW_TRIPLE}/bin
+.  endif
+.  for _b in ${_RUN_MINGW_CAND}
+.    if exists(${_b})
+_RUN_MINGW_BIN += ${_b}
+.    endif
+.  endfor
+.endif
+.if !empty(_RUN_MINGW_BIN)
+_RUN_MINGW_PATH = :${_RUN_MINGW_BIN:ts:}
+.else
+_RUN_MINGW_PATH =
+.endif
 .if ${_RUN_LDPATH_VAR} == "PATH"
-_RUN_LIBSET = PATH="$$_libs:$$PATH"; BMK_LIBVAL=
+_RUN_LIBSET = PATH="$$_libs${_RUN_MINGW_PATH}:$$PATH"; BMK_LIBVAL=
 .else
 _RUN_LIBSET = eval "_old=\$$${_RUN_LDPATH_VAR}"; BMK_LIBVAL="$$_libs$${_old:+:$$_old}"
 .endif
@@ -529,7 +559,7 @@ run:
 	if [ "$$_d" != "${.CURDIR}" ]; then \
 		exec ${MAKE} -C "$$_d" run PROGRAM=${PROGRAM} ARGS="${ARGS}" \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR}; \
+			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR}; \
 	fi; \
 	_bins="$$_d/${BINDIR_LOCAL}"; _libs="$$_d/${LIBDIR_LOCAL}"; _shares="$$_d/${SHAREDIR_LOCAL}"; \
 	for _p in ${PARENT_WS}; do \

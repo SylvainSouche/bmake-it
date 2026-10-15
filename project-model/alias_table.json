@@ -1403,6 +1403,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-mingw-run-path": {
+    "active": true,
+    "id": "7854-6ad1-437f-70a7",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-mingw-sysroot-error-actionable": {
     "active": true,
     "id": "7854-6ad0-e744-0614",
@@ -1835,6 +1841,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "install-packaging-runtime-distributables-obs": {
+    "active": true,
+    "id": "7854-6ad1-4413-7cf2",
+    "status": "recorded",
+    "type": "obs"
+  },
   "install-requires-prebuilt-target": {
     "active": true,
     "id": "6f38-6a8c-0d67-5fcc",
@@ -2228,6 +2240,24 @@
   "mingw-on-cygwin-req": {
     "active": true,
     "id": "7854-6ad0-e96e-9202",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mingw-run-missing-runtime-dlls-obs": {
+    "active": true,
+    "id": "7854-6ad1-437e-65ad",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mingw-run-path-dec": {
+    "active": true,
+    "id": "7854-6ad1-437f-d385",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mingw-run-path-includes-runtime-req": {
+    "active": true,
+    "id": "7854-6ad1-437f-7158",
     "status": "confirmed",
     "type": "req"
   },
