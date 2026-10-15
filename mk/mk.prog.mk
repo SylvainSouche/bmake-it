@@ -186,11 +186,12 @@ LDFLAGS += ${_LINKDEPS.${_l}}
 # the existing existence-check loop below still gives its own clear
 # error for that case; this only matters once the file DOES exist.
 # @impl 0f87-6aba-a303-153e
+# @impl 7854-6ad0-fb85-c2c6
 _LIBS_FILES =
 .for _l in ${LIBS}
 _LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
-	for _f in "$$_d/lib${_l}.a" "$$_d/lib${_l}.so" "$$_d/lib${_l}.dylib" "$$_d/${_l}.lib"; do \
-		if [ -f "$$_f" ]; then echo "$$_f"; break 2; fi; \
+	for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
+		if [ -f "$$_d/$$_f" ]; then echo "$$_d/$$_f"; break 2; fi; \
 	done; \
 done
 _LIBS_FILES += ${_LIB_FILE.${_l}}
@@ -251,13 +252,14 @@ all: _check_inputs_hash _create_dirs ${_BINOUT}
 	@:
 
 # @impl 0f87-6a98-8b7f-9215
+# @impl 7854-6ad0-fb85-c2c6 (any of _LIB_FILE_FORMS, lib<n>.dll.a included)
 ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \
-		if [ -f "$$_d/lib${_l}.a" ] || [ -f "$$_d/lib${_l}.so" ] || [ -f "$$_d/lib${_l}.dylib" ] || [ -f "$$_d/${_l}.lib" ]; then \
-			_found=yes; break; \
-		fi; \
+		for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
+			if [ -f "$$_d/$$_f" ]; then _found=yes; break 2; fi; \
+		done; \
 	done; \
 	if [ "$$_found" = no ]; then \
 		for _d in ${_LIB_SEARCH_DIRS}; do \

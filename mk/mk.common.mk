@@ -70,6 +70,16 @@ BMK_IS_NATIVE_BUILD = no
 # (computed after the toolchain file below: on win the ABI slot comes from
 # the compiler itself)
 
+# lib-file-forms-include-mingw-import-req: every file name a library <n>
+# can have on disk, one list for every lookup (LIBS= existence check and
+# relink prerequisite in mk.prog.mk/mk.lib.mk, IMPORT= probing) -- `@`
+# stands for <n>, expanded with ${_LIB_FILE_FORMS:S/@/<n>/g}. Five copies
+# of a list without lib<n>.dll.a, mingw-w64's DLL import library, used to
+# reject e.g. a staged libcurl.dll.a as "not built yet" although GNU ld and
+# lld both link it (2026-10-15).
+# @impl 7854-6ad0-fb85-c2c6
+_LIB_FILE_FORMS = lib@.a lib@.dll.a lib@.so lib@.dylib @.lib
+
 # mingw-on-cygwin-req: does this build produce mingw-w64 output? Always when
 # cross-compiling to win with a non-MSVC toolchain (tier 2); on a Cygwin
 # host also for its own arch when asked with ABI=mingw -- without it, a

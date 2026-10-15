@@ -221,11 +221,12 @@ LDFLAGS += ${_LINKDEPS.${_l}}
 # elsewhere (including a PREREQS=-visible one in another framework)
 # triggers a genuine relink, not just a link-time existence check.
 # @impl 0f87-6aba-a303-153e
+# @impl 7854-6ad0-fb85-c2c6
 _LIBS_FILES =
 .for _l in ${LIBS}
 _LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
-	for _f in "$$_d/lib${_l}.a" "$$_d/lib${_l}.so" "$$_d/lib${_l}.dylib" "$$_d/${_l}.lib"; do \
-		if [ -f "$$_f" ]; then echo "$$_f"; break 2; fi; \
+	for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
+		if [ -f "$$_d/$$_f" ]; then echo "$$_d/$$_f"; break 2; fi; \
 	done; \
 done
 _LIBS_FILES += ${_LIB_FILE.${_l}}
@@ -538,9 +539,11 @@ _IMPORT_INCDIR  != ${_IMPORT_PC_ENV} pkg-config --variable=includedir ${_IMPORT_
 # STATIC-only import (no .so/.dylib found at the resolved libdir) needs
 # the full --static closure (D2, import-link-transitivity-req), since a
 # .a carries no dependency info of its own for the final consumer to
-# resolve at link time.
+# resolve at link time. A mingw-w64 DLL's import library lib<n>.dll.a
+# is shared too (lib-file-forms-include-mingw-import-req).
 # @impl 0f87-6abe-3ef3-cd79
-.      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib)
+# @impl 7854-6ad0-fb85-c2c6
+.      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dll.a)
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs ${_IMPORT_PKGNAME} 2>/dev/null
 .      else
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
@@ -573,11 +576,17 @@ _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 _IMPORT_SOURCE  = probe:${_p}
 _IMPORT_CFLAGS  = -I${_p}/include
 .        endif
-.      elif !defined(_IMPORT_SOURCE) && (exists(${_p}/lib/lib${LIB}.a) || exists(${_p}/lib/lib${LIB}.so) || exists(${_p}/lib/lib${LIB}.dylib))
+# Any form in _LIB_FILE_FORMS (mk.common.mk), lib<n>.dll.a included.
+# @impl 7854-6ad0-fb85-c2c6
+.      else
+.        for _f in ${_LIB_FILE_FORMS:S/@/${LIB}/g}
+.          if !defined(_IMPORT_SOURCE) && exists(${_p}/lib/${_f})
 _IMPORT_SOURCE  = probe:${_p}
 _IMPORT_CFLAGS  = -I${_p}/include
 _IMPORT_LIBS    = -L${_p}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${_p}/lib
+.          endif
+.        endfor
 .      endif
 .    endfor
 .  endif
@@ -957,7 +966,7 @@ _stage_import:
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
-			echo "error: IMPORT=${IMPORT}: lib${LIB}.{a,so,dylib} not found in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
+			echo "error: IMPORT=${IMPORT}: no library file for ${LIB} (lib${LIB}.a, lib${LIB}.dll.a, lib${LIB}.so*, lib${LIB}.dylib) in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
 			exit 1; \
 		fi; \
 	fi; \
@@ -1279,13 +1288,14 @@ _stage_fetch_headers:
 .endif
 
 # @impl 0f87-6a98-8b7f-9215
+# @impl 7854-6ad0-fb85-c2c6 (any of _LIB_FILE_FORMS, lib<n>.dll.a included)
 ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \
-		if [ -f "$$_d/lib${_l}.a" ] || [ -f "$$_d/lib${_l}.so" ] || [ -f "$$_d/lib${_l}.dylib" ] || [ -f "$$_d/${_l}.lib" ]; then \
-			_found=yes; break; \
-		fi; \
+		for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
+			if [ -f "$$_d/$$_f" ]; then _found=yes; break 2; fi; \
+		done; \
 	done; \
 	if [ "$$_found" = no ]; then \
 		for _d in ${_LIB_SEARCH_DIRS}; do \

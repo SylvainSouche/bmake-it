@@ -1331,6 +1331,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-lib-file-forms": {
+    "active": true,
+    "id": "7854-6ad0-fb85-c2c6",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-lib-macro-name-sanitize": {
     "active": true,
     "id": "0f87-6aba-a30f-2123",
@@ -1370,6 +1376,12 @@
   "impl-local-mk-arch-variant": {
     "active": true,
     "id": "0f87-6ab5-88d0-e665",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-mingw-clang-pthread": {
+    "active": true,
+    "id": "7854-6ad0-fb85-07d4",
     "status": "verified",
     "type": "impl"
   },
@@ -1925,6 +1937,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "lib-file-forms-include-mingw-import-req": {
+    "active": true,
+    "id": "7854-6ad0-fb7b-4b9b",
+    "status": "confirmed",
+    "type": "req"
+  },
   "lib-shared-defaults-yes": {
     "active": true,
     "id": "6f38-6a8a-9181-481e",
@@ -2129,6 +2147,24 @@
     "status": "confirmed",
     "type": "req"
   },
+  "mingw-clang-links-winpthread-req": {
+    "active": true,
+    "id": "7854-6ad0-fb7c-1ed3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mingw-import-lib-and-pthread-dec": {
+    "active": true,
+    "id": "7854-6ad0-fb7b-d4a1",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mingw-import-lib-and-pthread-obs": {
+    "active": true,
+    "id": "7854-6ad0-fb7a-7651",
+    "status": "recorded",
+    "type": "obs"
+  },
   "mingw-on-cygwin-and-abi-from-compiler-dec": {
     "active": true,
     "id": "7854-6ad0-e96c-a03f",
@@ -2146,6 +2182,12 @@
     "id": "7854-6ad0-e96e-9202",
     "status": "confirmed",
     "type": "req"
+  },
+  "mingw-runtime-dlls-not-staged-obs": {
+    "active": true,
+    "id": "7854-6ad0-fb7c-ae1f",
+    "status": "recorded",
+    "type": "obs"
   },
   "mingw-sysroot-error-actionable-req": {
     "active": false,

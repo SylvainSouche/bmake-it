@@ -117,7 +117,7 @@ Cygwin host for its own arch with `ABI=mingw`:
 | Toolchain | Compiler | Key |
 |---|---|---|
 | `gcc` | `<triple>-gcc`/`-g++`, with `<triple>-ar`/`-ranlib` | `win-amd64-gcc-mingw` |
-| `llvm` | `clang --target=<triple>`; `--sysroot` only from `BMK_MINGW_SYSROOT=`, otherwise clang locates an installed `<triple>-gcc`'s headers, CRT and libgcc itself; linked with `ld.lld` if installed, else `<triple>-ld` | `win-amd64-mingw` |
+| `llvm` | `clang --target=<triple>`; `--sysroot` only from `BMK_MINGW_SYSROOT=`, otherwise clang locates an installed `<triple>-gcc`'s headers, CRT and libgcc itself; linked with `ld.lld` if installed, else `<triple>-ld`, and with `-pthread` (mingw-w64 gcc links winpthread implicitly, clang does not: `REQ-mingw-clang-links-winpthread-req`) | `win-amd64-mingw` |
 
 An explicit Cygwin sysroot (`/usr/x86_64-w64-mingw32/sys-root/mingw`)
 was tested and loses the C++ headers and libgcc, which live outside it
@@ -126,6 +126,21 @@ under `/usr/lib/gcc/x86_64-w64-mingw32/<ver>` — hence no default
 the packages that provide them (`REQ-mingw-sysroot-error-actionable-req-v2`).
 Verified on Cygwin with the example workspace: both routes build a
 PE32+ `hello.exe` and DLL with no `cygwin1.dll` dependency, which run.
+
+A library is recognized on disk in any of one shared list of forms
+(`_LIB_FILE_FORMS` in `mk.common.mk`): `lib<n>.a`, `lib<n>.dll.a`
+(a mingw-w64 DLL's import library, as `IMPORT=` stages e.g.
+`libcurl.dll.a`), `lib<n>.so`, `lib<n>.dylib`, `<n>.lib` — used by the
+`LIBS=` "not built yet" check, the relink prerequisite and `IMPORT=`
+probing; `lib<n>.dll.a` also counts as shared when choosing
+`pkg-config --libs` over `--libs --static`
+(`REQ-lib-file-forms-include-mingw-import-req`).
+
+**Not yet handled:** a mingw-w64 program's runtime DLLs — imported
+libraries' (`libcurl-4.dll`, …) and, for C++, `libstdc++-6.dll`,
+`libgcc_s_seh-1.dll`, `libwinpthread-1.dll` from the toolchain's
+`bin/` — are neither staged next to it nor put on `PATH` by `bmake run`
+(`OBS-mingw-runtime-dlls-not-staged-obs`, open).
 
 Phase-1 concrete keys: `macos-arm64`, `macos-arm64-gcc`, `freebsd-amd64`,
 `freebsd-amd64-gcc`. Architecture labels use each platform's native name

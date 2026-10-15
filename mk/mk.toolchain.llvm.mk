@@ -198,6 +198,13 @@ LDFLAGS += -fuse-ld=lld
 .  else
 LDFLAGS += -fuse-ld=bfd
 .  endif
+# mingw-clang-links-winpthread-req: mingw-w64 gcc links winpthread on every
+# link (its specs: %{!no-pthread:-lpthread}); clang's mingw driver does not,
+# so pthread_create (C) and std::mutex/std::thread (C++, libstdc++ built on
+# winpthread) were undefined with clang (2026-10-15). -pthread makes clang
+# add -lpthread the same way.
+# @impl 7854-6ad0-fb85-07d4
+LDFLAGS += -pthread
 .endif
 
 .endif # _MK_TOOLCHAIN_LLVM_MK_
