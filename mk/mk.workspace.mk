@@ -51,7 +51,26 @@ _GEN_FW = ${BMK_MKDIR}/../scripts/gen-fw-order.sh
 _FW_ORDER_MK = ${.CURDIR}/.gen-fw-order.mk
 
 .if exists(${_GEN_FW})
-_fw_gen != cd ${.CURDIR} && BMK_MKDIR=${BMK_MKDIR} MAKESYSPATH=${BMK_MKDIR}:/usr/share/mk:/opt/local/share/mk sh ${_GEN_FW} ${_FW_ORDER_MK} 2>&1 || echo "FAILED"
+# order-query-sys-mk-located-req: the nested PREREQS= queries look for
+# sys.mk where THIS bmake found it (.SYSPATH) before any hardcoded list --
+# a hardcoded /usr/share/mk:/opt/local/share/mk here missed Cygwin's
+# /usr/share/bmake/mk and overrode the user's own, correct MAKESYSPATH.
+# @impl 7854-6ad0-c2da-f4ce
+# order-query-failure-is-error-req: stderr is NOT captured, so the
+# generator's own explanation reaches the terminal as written; a failure
+# stops the build here rather than falling back to discovery order.
+# @impl 7854-6ad0-c2da-1218
+_fw_gen != cd ${.CURDIR} && BMK_MKDIR='${BMK_MKDIR}' MAKESYSPATH='${BMK_MKDIR}:${.SYSPATH:U:ts:}' BMK_SYS_MK='${BMK_SYS_MK:U}' BMAKE='${MAKE}' sh ${_GEN_FW} ${_FW_ORDER_MK} || echo "FAILED:$$?"
+# order-failure-in-query-is-warning-req: a -V query still answers (as for
+# REQUIRES=/constraint errors); only a build stops.
+# @impl 7854-6ad0-c7d9-13f6
+.  if !empty(_fw_gen:MFAILED*)
+.    if empty(.MAKEFLAGS:M-V*)
+.      error framework build order could not be determined (scripts/gen-fw-order.sh failed, its reason is printed above)
+.    else
+.      warning framework build order could not be determined (scripts/gen-fw-order.sh failed, its reason is printed above); a build here will stop on it
+.    endif
+.  endif
 .endif
 
 .-include "${_FW_ORDER_MK}"

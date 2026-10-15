@@ -17,64 +17,16 @@ case "$BMAKE" in
         ;;
 esac
 
-# .CURDIR must be the MODULE's own directory, not the framework's --
-# a plain `-f <moduledir>/makefile` from the framework's cwd leaves
-# .CURDIR pointing at the framework instead (bmake's .CURDIR is the
-# process's actual working directory, not wherever -f's argument
-# happens to live). This was harmless as long as LIB=/LIBS=/PROG= were
-# simple literal assignments unaffected by .CURDIR being wrong -- but
-# IMPORT='s own resolution (mk.lib.mk) both depends on .CURDIR-relative
-# mk/ hook lookup and can genuinely .error on an unresolvable import,
-# and a .error anywhere during a -V query's full-file parse aborts the
-# whole query, poisoning even the unrelated LIB=/LIBS=/PROG= values this
-# script actually wants. cd into the module directory first so .CURDIR
-# is correct, exactly as a real recursive ${MAKE} -C <moduledir> build
-# would see it.
-# @impl 0f87-6ab5-8d38-83ac
-# single-module-visit-req (lasviewer round 5, item 3): takes a
-# space-separated LIST of variables and asks for all of them in ONE bmake
-# run (-V a -V b -V c, one output line each). It used to run once per
-# variable -- three full parses of the module's makefile chain (IMPORT=
-# resolution and pkg-config included) per module, ~2.5s for a four-module
-# framework, before the first module was even entered.
+# Each module is queried in its own directory (gen-mod-order-correct-
+# curdir-req, see bmk-query.sh).
+# single-module-visit-req (lasviewer round 5, item 3): all of LIBS/LIB/PROG
+# in ONE bmake run (-V a -V b -V c, one output line each). It used to run
+# once per variable -- three full parses of the module's makefile chain
+# (IMPORT= resolution and pkg-config included) per module, ~2.5s for a
+# four-module framework, before the first module was even entered.
 # @impl 0f87-6abf-aeba-b9eb
-_bmake_q() {
-    _mf=$1
-    _vars=$2
-    _vargs=""
-    for _v in $_vars; do _vargs="$_vargs -V $_v"; done
-    _dir=$(dirname "$_mf")
-    _file=$(basename "$_mf")
-    (
-        cd "$_dir" && \
-        if [ -n "${BMK_MKDIR:-}" ]; then
-            _sys="${BMK_SYS_MK:-}"
-            if [ -z "$_sys" ]; then
-                for d in /opt/local/share/mk /usr/share/mk /usr/local/share/mk; do
-                    if [ -f "$d/sys.mk" ]; then _sys=$d; break; fi
-                done
-            fi
-            if [ -n "$_sys" ]; then
-                env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                    MAKESYSPATH="${BMK_MKDIR}:${_sys}" \
-                    BMK_MKDIR="$BMK_MKDIR" \
-                    "$BMAKE" -m "$BMK_MKDIR" -m "$_sys" \
-                    BMK_MKDIR="$BMK_MKDIR" \
-                    -f "$_file" $_vargs 2>/dev/null
-            else
-                env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                    MAKESYSPATH="$BMK_MKDIR" \
-                    BMK_MKDIR="$BMK_MKDIR" \
-                    "$BMAKE" -m "$BMK_MKDIR" \
-                    BMK_MKDIR="$BMK_MKDIR" \
-                    -f "$_file" $_vargs 2>/dev/null
-            fi
-        else
-            env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \
-                "$BMAKE" -f "$_file" $_vargs 2>/dev/null
-        fi
-    ) || true
-}
+BMK_PROG=gen-mod-order
+. "$(dirname "$0")/bmk-query.sh"
 
 mods=""
 for d in *.m; do
@@ -92,8 +44,17 @@ fi
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
+if [ -n "${BMK_MKDIR:-}" ]; then
+    bmk_find_sys_mk || exit 1
+fi
+
+# @impl 7854-6ad0-c7d9-13f6
 for name in $mods; do
-    _q=$(_bmake_q "${name}.m/makefile" "LIBS LIB PROG")
+    if [ ! -f "${name}.m/makefile" ]; then
+        echo "gen-mod-order: error: module directory $(pwd)/${name}.m has no makefile -- every *.m directory is a module and needs one" >&2
+        exit 1
+    fi
+    _q=$(bmk_query "${name}.m/makefile" "LIBS LIB PROG") || exit 1
     libs=$(printf '%s\n' "$_q" | sed -n 1p)
     libid=$(printf '%s\n' "$_q" | sed -n 2p)
     progid=$(printf '%s\n' "$_q" | sed -n 3p)

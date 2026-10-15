@@ -126,12 +126,21 @@ with no network I/O, unlike `pkg:`/`prefix:`'s real `!=` shell-outs.
 
 1. **Fingerprint check**: a `cksum` of `FETCH_URL=`/`FETCH_PATCHES=` is
    compared against `<module>/work/.extract-fp` (written on the last
-   successful run); an unchanged fingerprint skips the entire pipeline.
+   successful run); an unchanged fingerprint skips the entire pipeline,
+   provided `work/_resolved/` still exists.
 2. **Fetch**: try each `FETCH_URL=` entry in order until one succeeds,
    saving to `<module>/distfiles/<basename>` — an entry whose basename
    already exists in `distfiles/` is reused without any network access,
    which is also what makes a fingerprint change with the *same*
    basename (e.g. a mirror swapped out) succeed without re-fetching.
+   The downloader is `curl`, else `wget`. Each failed entry is reported
+   as it happens — the downloader's resolved path, its exit status and
+   its own message — and if none succeeds the error lists every attempt
+   (`REQ-fetch-failure-explained-req`). On Cygwin without Cygwin's own
+   `curl`, `curl` is Windows' `system32\curl.exe`, which cannot open a
+   `/cygdrive/...` path; a `curl` outside Cygwin's `/usr`, `/bin` is
+   given its output path through `cygpath -w`
+   (`REQ-fetch-native-windows-curl-req`).
 3. **Verify**: SHA-256 against `distinfo`; a clean failure naming the
    module, the distfile, and both hashes on mismatch — extraction never
    proceeds on unverified content, whether the distfile was just
@@ -149,6 +158,16 @@ with no network I/O, unlike `pkg:`/`prefix:`'s real `!=` shell-outs.
    name before extraction has happened.
 5. **Patch**: each `FETCH_PATCHES=` entry, in order, via `patch -p1`
    from `work/_resolved/`.
+
+Steps 3–5 each check, before running, that the tool they need is
+installed (`sha256sum` or `shasum`, `unzip` for a `.zip` or `tar`,
+`patch`), naming the missing tool and what it was needed for; and,
+after running, that it succeeded. A failed or empty extraction is an
+error naming the tool and the archive — never reported as success, and
+never fingerprinted, so the next build retries it
+(`REQ-fetch-pipeline-steps-checked-req`). Before this, a host without
+`unzip` printed "fetched+extracted", cached that, and failed later with
+"don't know how to make …/sqlite3.c".
 
 A genuine re-extraction (fingerprint changed, real work done) clears
 `${_OBJDIR}` before recreating it, so a stale `.o` can never survive a

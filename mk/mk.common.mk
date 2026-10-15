@@ -67,19 +67,28 @@ BMK_IS_NATIVE_BUILD = no
 # <os>-<arch>[-<toolchain>][-<abi>]
 # Defaults omitted: toolchain=llvm, abi = platform default (glibc on linux)
 # ---------------------------------------------------------------------------
-_TARGET_KEY := ${TARGET}-${TARGET_ARCH}
-.if ${TOOLCHAIN} != "llvm"
-_TARGET_KEY := ${_TARGET_KEY}-${TOOLCHAIN}
-.endif
-# @impl 0f87-6a98-772e-6156
-.if defined(ABI) && !empty(ABI)
-.  if ${TARGET} == "linux" && ${ABI} != "glibc"
-_TARGET_KEY := ${_TARGET_KEY}-${ABI}
-.  elif ${TARGET} == "win" && ${ABI} != "msvc"
-_TARGET_KEY := ${_TARGET_KEY}-${ABI}
+# (computed after the toolchain file below: on win the ABI slot comes from
+# the compiler itself)
+
+# mingw-on-cygwin-req: does this build produce mingw-w64 output? Always when
+# cross-compiling to win with a non-MSVC toolchain (tier 2); on a Cygwin
+# host also for its own arch when asked with ABI=mingw -- without it, a
+# Cygwin host's gcc/clang give Cygwin (cygwin1.dll) output. Decided here,
+# before the toolchain file, which picks the compiler and flags from it.
+# @impl 7854-6ad0-e970-479a
+_BMK_WIN_MINGW = no
+.if ${TARGET} == "win" && ${TOOLCHAIN} != "msvc"
+.  if ${BMK_IS_NATIVE_BUILD} == "no" || ${ABI:U} == "mingw"
+_BMK_WIN_MINGW = yes
 .  endif
 .endif
-OS_ARCH := ${_TARGET_KEY}
+.if ${TARGET_ARCH} == "amd64"
+_MINGW_TRIPLE = x86_64-w64-mingw32
+.elif ${TARGET_ARCH} == "arm64"
+_MINGW_TRIPLE = aarch64-w64-mingw32
+.else
+_MINGW_TRIPLE = ${TARGET_ARCH}-w64-mingw32
+.endif
 
 # ---------------------------------------------------------------------------
 # Build / distrib roots
@@ -137,6 +146,74 @@ CXXFLAGS += -I${BMK_MKDIR}/../include
 # Fallback: try relative to this file
 .  include "mk.toolchain.${TOOLCHAIN}.mk"
 .endif
+
+# ---------------------------------------------------------------------------
+# Target key  (REQ-target-key-omit-defaults-req)
+# <os>-<arch>[-<toolchain>][-<abi>]
+# Defaults omitted: toolchain=llvm, abi = platform default (glibc on linux,
+# msvc on win). Computed here, after the toolchain file, because on win the
+# ABI is read from the compiler the toolchain file chose. Everything above
+# that uses it (BUILD_ROOT, OBJDIR, ...) is a deferred `=`, so it sees this.
+# ---------------------------------------------------------------------------
+_TARGET_KEY := ${TARGET}-${TARGET_ARCH}
+.if ${TOOLCHAIN} != "llvm"
+_TARGET_KEY := ${_TARGET_KEY}-${TOOLCHAIN}
+.endif
+# win-abi-from-compiler-req: win has three runtimes, and the key must say
+# which one this build really produces -- the omitted slot means msvc.
+# Filled only from an explicit ABI= until 2026-10-15 (Cygwin and mingw
+# output both labelled as MSVC's win-amd64), then briefly from a rule
+# (toolchain/host/cross) that a CC= override could still fool. Now the
+# compiler is asked: -dumpmachine. Cygwin clang says x86_64-pc-windows-
+# cygnus, Cygwin gcc x86_64-pc-cygwin, clang for mingw x86_64-w64-windows-
+# gnu, mingw gcc x86_64-w64-mingw32. cl.exe has no such option; TOOLCHAIN=msvc
+# is msvc. The answer is cached in the environment per CC, so the nested
+# makes of one build ask once, not once per parse (forks are slow on Cygwin).
+# @impl 7854-6ad0-e1c5-0fcc
+.if ${TARGET} == "win"
+.  if ${TOOLCHAIN} == "msvc"
+_WIN_ABI = msvc
+.  else
+.    if "${_BMK_WIN_CC_FOR:U}" == "${CC}"
+_WIN_CC_MACHINE := ${_BMK_WIN_CC_MACHINE:U}
+.    else
+_WIN_CC_MACHINE != ${CC} -dumpmachine 2>/dev/null || true
+_BMK_WIN_CC_FOR := ${CC}
+_BMK_WIN_CC_MACHINE := ${_WIN_CC_MACHINE}
+.      export _BMK_WIN_CC_FOR _BMK_WIN_CC_MACHINE
+.    endif
+.    if !empty(_WIN_CC_MACHINE:M*cygwin*) || !empty(_WIN_CC_MACHINE:M*cygnus*)
+_WIN_ABI = cygwin
+.    elif !empty(_WIN_CC_MACHINE:M*mingw32*) || !empty(_WIN_CC_MACHINE:M*windows-gnu*)
+_WIN_ABI = mingw
+.    elif !empty(_WIN_CC_MACHINE:M*windows-msvc*)
+_WIN_ABI = msvc
+.    elif empty(.MAKEFLAGS:M-V*)
+.      error "TARGET=win: cannot tell which Windows runtime ${CC} produces -- '${CC} -dumpmachine' answered '${_WIN_CC_MACHINE}', expected a triple containing cygwin, cygnus, mingw32, windows-gnu or windows-msvc"
+.    elif ${_BMK_WIN_MINGW} == "yes"
+_WIN_ABI = mingw
+.    else
+_WIN_ABI = cygwin
+.    endif
+.  endif
+.  if defined(ABI) && !empty(ABI) && ${ABI} != ${_WIN_ABI} && empty(.MAKEFLAGS:M-V*)
+.    error "ABI=${ABI} contradicts this build: TOOLCHAIN=${TOOLCHAIN} (CC=${CC}${_WIN_CC_MACHINE:D, which says ${_WIN_CC_MACHINE}}) for TARGET=win-${TARGET_ARCH} on a ${_HOST_OS_LABEL} host produces ${_WIN_ABI} output -- drop ABI= (it is derived), or change TOOLCHAIN=/CC= to get ${ABI} output (on a Cygwin host, ABI=mingw selects mingw-w64 with TOOLCHAIN=gcc or llvm)"
+.  endif
+# Into a variable of our own: a command-line ABI= would override any
+# makefile assignment to ABI itself.
+_KEY_ABI := ${_WIN_ABI}
+.else
+_KEY_ABI := ${ABI:U}
+.endif
+# @impl 0f87-6a98-772e-6156
+.if !empty(_KEY_ABI)
+.  if ${TARGET} == "linux" && ${_KEY_ABI} != "glibc"
+_TARGET_KEY := ${_TARGET_KEY}-${_KEY_ABI}
+.  elif ${TARGET} == "win" && ${_KEY_ABI} != "msvc"
+_TARGET_KEY := ${_TARGET_KEY}-${_KEY_ABI}
+.  endif
+.endif
+OS_ARCH := ${_TARGET_KEY}
 
 # ---------------------------------------------------------------------------
 # Common flags reuse (REQ-flags-reuse-bsd-native-vars-req-v2)

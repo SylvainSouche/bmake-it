@@ -60,29 +60,42 @@ _ORDER_MK   = ${.CURDIR}/.gen-mod-order.mk
 # missing or half-written cache; on failure the previous good cache survives.
 #
 # BMK_SYS_MK is passed through only if the caller already set it -- do NOT
-# default it here. gen-mod-order.sh's own _bmake_q already searches
-# /opt/local/share/mk, /usr/share/mk, /usr/local/share/mk and picks whichever
-# actually exists; hardcoding /opt/local/share/mk here used to short-circuit
-# that search on every non-macOS host (BMK_SYS_MK is otherwise never set by
-# anything upstream), silently pointing nested -V LIBS/LIB queries at a
-# sys.mk that doesn't exist there. Those queries then failed silently (the
-# script swallows query errors via `|| true`), so every module looked
-# dependency-free and modules were emitted in plain glob order instead of
-# topological order -- found empirically: a Linux container built a PROG
-# before the LIB it links against, because "app" sorts before "libg".
+# default it here: a hardcoded /opt/local/share/mk once short-circuited the
+# sys.mk search on every non-macOS host (2026-08-31).
 # @impl 0f87-6a98-5e9c-0a14
-_order_generated != cd ${.CURDIR} && 	BMK_MKDIR='${BMK_MKDIR}' 	MAKESYSPATH='${BMK_MKDIR}:/usr/share/mk:/opt/local/share/mk' 	BMK_SYS_MK='${BMK_SYS_MK:U}' 	BMAKE='${MAKE}' 	sh ${_GEN_SCRIPT} ${_ORDER_MK} 2>&1 || echo "FAILED:$$?"
+# order-query-sys-mk-located-req: the nested -V LIBS/LIB/PROG queries look
+# for sys.mk where THIS bmake found it (.SYSPATH) before any hardcoded
+# list -- /usr/share/mk:/opt/local/share/mk here missed Cygwin's
+# /usr/share/bmake/mk (2026-10-15).
+# @impl 7854-6ad0-c2da-f4ce
+# order-query-failure-is-error-req: both times, the queries failed and the
+# failure was swallowed, so every module looked dependency-free and was
+# built in glob order -- a library's dependents before the library, dying
+# later with "not built yet" or a missing header, nowhere near the cause.
+# stderr is NOT captured now, so the generator's explanation reaches the
+# terminal as written, and a failure stops this framework right here.
+# @impl 7854-6ad0-c2da-1218
+_order_generated != cd ${.CURDIR} && 	BMK_MKDIR='${BMK_MKDIR}' 	MAKESYSPATH='${BMK_MKDIR}:${.SYSPATH:U:ts:}' 	BMK_SYS_MK='${BMK_SYS_MK:U}' 	BMAKE='${MAKE}' 	sh ${_GEN_SCRIPT} ${_ORDER_MK} || echo "FAILED:$$?"
+# order-failure-in-query-is-warning-req: a -V query still answers (as for
+# REQUIRES=/constraint errors); only a build stops.
+# @impl 7854-6ad0-c7d9-13f6
+.  if !empty(_order_generated:MFAILED*)
+.    if empty(.MAKEFLAGS:M-V*)
+.      error module build order could not be determined (scripts/gen-mod-order.sh failed, its reason is printed above)
+.    else
+.      warning module build order could not be determined (scripts/gen-mod-order.sh failed, its reason is printed above); a build here will stop on it
+.    endif
+.  endif
 .endif
 
 .-include "${_ORDER_MK}"
 .if defined(MODULE_SUBDIR) && !empty(MODULE_SUBDIR)
 SUBDIR_MODULES := ${MODULE_SUBDIR}
+.elif exists(${_GEN_SCRIPT})
+# Generation succeeded and found no *.m: a framework with no modules.
+SUBDIR_MODULES =
 .else
-# Do NOT fall back to alphabetical ls — that builds dependents before deps
-.  if exists(${_GEN_SCRIPT})
-.    warning "gen-mod-order produced no MODULE_SUBDIR (BMK_MKDIR='${BMK_MKDIR}'); check scripts/gen-mod-order.sh. Falling back to unsorted *.m"
-.  endif
-SUBDIR_MODULES != ls -d *.m 2>/dev/null || true
+.  error Bmake It installation incomplete: ${_GEN_SCRIPT} is missing, so module build order cannot be determined
 .endif
 
 # tst-module-layout-v2-req: <name>.tst test modules sit beside the .m modules.

@@ -68,6 +68,40 @@ sensitive (module-local `mk/` hook lookup) in a way `LIB=`/`LIBS=`/
 `PROG=`'s plain literal assignments never were before
 (`REQ-gen-mod-order-correct-curdir-req`).
 
+### When the order cannot be determined
+
+Both generators (`gen-mod-order.sh` for modules, `gen-fw-order.sh` for
+frameworks) answer "what does this unit depend on?" by running a nested
+`bmake -V` on its makefile. If that query fails, the build **stops**,
+with an error naming the module or framework queried, the exact command,
+and bmake's own message — nested, one level per generator, so the
+workspace-level error shows the framework query that failed and, inside
+it, the module query that caused it
+(`REQ-order-query-failure-is-error-req`). A `*.m` directory with no
+`makefile` is named as such. In a `-V` query rather than a build, the
+same failure is printed as a warning and the query still answers, as
+for every other parse-time error
+(`REQ-order-failure-in-query-is-warning-req`). There is no fallback to
+alphabetical or discovery order: a failed query looks exactly like "no
+dependencies", and building in that order fails later with a "not built
+yet" or missing-header error far from the cause. This happened twice
+before the rule existed — on Linux (2026-08-31) and on Cygwin
+(2026-10-15).
+
+The nested query needs bmake's own system rules (`sys.mk`), whose
+directory differs per host (`/usr/share/mk` on the BSDs,
+`/usr/share/bmake/mk` on Cygwin and Debian, `/opt/local/share/mk` on
+MacPorts, ...). They are looked for, in order, in `BMK_SYS_MK=` if set,
+in the directories the invoking bmake itself searches (`.SYSPATH`, passed
+down as `MAKESYSPATH`), then in the usual install directories. Finding
+none is an error listing every directory searched
+(`REQ-order-query-sys-mk-located-req`).
+
+A module whose `IMPORT=` cannot be resolved does not stop the order
+query: that error is skipped during `-V`, as `REQUIRES=`'s is, and
+raised when the module itself is built, so every other module and
+framework is still attempted (`REQ-import-unresolved-fails-module-not-order-req`).
+
 ## Collision handling during copy-up
 
 The copy-up mechanism (step 6/7) is **diff-aware**

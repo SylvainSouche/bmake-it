@@ -87,8 +87,6 @@ is deferred (`REQ-app-bundle-deferred-req`).
 - Kernel modules/drivers, Darwin/XNU kernel development
   (`REQ-userland-only-scope`)
 - macOS `.app` bundle output (`REQ-app-bundle-deferred-req`)
-- `win` target ABI details — mingw vs. Cygwin vs. MSVC, exact toolchain/
-  ABI naming (`REQ-win-target-via-cross-toolchain-req`)
 - Linux libc beyond the glibc default (musl always explicit —
   `REQ-linux-libc-default-glibc-req`)
 - Java, Fortran, IDL, Express (`REQ-supported-languages`)

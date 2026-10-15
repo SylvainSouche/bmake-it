@@ -483,28 +483,34 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # PKG_CONFIG_PATH, but not a package silently upgraded in place with no
 # such change -- a known, narrower limitation than a content-aware
 # cache, not a correctness bug for what it does cover.
+#
+# import-resolution-cache-req-v2: only a SUCCESSFUL resolution is cached.
+# Caching "not found" too (as this did until 2026-10-15) made the fix the
+# resolver's own error recommends -- install the package -- never work:
+# installing a package changes nothing in the key above, so the stale miss
+# outlived the installation until the cache was deleted by hand (libcurl
+# and libtiff on Cygwin). A miss costs one pkg-config call on a build that
+# fails anyway; a cache recording one, written by an earlier version, is
+# treated as absent and removed.
 _IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
 _IMPORT_FP != printf '%s' "V=2 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH}" | cksum
 .    if exists(${_IMPORT_CACHE_FILE})
 _IMPORT_FP_CACHED != sed -n '1p' ${_IMPORT_CACHE_FILE} 2>/dev/null
+_IMPORT_PC_CACHED != sed -n '2p' ${_IMPORT_CACHE_FILE} 2>/dev/null
 .    else
 _IMPORT_FP_CACHED =
+_IMPORT_PC_CACHED =
 .    endif
-.    if ${_IMPORT_FP_CACHED} == ${_IMPORT_FP}
+.    if ${_IMPORT_FP_CACHED} == ${_IMPORT_FP} && ${_IMPORT_PC_CACHED} == "yes"
 # Cache hit: read the previously-resolved values back, no pkg-config
-# call this time. Mirrors the non-cached branch's own guard exactly --
-# a cached "not found" must leave _IMPORT_SOURCE genuinely undefined
-# too, or step 4 (probing) and the final .error would be silently
-# skipped in favor of a defined-but-empty resolution.
-_IMPORT_PC_FOUND != sed -n '2p' ${_IMPORT_CACHE_FILE}
-.      if ${_IMPORT_PC_FOUND} == "yes"
+# call this time.
+_IMPORT_PC_FOUND = yes
 _IMPORT_VERSION != sed -n '3p' ${_IMPORT_CACHE_FILE}
 _IMPORT_SOURCE  != sed -n '4p' ${_IMPORT_CACHE_FILE}
 _IMPORT_CFLAGS  != sed -n '5p' ${_IMPORT_CACHE_FILE}
 _IMPORT_LIBS    != sed -n '6p' ${_IMPORT_CACHE_FILE}
 _IMPORT_LIBDIR  != sed -n '7p' ${_IMPORT_CACHE_FILE}
 _IMPORT_INCDIR  != sed -n '8p' ${_IMPORT_CACHE_FILE}
-.      endif
 .    else
 _IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} pkg-config --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
 .      if ${_IMPORT_PC_FOUND} == "yes"
@@ -540,11 +546,13 @@ _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs ${_IMPORT_PKGNAME} 2>/dev
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} pkg-config --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
 .      endif
 .      endif
-# Write the cache regardless of hit/miss on _IMPORT_PC_FOUND itself --
-# a genuine "not found" is just as valid to cache as a genuine "found"
-# (a second build shouldn't re-probe pkg-config just to re-learn the
-# same absence either).
+# Cache a hit only; a miss removes any cache file (including a stale
+# "not found" an earlier version wrote), so the next build asks again.
+.      if ${_IMPORT_PC_FOUND} == "yes"
 _IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && { echo '${_IMPORT_FP}'; echo '${_IMPORT_PC_FOUND}'; echo '${_IMPORT_VERSION}'; echo '${_IMPORT_SOURCE}'; echo '${_IMPORT_CFLAGS}'; echo '${_IMPORT_LIBS}'; echo '${_IMPORT_LIBDIR}'; echo '${_IMPORT_INCDIR:U}'; } > ${_IMPORT_CACHE_FILE}; echo ok
+.      else
+_IMPORT_CACHE_WRITE != rm -f ${_IMPORT_CACHE_FILE}; echo ok
+.      endif
 .    endif
 .  elif ${IMPORT:C/:.*//} == "prefix"
 _IMPORT_PREFIX_VAL = ${IMPORT:C/^[^:]*://}
@@ -574,7 +582,13 @@ _IMPORT_LIBDIR  = ${_p}/lib
 .    endfor
 .  endif
 
-.  if !defined(_IMPORT_SOURCE)
+# Not during a -V query (the same guard mk.requires.mk and the toolchain
+# files use for their own parse-time resolution failures): gen-mod-order.sh
+# only asks for LIBS/LIB/PROG, and an unresolvable import must fail THIS
+# module's build, loudly and here -- not stop ordering, and so building,
+# every other module and framework of the workspace.
+# @impl 7854-6ad0-c3e9-3ad5
+.  if !defined(_IMPORT_SOURCE) && empty(.MAKEFLAGS:M-V*)
 .error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), pkg-config, and probing ${_TOOL_PREFIXES:H:O:u} -- install the library via your host's package manager (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
 .  endif
 
@@ -968,27 +982,53 @@ _stage_import:
 # .o can never survive a source change via an mtime race against a
 # distfile's own (possibly old) embedded timestamps.
 # @impl 0f87-6ab6-4fe1-98d2
+# fetch-failure-explained-req: each failed URL is reported with the
+# downloader's resolved path, its exit status and its own message, and the
+# final error lists every attempt -- "could not fetch any of: <url>" alone
+# hid a curl that could not even write its output file (2026-10-15).
+# @impl 7854-6ad0-c2db-7d3a
+# fetch-native-windows-curl-req: on Cygwin without Cygwin's own curl,
+# `curl` is Windows' system32 curl.exe, which cannot open a /cygdrive/...
+# path (exit 23). A curl outside Cygwin's own /usr, /bin gets its output
+# path through cygpath -w.
+# @impl 7854-6ad0-c3e9-e7c9
+# fetch-pipeline-steps-checked-req: sha256sum/unzip/tar/patch are each
+# checked for before use and their result checked after -- a missing unzip
+# once "extracted" nothing, said so, and cached it (2026-10-15).
+# @impl 7854-6ad0-c2db-ec05
 _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
 .else
 	@mkdir -p ${.CURDIR}/distfiles ${.CURDIR}/work
 	@_fp=$$(printf '%s' "URL=${FETCH_URL} PATCHES=${FETCH_PATCHES}" | cksum); \
-	if [ -f ${.CURDIR}/work/.extract-fp ] && [ "$$(cat ${.CURDIR}/work/.extract-fp)" = "$$_fp" ]; then \
+	if [ -f ${.CURDIR}/work/.extract-fp ] && [ -d ${.CURDIR}/work/_resolved ] && [ "$$(cat ${.CURDIR}/work/.extract-fp)" = "$$_fp" ]; then \
 		exit 0; \
 	fi; \
-	_basename=""; \
+	_basename=""; _failed=""; \
 	for _url in ${FETCH_URL}; do \
 		_base=$$(basename "$$_url"); \
 		_dist=${.CURDIR}/distfiles/$$_base; \
 		if [ ! -f "$$_dist" ]; then \
 			echo "===> fetching $$_url"; \
-			if command -v curl >/dev/null 2>&1; then \
-				curl -fsSL -o "$$_dist.tmp" "$$_url" 2>/dev/null || { rm -f "$$_dist.tmp"; continue; }; \
-			elif command -v wget >/dev/null 2>&1; then \
-				wget -q -O "$$_dist.tmp" "$$_url" 2>/dev/null || { rm -f "$$_dist.tmp"; continue; }; \
+			_out="$$_dist.tmp"; \
+			if _dl=$$(command -v curl 2>/dev/null); then \
+				case "$$_dl" in \
+				/usr/*|/bin/*) ;; \
+				*) if command -v cygpath >/dev/null 2>&1; then _out=$$(cygpath -w "$$_dist.tmp"); fi ;; \
+				esac; \
+				if _msg=$$(curl -fsSL -o "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
+			elif _dl=$$(command -v wget 2>/dev/null); then \
+				if _msg=$$(wget -nv -O "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
 			else \
-				echo "error: IMPORT=${IMPORT}: neither curl nor wget found on PATH -- cannot fetch $$_url" >&2; exit 1; \
+				echo "error: IMPORT=${IMPORT}: cannot fetch $$_url -- neither curl nor wget is on PATH" >&2; exit 1; \
+			fi; \
+			if [ "$$_rc" != 0 ]; then \
+				rm -f "$$_dist.tmp"; \
+				_msg=$$(printf '%s' "$$_msg" | tr '\n' ' '); \
+				echo "     $$_dl failed (exit $$_rc): $${_msg:-no message}" >&2; \
+				_failed="$$_failed$$(printf '\n    %s\n      %s exited %s: %s' "$$_url" "$$_dl" "$$_rc" "$${_msg:-no message}")"; \
+				continue; \
 			fi; \
 			mv "$$_dist.tmp" "$$_dist"; \
 		fi; \
@@ -996,7 +1036,7 @@ _fetch_import:
 		break; \
 	done; \
 	if [ -z "$$_basename" ]; then \
-		echo "error: IMPORT=${IMPORT}: could not fetch any of: ${FETCH_URL}" >&2; \
+		echo "error: IMPORT=${IMPORT}: could not fetch any FETCH_URL:$$_failed" >&2; \
 		exit 1; \
 	fi; \
 	_dist=${.CURDIR}/distfiles/$$_basename; \
@@ -1010,6 +1050,11 @@ _fetch_import:
 		echo "error: IMPORT=${IMPORT}: no SHA256 entry for $$_basename in $$_distinfo" >&2; \
 		exit 1; \
 	fi; \
+	_need() { command -v "$$1" >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: '$$1' is not installed, and is needed to $$2 -- install it via your host's package manager" >&2; exit 1; }; }; \
+	if ! command -v sha256sum >/dev/null 2>&1 && ! command -v shasum >/dev/null 2>&1; then \
+		echo "error: IMPORT=${IMPORT}: neither 'sha256sum' nor 'shasum' is installed, and one is needed to verify $$_basename against $$_distinfo" >&2; \
+		exit 1; \
+	fi; \
 	_actual=$$( (sha256sum "$$_dist" 2>/dev/null || shasum -a 256 "$$_dist" 2>/dev/null) | awk '{print $$1}'); \
 	if [ "$$_actual" != "$$_expected" ]; then \
 		echo "error: IMPORT=${IMPORT}: checksum mismatch for $$_basename -- expected $$_expected, got $$_actual (corrupted download or distinfo out of date)" >&2; \
@@ -1020,9 +1065,20 @@ _fetch_import:
 	rm -rf ${.CURDIR}/work/_extracted ${.CURDIR}/work/_resolved; \
 	mkdir -p ${.CURDIR}/work/_extracted; \
 	case "$$_basename" in \
-		*.zip) unzip -q "$$_dist" -d ${.CURDIR}/work/_extracted ;; \
-		*) tar xf "$$_dist" -C ${.CURDIR}/work/_extracted ;; \
+		*.zip) _need unzip "extract $$_basename"; \
+			if unzip -q "$$_dist" -d ${.CURDIR}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=unzip ;; \
+		*) _need tar "extract $$_basename"; \
+			if tar xf "$$_dist" -C ${.CURDIR}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=tar ;; \
 	esac; \
+	if [ "$$_rc" != 0 ]; then \
+		echo "error: IMPORT=${IMPORT}: $$_x could not extract $$_dist (exit $$_rc, its message is above)" >&2; \
+		rm -rf ${.CURDIR}/work/_extracted; \
+		exit 1; \
+	fi; \
+	if [ -z "$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1)" ]; then \
+		echo "error: IMPORT=${IMPORT}: extracting $$_dist with $$_x produced no files" >&2; \
+		exit 1; \
+	fi; \
 	_n=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1 | wc -l | tr -d ' '); \
 	_only=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1); \
 	if [ "$$_n" = "1" ] && [ -d "$$_only" ]; then \
@@ -1032,6 +1088,7 @@ _fetch_import:
 	fi; \
 	cp -a "$$_wrksrc" ${.CURDIR}/work/_resolved; \
 	for _p in ${FETCH_PATCHES}; do \
+		_need patch "apply FETCH_PATCHES= ($$_p)"; \
 		echo "===> applying patch $$_p"; \
 		patch -p1 -d ${.CURDIR}/work/_resolved < ${.CURDIR}/patches/$$_p || { \
 			echo "error: IMPORT=${IMPORT}: patch $$_p failed to apply" >&2; exit 1; \

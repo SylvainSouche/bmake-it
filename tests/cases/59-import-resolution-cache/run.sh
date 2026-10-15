@@ -5,13 +5,35 @@
 # actual RESOLUTION is cached; STAGING (item 4's own inputs-hash
 # mechanism) already skipped redundant work before this, verified
 # separately in case 47/48.
+#
+# import-resolution-cache-req-v2: only a SUCCESSFUL resolution is cached.
+# The package is first missing (its .pc not yet written), then installed
+# with nothing else changed -- the next build must find it, not replay a
+# cached "not found" (OpenRider on Cygwin, 2026-10-15).
 set -eu
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
 CC=${CC:-cc}
 
+mkdir -p "$FAKE/pkgroot/lib/pkgconfig"
 "$CC" -c -I"$FAKE/pkgroot/include" "$FAKE/src/impl.c" -o "$FAKE/src/impl.o"
 ar rcs "$FAKE/pkgroot/lib/libcached.a" "$FAKE/src/impl.o"
+
+export PKG_CONFIG_PATH="$FAKE/pkgroot/lib/pkgconfig"
+export REAL_PKG_CONFIG=$(command -v pkg-config)
+export COUNTER_FILE="$ROOT/pkgconfig-calls.log"
+: > "$COUNTER_FILE"
+export PATH="$FAKE/bin:$PATH"
+
+# Not installed yet: the build fails, and leaves no cache behind.
+rc=0; (cd ws && bmake >build0.log 2>&1) || rc=$?
+[ "$rc" != 0 ] || { echo "expected the build to fail while the package is not installed" >&2; exit 1; }
+if [ -n "$(find ws -name .import-resolve-cache)" ]; then
+    echo "a failed resolution must not be cached" >&2; exit 1
+fi
+count0=$(wc -l < "$COUNTER_FILE")
+
+# "Install" it -- PKG_CONFIG_PATH and everything else in the cache key unchanged.
 cat > "$FAKE/pkgroot/lib/pkgconfig/cached.pc" <<EOF
 prefix=$FAKE/pkgroot
 includedir=\${prefix}/include
@@ -24,19 +46,13 @@ Cflags: -I\${includedir}
 Libs: -L\${libdir} -lcached
 EOF
 
-export PKG_CONFIG_PATH="$FAKE/pkgroot/lib/pkgconfig"
-export REAL_PKG_CONFIG=$(command -v pkg-config)
-export COUNTER_FILE="$ROOT/pkgconfig-calls.log"
-: > "$COUNTER_FILE"
-export PATH="$FAKE/bin:$PATH"
-
 cd ws
 
-bmake >build1.log 2>&1
+bmake >build1.log 2>&1 || { echo "the package was installed after a failed build, but the next build still did not find it:" >&2; tail -5 build1.log >&2; exit 1; }
 count1=$(wc -l < "$COUNTER_FILE")
-[ "$count1" -gt 0 ] || { echo "expected at least one real pkg-config call on the first build" >&2; exit 1; }
+[ "$count1" -gt "$count0" ] || { echo "expected real pkg-config calls once the package is installed" >&2; exit 1; }
 
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f \( -name app -o -name app.exe \) | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "cached-value"

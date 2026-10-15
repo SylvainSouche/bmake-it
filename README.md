@@ -43,7 +43,11 @@ on the host:
 | Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` also needs cl.exe already on `PATH` (launch from a Visual Studio developer prompt, or `vcvarsall.bat`) — see `mk/mk.toolchain.msvc.mk`'s own header comments; there's no dedicated spec chapter for this yet |
 
 `flex`/`bison` (or `yacc`/`lex`) are only needed if a module has `.y`/
-`.l` grammar sources — optional otherwise.
+`.l` grammar sources — optional otherwise. `IMPORT=fetch:`/`fetch-bin:`
+modules need `curl` or `wget`, `sha256sum` or `shasum`, `tar` (and
+`unzip` for a `.zip` distfile), and `patch` when `FETCH_PATCHES=` is set
+— on Cygwin, `unzip` and `patch` are separate packages in its installer;
+a missing one is reported by name.
 
 ### Toolchain tiers
 
@@ -169,9 +173,22 @@ for `run`, `docs/spec/40-cli-reference.md`.
 
 `<os>-<arch>[-<toolchain>][-<abi>]` with defaults omitted (`llvm`, platform
 default ABI). Concrete keys include `macos-arm64`, `macos-arm64-gcc`,
-`freebsd-amd64`, `freebsd-amd64-gcc`, `win-amd64` (MSVC/Cygwin-gcc tier 1,
-mingw-w64 cross-compile tier 2). Host builds also work (e.g. `linux-amd64` on
-a Linux host).
+`freebsd-amd64`, `freebsd-amd64-gcc`. On `win` the ABI slot is read from
+the compiler itself (`-dumpmachine`), never assumed: `win-amd64-msvc`
+(MSVC, the default ABI), `win-amd64-cygwin` / `win-amd64-gcc-cygwin`
+(Cygwin's own clang/gcc: POSIX output linked against `cygwin1.dll`),
+`win-amd64-mingw` / `win-amd64-gcc-mingw` / `win-arm64-mingw` (mingw-w64:
+native Windows output). Host builds also work (e.g. `linux-amd64` on a
+Linux host).
+
+On a Cygwin host, `ABI=mingw` builds native Windows (mingw-w64) output
+instead of Cygwin output — install `mingw64-x86_64-gcc-core` and
+`mingw64-x86_64-gcc-g++` (and optionally `lld`):
+
+```sh
+bmake ABI=mingw                  # clang --target=x86_64-w64-mingw32 → build/win-amd64-mingw/
+bmake TOOLCHAIN=gcc ABI=mingw    # x86_64-w64-mingw32-gcc            → build/win-amd64-gcc-mingw/
+```
 
 ## Status
 
@@ -202,7 +219,9 @@ progress messages print only when work happened.
   cache their `pkg-config` resolution per module (a second build with
   nothing relevant changed makes no `pkg-config` calls at all), but the
   cache doesn't detect a package silently upgraded in place with no
-  env/hook/`PKG_CONFIG_PATH` change. `LIBS=<name>` link transitivity
+  env/hook/`PKG_CONFIG_PATH` change. Only a successful resolution is
+  cached: a package installed after a failed build is found by the next
+  one, with no cache to clear. `LIBS=<name>` link transitivity
   (own and imported libraries alike) is implemented; header transitivity
   is not — a framework must list every framework whose headers it
   actually `#include`s, not just its direct one. A `PROG`/shared `LIB`

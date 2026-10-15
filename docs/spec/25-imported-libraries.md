@@ -308,7 +308,7 @@ reads and appends `<name>`'s own `.linkdeps` content in addition to
 ## Resolution caching
 
 A second build with nothing relevant changed does not re-invoke
-`pkg-config` at all (`REQ-import-resolution-cache-req`) — a real,
+`pkg-config` at all (`REQ-import-resolution-cache-req-v2`) — a real,
 separate question from item 4's own staging cache (which already
 skipped redundant *file copies*, not the resolution call itself). A
 per-module fingerprint (`IMPORT=`, `PKG_CONFIG_PATH`,
@@ -319,6 +319,16 @@ writes the new cache. Verified with a genuine call-counting `pkg-config`
 stub, not just by inspecting the cache file: the first build makes real
 calls, an unchanged second build makes zero additional calls, and a
 changed `PKG_CONFIG_PATH` triggers real re-resolution again.
+
+Only a **successful** resolution is cached. A "not found" is not: none
+of the fingerprint's inputs change when the missing package is
+installed, so a cached miss used to outlive the installation — the very
+fix the resolver's own error recommends — until the cache file was
+deleted by hand (libcurl and libtiff on Cygwin, 2026-10-15). A miss now
+removes the cache file, including a stale miss written by an earlier
+version, and costs one `pkg-config` call on a build that fails anyway.
+Case 59 proves it: a build before the package's `.pc` exists fails and
+leaves no cache, and the next build after it is written succeeds.
 
 This does **not** detect a package silently upgraded in place with no
 env/hook/`PKG_CONFIG_PATH` change (the fingerprint doesn't cover the

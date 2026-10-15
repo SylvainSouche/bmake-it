@@ -671,6 +671,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "fetch-failure-explained-req": {
+    "active": true,
+    "id": "7854-6ad0-c21c-2010",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-import-binary-req": {
     "active": true,
     "id": "0f87-6ab6-4e1e-2778",
@@ -695,11 +701,35 @@
     "status": "confirmed",
     "type": "req"
   },
+  "fetch-native-windows-curl-req": {
+    "active": true,
+    "id": "7854-6ad0-c21c-0875",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-pipeline-steps-checked-req": {
+    "active": true,
+    "id": "7854-6ad0-c3e8-8255",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-pipeline-tool-failures-hidden-obs": {
+    "active": true,
+    "id": "7854-6ad0-c3e8-1f1c",
+    "status": "recorded",
+    "type": "obs"
+  },
   "fetch-root-include-req": {
     "active": true,
     "id": "0f87-6abe-3f03-1474",
     "status": "confirmed",
     "type": "req"
+  },
+  "fetch-windows-curl-cygdrive-path-obs": {
+    "active": true,
+    "id": "7854-6ad0-c21a-b05c",
+    "status": "recorded",
+    "type": "obs"
   },
   "flags-only-change-does-not-trigger-rebuild": {
     "active": true,
@@ -1133,10 +1163,28 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-fetch-failure-explained": {
+    "active": true,
+    "id": "7854-6ad0-c2db-7d3a",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-fetch-import": {
     "active": true,
     "id": "0f87-6ab6-4fe1-98d2",
     "status": "verified",
+    "type": "impl"
+  },
+  "impl-fetch-native-windows-curl": {
+    "active": true,
+    "id": "7854-6ad0-c2db-ec05",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-fetch-pipeline-steps-checked": {
+    "active": true,
+    "id": "7854-6ad0-c3e9-e7c9",
+    "status": "asserted",
     "type": "impl"
   },
   "impl-fetch-root-include": {
@@ -1247,6 +1295,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-import-unresolved-skipped-in-query": {
+    "active": true,
+    "id": "7854-6ad0-c3e9-3ad5",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-incl-promotes-generated-headers": {
     "active": true,
     "id": "0f87-6a98-7718-886d",
@@ -1325,6 +1379,18 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-mingw-on-cygwin": {
+    "active": true,
+    "id": "7854-6ad0-e970-479a",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-mingw-sysroot-error-actionable": {
+    "active": true,
+    "id": "7854-6ad0-e744-0614",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-mod-order-no-hardcoded-sys-mk": {
     "active": true,
     "id": "0f87-6a98-5e9c-0a14",
@@ -1353,6 +1419,24 @@
     "active": true,
     "id": "0f87-6abe-3f12-1050",
     "status": "verified",
+    "type": "impl"
+  },
+  "impl-order-failure-in-query-is-warning": {
+    "active": true,
+    "id": "7854-6ad0-c7d9-13f6",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-order-query-failure-is-error": {
+    "active": true,
+    "id": "7854-6ad0-c2da-1218",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-order-query-sys-mk-located": {
+    "active": true,
+    "id": "7854-6ad0-c2da-f4ce",
+    "status": "asserted",
     "type": "impl"
   },
   "impl-platform-toolchain-constraints": {
@@ -1541,6 +1625,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-win-abi-derived-from-toolchain": {
+    "active": true,
+    "id": "7854-6ad0-e1c5-0fcc",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-win-host-detection": {
     "active": true,
     "id": "0f87-6a98-96de-1355",
@@ -1556,6 +1646,18 @@
   "import-cache-hit-missing-found-guard-bug": {
     "active": true,
     "id": "0f87-6ab6-0d84-736e",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "import-cache-no-negative-dec": {
+    "active": true,
+    "id": "7854-6ad0-dd61-7fa5",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "import-cache-stale-not-found-obs": {
+    "active": true,
+    "id": "7854-6ad0-dd60-d72f",
     "status": "recorded",
     "type": "obs"
   },
@@ -1584,8 +1686,14 @@
     "type": "dec"
   },
   "import-resolution-cache-req": {
-    "active": true,
+    "active": false,
     "id": "0f87-6ab6-0d57-b619",
+    "status": "superseded",
+    "type": "req"
+  },
+  "import-resolution-cache-req-v2": {
+    "active": true,
+    "id": "7854-6ad0-dd61-31fd",
     "status": "confirmed",
     "type": "req"
   },
@@ -1628,6 +1736,12 @@
   "import-system-includedir-fallback-req": {
     "active": true,
     "id": "0f87-6ac0-c26c-f367",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "import-unresolved-fails-module-not-order-req": {
+    "active": true,
+    "id": "7854-6ad0-c3e9-2220",
     "status": "confirmed",
     "type": "req"
   },
@@ -1937,6 +2051,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "loud-failure-order-and-fetch-dec": {
+    "active": true,
+    "id": "7854-6ad0-c21b-b25f",
+    "status": "recorded",
+    "type": "dec"
+  },
   "macos-multi-pkgmgr-single-vm": {
     "active": true,
     "id": "0f87-6aa9-3edd-8119",
@@ -2008,6 +2128,48 @@
     "id": "6f38-6a91-a2cf-5c3c",
     "status": "confirmed",
     "type": "req"
+  },
+  "mingw-on-cygwin-and-abi-from-compiler-dec": {
+    "active": true,
+    "id": "7854-6ad0-e96c-a03f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mingw-on-cygwin-probe-obs": {
+    "active": true,
+    "id": "7854-6ad0-e96c-ff0a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mingw-on-cygwin-req": {
+    "active": true,
+    "id": "7854-6ad0-e96e-9202",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mingw-sysroot-error-actionable-req": {
+    "active": false,
+    "id": "7854-6ad0-e744-0089",
+    "status": "superseded",
+    "type": "req"
+  },
+  "mingw-sysroot-error-actionable-req-v2": {
+    "active": true,
+    "id": "7854-6ad0-e96e-f36a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mingw-sysroot-error-corrected-dec": {
+    "active": true,
+    "id": "7854-6ad0-e744-a48b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mingw-sysroot-error-dangling-script-obs": {
+    "active": true,
+    "id": "7854-6ad0-e743-01d2",
+    "status": "recorded",
+    "type": "obs"
   },
   "mkdep-style-header-dependency-tracking": {
     "active": true,
@@ -2278,6 +2440,30 @@
     "id": "6f38-6a91-03ec-2589",
     "status": "confirmed",
     "type": "req"
+  },
+  "order-failure-in-query-is-warning-req": {
+    "active": true,
+    "id": "7854-6ad0-c7d8-0c73",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "order-query-failure-is-error-req": {
+    "active": true,
+    "id": "7854-6ad0-c21b-11f3",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "order-query-sys-mk-located-req": {
+    "active": true,
+    "id": "7854-6ad0-c21b-b6d7",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "order-query-sys-mk-not-found-cygwin-obs": {
+    "active": true,
+    "id": "7854-6ad0-c21a-e80e",
+    "status": "recorded",
+    "type": "obs"
   },
   "order-target-blank-run": {
     "active": true,
@@ -3413,9 +3599,33 @@
     "status": "confirmed",
     "type": "req"
   },
+  "win-abi-derived-from-toolchain-dec": {
+    "active": true,
+    "id": "7854-6ad0-e1bf-d7a3",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "win-abi-derived-from-toolchain-req": {
+    "active": false,
+    "id": "7854-6ad0-e1bf-15df",
+    "status": "superseded",
+    "type": "req"
+  },
+  "win-abi-from-compiler-req": {
+    "active": true,
+    "id": "7854-6ad0-e96d-af69",
+    "status": "confirmed",
+    "type": "req"
+  },
   "win-arm64-vm-construction-not-automatable": {
     "active": true,
     "id": "0f87-6a9a-af21-456a",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "win-key-claims-msvc-for-cygwin-obs": {
+    "active": true,
+    "id": "7854-6ad0-e1bf-09b6",
     "status": "recorded",
     "type": "obs"
   },

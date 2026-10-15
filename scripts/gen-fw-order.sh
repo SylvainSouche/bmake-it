@@ -2,6 +2,10 @@
 # gen-fw-order.sh — topological order of frameworks from PREREQS=
 # Writes SUBDIR=... to the given output file
 #
+# A failure (sys.mk not found, a framework makefile bmake cannot parse, a
+# dependency cycle) prints why on stderr and exits non-zero; the caller,
+# mk.workspace.mk, stops the build with it.
+#
 # @impl 0f87-6a98-5f76-2a44
 # REQ-nested-invocation-reentrancy-guard-req: BMAKE must be an absolute path
 # before any nested invocation, and the output file is written via
@@ -40,8 +44,19 @@ fi
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
+# order-query-failure-is-error-req: a PREREQS= query that fails is an
+# error, not "no prerequisites" -- that used to put a framework before the
+# one it depends on, alphabetically (OpenRider before OpenRiderDependencies
+# on Cygwin, 2026-10-15). bmk-query.sh finds sys.mk and runs the query.
+# @impl 7854-6ad0-c2da-1218
+BMK_PROG=gen-fw-order
+. "$(dirname "$0")/bmk-query.sh"
+if [ -n "${BMK_MKDIR:-}" ]; then
+    bmk_find_sys_mk || exit 1
+fi
+
 for name in $fws; do
-    prereqs=$($BMAKE -f "$name/makefile" -V PREREQS 2>/dev/null || true)
+    prereqs=$(bmk_query "$name/makefile" PREREQS) || exit 1
     echo "$prereqs" > "$tmpdir/dep_${name}"
 done
 

@@ -95,6 +95,38 @@ it equals that OS's default (`REQ-target-key-omit-defaults-req`):
 | toolchain | `llvm` | `gcc` |
 | ABI/libc (only where >1 exists) | `msvc` (win); `glibc` (linux); n/a for macos/freebsd | `mingw`, `cygwin` (win); `musl` (linux) |
 
+On `win` the ABI is **read from the compiler**, not taken on trust,
+because the omitted slot claims MSVC's runtime
+(`REQ-win-abi-from-compiler-req`): `TOOLCHAIN=msvc` is `msvc` (`cl.exe`
+has no `-dumpmachine`); otherwise `${CC} -dumpmachine` decides —
+`*cygwin*`/`*cygnus*` → `cygwin` (Cygwin gcc says `x86_64-pc-cygwin`,
+Cygwin clang `x86_64-pc-windows-cygnus`: POSIX output linked against
+`cygwin1.dll`), `*mingw32*`/`*windows-gnu*` → `mingw`, `*windows-msvc*` →
+`msvc`. So a `CC=` override is labelled by what it really is. An
+unrecognized answer is an error naming it; an explicit `ABI=` that
+contradicts the compiler fails the build quoting the compiler's answer.
+The answer is cached in the environment per `CC`, so one build's nested
+makes ask once. Until 2026-10-15 the slot was filled only from an
+explicit `ABI=`, so Cygwin and mingw output were both labelled as
+MSVC's `win-amd64`.
+
+**mingw-w64 output** (`REQ-mingw-on-cygwin-req`) is produced when
+cross-compiling to `win` with a non-MSVC toolchain (tier 2), and on a
+Cygwin host for its own arch with `ABI=mingw`:
+
+| Toolchain | Compiler | Key |
+|---|---|---|
+| `gcc` | `<triple>-gcc`/`-g++`, with `<triple>-ar`/`-ranlib` | `win-amd64-gcc-mingw` |
+| `llvm` | `clang --target=<triple>`; `--sysroot` only from `BMK_MINGW_SYSROOT=`, otherwise clang locates an installed `<triple>-gcc`'s headers, CRT and libgcc itself; linked with `ld.lld` if installed, else `<triple>-ld` | `win-amd64-mingw` |
+
+An explicit Cygwin sysroot (`/usr/x86_64-w64-mingw32/sys-root/mingw`)
+was tested and loses the C++ headers and libgcc, which live outside it
+under `/usr/lib/gcc/x86_64-w64-mingw32/<ver>` — hence no default
+`--sysroot`. A missing compiler, sysroot or linker is an error naming
+the packages that provide them (`REQ-mingw-sysroot-error-actionable-req-v2`).
+Verified on Cygwin with the example workspace: both routes build a
+PE32+ `hello.exe` and DLL with no `cygwin1.dll` dependency, which run.
+
 Phase-1 concrete keys: `macos-arm64`, `macos-arm64-gcc`, `freebsd-amd64`,
 `freebsd-amd64-gcc`. Architecture labels use each platform's native name
 (`arm64`, `amd64` — not `x64`/`x86_64`), matching `uname -m/-p`.

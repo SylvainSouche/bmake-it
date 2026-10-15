@@ -55,7 +55,8 @@ RANLIB ?= ranlib
 #
 # clang is a single binary that targets many platforms via --target/--sysroot
 # -- unlike gcc, which needs a dedicated cross-built binary per target, so
-# real cross support is only implemented here, not in mk.toolchain.gcc.mk.
+# real cross support is only implemented here, not in mk.toolchain.gcc.mk
+# (except mingw-w64, whose gcc builds are commonly packaged: see there).
 #
 # Confirmed empirically before this fix: building TARGET=freebsd from Linux
 # silently produced a native Linux/host-arch ELF binary in build/freebsd-*/,
@@ -132,20 +133,9 @@ _CROSS_FLAGS = --target=${_CROSS_ARCH}-apple-macos${_MACOS_MIN_VERSION} --sysroo
 # explicit rather than relying on that auto-injection.
 _CROSS_FLAGS = --target=${_CROSS_ARCH}-unknown-netbsd --sysroot=${BMK_NETBSD_SYSROOT} \
     -fuse-ld=lld -L${BMK_NETBSD_SYSROOT}/usr/lib
-# win-target-tiered-toolchain-req tier 2: mingw-w64 cross-compilation, no
-# Cygwin/Windows host required (tier 1 -- TOOLCHAIN=msvc or Cygwin-native
-# gcc/llvm run FROM a Cygwin host -- lives in mk.toolchain.msvc.mk and this
-# same file's host-native path, not here).
-# @impl 0f87-6a98-96de-785b
+# TARGET=win: mingw-w64 (tier 2 and ABI=mingw on Cygwin) is set up below,
+# outside this -V/clean-skipped block -- see there.
 .  elif ${TARGET} == "win"
-.    if !defined(BMK_MINGW_SYSROOT) || empty(BMK_MINGW_SYSROOT)
-.      error "Cross-compiling TARGET=win (tier 2, mingw-w64) requires BMK_MINGW_SYSROOT=/path/to/mingw-w64/<triple> -- a directory containing include/ and lib/ for the target triple (e.g. an llvm-mingw or mingw-w64-gcc install's x86_64-w64-mingw32/ subdirectory). See scripts/prep-mingw-sysroot.sh. For a Cygwin-hosted native build instead (tier 1), use TOOLCHAIN=msvc or run this same TOOLCHAIN=llvm build directly from a Cygwin host (no cross flags needed there -- BMK_IS_NATIVE_BUILD=yes)."
-.    endif
-# mingw-w64's own dynamic loader/ABI conventions are handled by its libgcc/
-# CRT startup objects bundled in the sysroot's lib/ -- no separate -L needed
-# beyond --sysroot, unlike NetBSD above (confirmed against llvm-mingw's own
-# documented sysroot layout; not yet verified against a real build here).
-_CROSS_FLAGS = --target=${_CROSS_ARCH}-w64-mingw32 --sysroot=${BMK_MINGW_SYSROOT} -fuse-ld=lld
 #  @impl 0f87-6a98-5de3-c340
 .  else
 .    error "Cross-compiling to TARGET=${TARGET} is not supported -- recognized cross targets are freebsd, linux, macos, netbsd, win. A silently-native build (compiling with no cross flags at all while claiming to target ${TARGET}) is worse than failing loudly here."
@@ -155,6 +145,58 @@ _CROSS_FLAGS = --target=${_CROSS_ARCH}-w64-mingw32 --sysroot=${BMK_MINGW_SYSROOT
 CC  := ${CC} ${_CROSS_FLAGS}
 CXX := ${CXX} ${_CROSS_FLAGS}
 LD  = ${CC}
+.  endif
+.endif
+
+# ---------------------------------------------------------------------------
+# mingw-w64 output (win-target-tiered-toolchain-req tier 2: cross-compiling
+# to win from any host; mingw-on-cygwin-req: ABI=mingw on a Cygwin host for
+# its own arch -- without it, clang there makes Cygwin output).
+#
+# --target is set even for a -V query or clean (only the checks are
+# skipped): mk.common.mk asks this CC for -dumpmachine to label the build,
+# and plain clang would answer with the host's own triple.
+#
+# --sysroot only when BMK_MINGW_SYSROOT is given. Otherwise clang finds an
+# installed mingw-w64 gcc (<triple>-gcc on PATH) and uses its headers, CRT
+# and libgcc itself -- found on Cygwin with mingw64-x86_64-gcc-g++: an
+# explicit --sysroot=/usr/x86_64-w64-mingw32/sys-root/mingw compiled C but
+# lost the C++ headers and libgcc, which live outside it under
+# /usr/lib/gcc/x86_64-w64-mingw32/<ver>; without --sysroot C and C++ both
+# build and link. Linker: lld if installed, else mingw's own GNU ld (bfd),
+# put in LDFLAGS, not CC, so compiles don't warn about an unused flag.
+# @impl 0f87-6a98-96de-785b
+# @impl 7854-6ad0-e970-479a
+# ---------------------------------------------------------------------------
+.if ${_BMK_WIN_MINGW:Uno} == "yes"
+_MINGW_GCC != command -v ${_MINGW_TRIPLE}-gcc 2>/dev/null || true
+_MINGW_LLD != command -v ld.lld 2>/dev/null || true
+_MINGW_BFD != command -v ${_MINGW_TRIPLE}-ld 2>/dev/null || true
+# mingw-sysroot-error-actionable-req-v2: name what is missing and where it
+# comes from -- this error once sent users to a scripts/prep-mingw-
+# sysroot.sh that never existed (2026-10-15).
+# @impl 7854-6ad0-e744-0614
+_MINGW_HELP = clang needs, for ${_MINGW_TRIPLE}: headers, CRT and import libraries, either from an installed mingw-w64 gcc (${_MINGW_TRIPLE}-gcc on PATH, found automatically) or from BMK_MINGW_SYSROOT=<dir with include/ and lib/>; and a linker, ld.lld or ${_MINGW_TRIPLE}-ld. Sources: on Cygwin, mingw64-x86_64-gcc-core and mingw64-x86_64-gcc-g++ (x86_64 only; they bring x86_64-w64-mingw32-ld) and optionally lld; on Debian/Ubuntu, mingw-w64; for aarch64, an llvm-mingw release, whose <install>/${_MINGW_TRIPLE} is a BMK_MINGW_SYSROOT. On a Cygwin host, TOOLCHAIN=msvc gives MSVC output, and llvm or gcc without ABI=mingw give Cygwin (cygwin1.dll) output.
+.  if empty(.MAKEFLAGS:M-V*) && !make(clean)
+.    if !empty(BMK_MINGW_SYSROOT) && (!exists(${BMK_MINGW_SYSROOT}/include) || !exists(${BMK_MINGW_SYSROOT}/lib))
+.      error "BMK_MINGW_SYSROOT=${BMK_MINGW_SYSROOT} is not a mingw-w64 sysroot for ${_MINGW_TRIPLE}: it has no include/ or no lib/ directory. ${_MINGW_HELP}"
+.    elif empty(BMK_MINGW_SYSROOT) && empty(_MINGW_GCC)
+.      error "TARGET=win-${TARGET_ARCH} with TOOLCHAIN=llvm is a mingw-w64 build, and there is no mingw-w64 for ${_MINGW_TRIPLE} here: no BMK_MINGW_SYSROOT, and no ${_MINGW_TRIPLE}-gcc on PATH to take one from. ${_MINGW_HELP}"
+.    elif empty(_MINGW_LLD) && empty(_MINGW_BFD)
+.      error "TARGET=win-${TARGET_ARCH} with TOOLCHAIN=llvm is a mingw-w64 build and has no linker for ${_MINGW_TRIPLE}: neither ld.lld nor ${_MINGW_TRIPLE}-ld is on PATH. ${_MINGW_HELP}"
+.    endif
+.  endif
+_MINGW_FLAGS = --target=${_MINGW_TRIPLE}
+.  if !empty(BMK_MINGW_SYSROOT)
+_MINGW_FLAGS += --sysroot=${BMK_MINGW_SYSROOT}
+.  endif
+CC  := ${CC} ${_MINGW_FLAGS}
+CXX := ${CXX} ${_MINGW_FLAGS}
+LD  = ${CC}
+.  if !empty(_MINGW_LLD)
+LDFLAGS += -fuse-ld=lld
+.  else
+LDFLAGS += -fuse-ld=bfd
 .  endif
 .endif
 

@@ -15,12 +15,14 @@ BMK_SCRIPTS="${BMK_SCRIPTS:-$BMK_ROOT/scripts}"
 
 _SYS_MK="${BMK_SYS_MK:-}"
 if [ -z "$_SYS_MK" ]; then
-    for d in /opt/local/share/mk /usr/share/mk /usr/local/share/mk; do
+    for d in $(bmake -r -f /dev/null -V .SYSPATH 2>/dev/null) \
+             /opt/local/share/mk /usr/share/mk /usr/share/bmake/mk \
+             /usr/local/share/mk /usr/pkg/share/mk /opt/pkg/share/mk; do
         if [ -f "$d/sys.mk" ]; then _SYS_MK=$d; break; fi
     done
 fi
 if [ -z "$_SYS_MK" ]; then
-    echo "run-tests.sh: cannot locate sys.mk (set BMK_SYS_MK=)" >&2
+    echo "run-tests.sh: cannot locate sys.mk (searched bmake's .SYSPATH and the usual install directories; set BMK_SYS_MK=)" >&2
     exit 2
 fi
 
