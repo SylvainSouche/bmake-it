@@ -1379,6 +1379,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-mingw-clang-emulated-tls": {
+    "active": true,
+    "id": "7854-6ad1-4114-22d7",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-mingw-clang-pthread": {
     "active": true,
     "id": "7854-6ad0-fb85-07d4",
@@ -2162,6 +2168,24 @@
   "md-dependency-tracking-freebsd-specific-req": {
     "active": true,
     "id": "6f38-6a91-a2cf-5c3c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "mingw-clang-emulated-tls-dec": {
+    "active": true,
+    "id": "7854-6ad1-4113-0ae8",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "mingw-clang-emulated-tls-obs": {
+    "active": true,
+    "id": "7854-6ad1-4113-8996",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "mingw-clang-emulated-tls-req": {
+    "active": true,
+    "id": "7854-6ad1-4113-d4b4",
     "status": "confirmed",
     "type": "req"
   },

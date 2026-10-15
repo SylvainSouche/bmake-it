@@ -205,6 +205,21 @@ LDFLAGS += -fuse-ld=bfd
 # add -lpthread the same way.
 # @impl 7854-6ad0-fb85-07d4
 LDFLAGS += -pthread
+# mingw-clang-emulated-tls-req: without BMK_MINGW_SYSROOT, clang links the
+# libstdc++ of the installed mingw-w64 gcc, which gcc builds with emulated
+# TLS: its thread-locals exist only as __emutls_v.<name> (e.g. std::
+# call_once's __once_callable/__once_call). clang emits native TLS by
+# default, and std::call_once failed to link (OpenRider, 2026-10-15).
+# -femulated-tls matches it. An llvm-mingw sysroot's own C++ library uses
+# native TLS, so a build given BMK_MINGW_SYSROOT does not get it. The flag
+# is part of every object's compile command, so objects built before it
+# are rebuilt by the inputs hash on the next build.
+# @impl 7854-6ad1-4114-22d7
+.  if empty(BMK_MINGW_SYSROOT)
+CFLAGS   += -femulated-tls
+CXXFLAGS += -femulated-tls
+LDFLAGS  += -femulated-tls
+.  endif
 .endif
 
 .endif # _MK_TOOLCHAIN_LLVM_MK_
