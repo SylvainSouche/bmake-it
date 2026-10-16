@@ -79,8 +79,10 @@ _order_generated != cd ${.CURDIR} && 	BMK_MKDIR='${BMK_MKDIR}' 	MAKESYSPATH='${B
 # order-failure-in-query-is-warning-req: a -V query still answers (as for
 # REQUIRES=/constraint errors); only a build stops.
 # @impl 7854-6ad0-c7d9-13f6
+# clean too: it needs no build order, and must still reach a framework
+# whose order cannot be computed (leftover-module-dir-skipped-and-cleaned-req).
 .  if !empty(_order_generated:MFAILED*)
-.    if empty(.MAKEFLAGS:M-V*)
+.    if empty(.MAKEFLAGS:M-V*) && !make(clean)
 .      error module build order could not be determined (scripts/gen-mod-order.sh failed, its reason is printed above)
 .    else
 .      warning module build order could not be determined (scripts/gen-mod-order.sh failed, its reason is printed above); a build here will stop on it
@@ -103,7 +105,10 @@ SUBDIR_MODULES =
 # installed -- never shipped; `test` is what runs them. Discovery is just
 # the suffix; they need no build order of their own.
 # @impl 0f87-6ac0-d892-bc8f
-SUBDIR_TESTMODS != ls -d *.tst 2>/dev/null || true
+# leftover-module-dir-skipped-and-cleaned-req: a *.tst without a makefile
+# (a leftover after git switch) is not a test module.
+# @impl 7854-6ad2-021e-2621
+SUBDIR_TESTMODS != for _t in *.tst; do [ -f "$$_t/makefile" ] && echo "$$_t"; done; true
 
 # Surface order in verbose builds
 .if make(all) || make(_build_modules)
@@ -335,13 +340,27 @@ copy-up: all
 	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${SHAREDIR_LOCAL} $$_WS/${SHAREDIR_LOCAL}; \
 	echo "===> framework ${.CURDIR:T} copy-up → workspace"
 
+# leftover-module-dir-skipped-and-cleaned-req: a *.m/*.tst with no makefile
+# cannot clean itself -- `make clean` inside it just failed, silently, and
+# its build/ stayed. One holding only build output (bmk_is_leftover: e.g. a
+# module removed by git switch, kept alive by its gitignored build/) is
+# deleted; one holding anything else is reported and left alone.
+# @impl 7854-6ad2-021e-2621
 clean:
 	@# modules: clean each *.m without relying on order generation
-	@for _m in *.m *.tst; do \
+	@BMK_PROG=clean; . ${BMK_MKDIR}/../scripts/bmk-query.sh; \
+	for _m in *.m *.tst; do \
 		[ -d "$$_m" ] || continue; \
-		${MAKE} -C "$$_m" clean \
-			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} || true; \
+		if [ -f "$$_m/makefile" ]; then \
+			${MAKE} -C "$$_m" clean \
+				TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+				${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR} || true; \
+		elif bmk_is_leftover "$$_m"; then \
+			rm -rf "$$_m"; \
+			echo "===> removed leftover $$_m (no makefile, only build output)"; \
+		else \
+			echo "warning: $$_m has no makefile but holds other files ($$(ls -A "$$_m" | tr '\n' ' ')) -- left untouched" >&2; \
+		fi; \
 	done
 .if ${CLEAN_ALL_TARGETS} == "yes"
 	rm -rf ${.CURDIR}/build ${.CURDIR}/distrib
@@ -352,6 +371,8 @@ clean:
 .endif
 	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.gen-fw-order.mk ${.CURDIR}/.depend
 	@find ${.CURDIR} -name '.gen-*.mk' -delete 2>/dev/null || true
+# @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
+	@rmdir ${.CURDIR}/build ${.CURDIR}/distrib 2>/dev/null || true
 
 # @impl 0f87-6a98-7918-e195
 add-prereq:

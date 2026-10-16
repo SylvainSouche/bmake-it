@@ -48,5 +48,7 @@ clean:
 .else
 	rm -rf ${.CURDIR}/${BUILD_ROOT}
 .endif
+# @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
+	@rmdir ${.CURDIR}/build 2>/dev/null || true
 
 .PHONY: all copy-up test docs add-prereq _fw_build_closure clean

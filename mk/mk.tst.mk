@@ -123,6 +123,8 @@ all:
 	@:
 clean:
 	rm -rf ${.CURDIR}/${BUILD_ROOT}
+# @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
+	@rmdir ${.CURDIR}/build 2>/dev/null || true
 .PHONY: all clean
 .  else
 _SK_ROLE = module

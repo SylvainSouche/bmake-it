@@ -65,7 +65,7 @@ _fw_gen != cd ${.CURDIR} && BMK_MKDIR='${BMK_MKDIR}' MAKESYSPATH='${BMK_MKDIR}:$
 # REQUIRES=/constraint errors); only a build stops.
 # @impl 7854-6ad0-c7d9-13f6
 .  if !empty(_fw_gen:MFAILED*)
-.    if empty(.MAKEFLAGS:M-V*)
+.    if empty(.MAKEFLAGS:M-V*) && !make(clean)
 .      error framework build order could not be determined (scripts/gen-fw-order.sh failed, its reason is printed above)
 .    else
 .      warning framework build order could not be determined (scripts/gen-fw-order.sh failed, its reason is printed above); a build here will stop on it
@@ -260,7 +260,7 @@ clean:
 		grep -q '^PREREQS' "$$_f" 2>/dev/null || continue; \
 		${MAKE} -C "$$_d" clean \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} || true; \
+			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR} || true; \
 	done
 .if ${CLEAN_ALL_TARGETS} == "yes"
 	rm -rf ${.CURDIR}/build ${.CURDIR}/distrib ${.CURDIR}/${BUILD_REPORT_DIR} ${.CURDIR}/${TEST_REPORT_DIR}
@@ -281,6 +281,8 @@ clean:
 	rm -f ${.CURDIR}/.gen-fw-order.mk ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend
 	@find ${.CURDIR} -name '.gen-*.mk' -delete 2>/dev/null || true
 	@find ${.CURDIR} -name '.depend' -delete 2>/dev/null || true
+# @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
+	@rmdir ${.CURDIR}/build ${.CURDIR}/distrib 2>/dev/null || true
 
 # Convenience targets (REQ-add-prereq-add-parent-convenience-targets-req)
 # @impl 0f87-6a98-7918-e195

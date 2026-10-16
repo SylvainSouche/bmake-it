@@ -1450,6 +1450,10 @@ clean:
 .if ${CLEAN_ALL_TARGETS} == "yes"
 	rm -rf ${.CURDIR}/distfiles
 .endif
+# clean-leaves-no-empty-build-dirs-req: an empty build/ left here kept the
+# module directory alive after git switch. rmdir only removes it if empty.
+# @impl 7854-6ad2-03bb-077e
+	@rmdir ${.CURDIR}/build 2>/dev/null || true
 
 
 .include "${BMK_MKDIR}/mk.test.mk"

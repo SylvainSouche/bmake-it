@@ -15,6 +15,24 @@
 # missing every non-macOS host (2026-08-31). Look where the invoking bmake
 # itself looks first (the MAKESYSPATH our caller built from .SYSPATH), then
 # the known install directories; finding none is an error naming them all.
+# @impl 7854-6ad2-021e-2621
+# leftover-module-dir-skipped-and-cleaned-req: is directory $1 a leftover
+# rather than a module? True when it has no makefile and every entry in it
+# is build output. git switch leaves exactly that behind for a module the
+# other branch lacks: git does not remove a directory still holding
+# gitignored files, and git status does not show them (2026-10-16).
+bmk_is_leftover() {
+    [ -f "$1/makefile" ] && return 1
+    for _e in "$1"/* "$1"/.[!.]*; do
+        [ -e "$_e" ] || continue
+        case "${_e##*/}" in
+            build|distrib|work|distfiles|.depend|.gen-*.mk) ;;
+            *) return 1 ;;
+        esac
+    done
+    return 0
+}
+
 bmk_find_sys_mk() {
     if [ -n "${BMK_SYS_MK:-}" ]; then
         if [ -f "$BMK_SYS_MK/sys.mk" ]; then

@@ -149,6 +149,12 @@
     "status": "recorded",
     "type": "con"
   },
+  "clean-leaves-no-empty-build-dirs-req": {
+    "active": true,
+    "id": "7854-6ad2-03bb-1a20",
+    "status": "confirmed",
+    "type": "req"
+  },
   "clean-removes-all-derived-artifacts": {
     "active": true,
     "id": "6f38-6a8f-519a-bee9",
@@ -1067,6 +1073,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-clean-leaves-no-empty-build-dirs": {
+    "active": true,
+    "id": "7854-6ad2-03bb-077e",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-copy-up-collision-different-modules-only": {
     "active": true,
     "id": "0f87-6ac0-c275-07a6",
@@ -1328,6 +1340,12 @@
   "impl-ldflags-dedup-hook-timing-fix": {
     "active": true,
     "id": "0f87-6abe-8c3c-9ca3",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-leftover-module-dir": {
+    "active": true,
+    "id": "7854-6ad2-021e-2621",
     "status": "verified",
     "type": "impl"
   },
@@ -1966,6 +1984,24 @@
     "id": "0f87-6abe-8c64-398c",
     "status": "recorded",
     "type": "dec"
+  },
+  "leftover-module-dir-after-git-switch-obs": {
+    "active": true,
+    "id": "7854-6ad2-021d-4c70",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "leftover-module-dir-dec": {
+    "active": true,
+    "id": "7854-6ad2-021d-d60b",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "leftover-module-dir-skipped-and-cleaned-req": {
+    "active": true,
+    "id": "7854-6ad2-021e-8bc3",
+    "status": "confirmed",
+    "type": "req"
   },
   "lib-default-strips-lib-prefix-dec": {
     "active": true,

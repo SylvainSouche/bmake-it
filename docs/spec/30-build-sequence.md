@@ -97,6 +97,19 @@ down as `MAKESYSPATH`), then in the usual install directories. Finding
 none is an error listing every directory searched
 (`REQ-order-query-sys-mk-located-req`).
 
+A `*.m`/`*.tst` directory with **no makefile and nothing but build
+output** (`build/`, `distrib/`, `work/`, `distfiles/`, `.depend`,
+`.gen-*.mk`) is a leftover, not a module — typically one removed by
+`git switch`, whose gitignored `build/` kept the directory alive (git
+does not remove a non-empty directory, and `git status` does not show
+ignored files). Discovery skips it with a warning, and `bmake clean`
+removes it; a makefile-less directory holding anything else is still
+an error and is never touched by `clean`
+(`REQ-leftover-module-dir-skipped-and-cleaned-req`). `clean` never
+needs a build order, so an order failure does not stop it, and at
+every level it removes the `build/`/`distrib/` directories it leaves
+empty (`REQ-clean-leaves-no-empty-build-dirs-req`).
+
 A module whose `IMPORT=` cannot be resolved does not stop the order
 query: that error is skipped during `-V`, as `REQUIRES=`'s is, and
 raised when the module itself is built, so every other module and

@@ -28,9 +28,16 @@ esac
 BMK_PROG=gen-mod-order
 . "$(dirname "$0")/bmk-query.sh"
 
+# leftover-module-dir-skipped-and-cleaned-req: a leftover (no makefile, only
+# build output) is not a module -- say so and go on.
+# @impl 7854-6ad2-021e-2621
 mods=""
 for d in *.m; do
     [ -d "$d" ] || continue
+    if bmk_is_leftover "$d"; then
+        echo "gen-mod-order: warning: skipping $(pwd)/$d -- no makefile, only build output (left over, e.g. a module removed by git switch whose gitignored build/ kept the directory); \`bmake clean\` in $(pwd) removes it" >&2
+        continue
+    fi
     name="${d%.m}"
     mods="$mods $name"
 done
@@ -51,7 +58,7 @@ fi
 # @impl 7854-6ad0-c7d9-13f6
 for name in $mods; do
     if [ ! -f "${name}.m/makefile" ]; then
-        echo "gen-mod-order: error: module directory $(pwd)/${name}.m has no makefile -- every *.m directory is a module and needs one" >&2
+        echo "gen-mod-order: error: module directory $(pwd)/${name}.m has no makefile but is not just build output (it holds: $(ls -A "${name}.m" | tr '\n' ' ')) -- every *.m directory is a module and needs one" >&2
         exit 1
     fi
     _q=$(bmk_query "${name}.m/makefile" "LIBS LIB PROG") || exit 1

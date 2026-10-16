@@ -322,6 +322,10 @@ clean:
 .endif
 	rm -f ${PROG} *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.exe 2>/dev/null || true
 	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
+# clean-leaves-no-empty-build-dirs-req: an empty build/ left here kept the
+# module directory alive after git switch. rmdir only removes it if empty.
+# @impl 7854-6ad2-03bb-077e
+	@rmdir ${.CURDIR}/build 2>/dev/null || true
 
 
 .include "${BMK_MKDIR}/mk.test.mk"
