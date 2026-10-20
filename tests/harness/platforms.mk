@@ -22,14 +22,18 @@
 # (commented out of the active list only) since the fetch/provision recipes
 # and confirmed image URLs are still valid and this may get revisited.
 PLATFORMS = macos_arm64 linux_amd64_emu linux_amd64_vm linux_arm64 \
-            linux_amd64_musl netbsd_arm64
+            linux_amd64_musl netbsd_arm64 freebsd_arm64
 # PLATFORMS += freebsd_amd64 netbsd_amd64   # frozen, see above
 
 # --- macOS (VM, Virtualization.framework via tart) ---------------------
 KIND_macos_arm64        = vm-host
+TARTVM_macos_arm64       = rade-bmake-macos
 ARCH_macos_arm64         = arm64
 TIER_macos_arm64          = 1
 TOOLCHAINS_macos_arm64     = llvm gcc
+
+# IMAGE_<id> (docker platforms): the tag run-native-docker.sh and matrix.sh use.
+# BMAKE_<id> (vm platforms): the make that is bmake on that system.
 
 # --- Linux glibc amd64, Docker + qemu-user emulation --------------------
 KIND_linux_amd64_emu    = docker
@@ -38,6 +42,7 @@ TIER_linux_amd64_emu      = 1
 TOOLCHAINS_linux_amd64_emu = llvm gcc
 DOCKERFILE_linux_amd64_emu = Dockerfile.linux-glibc
 PLATFORM_linux_amd64_emu   = linux/amd64
+IMAGE_linux_amd64_emu = bmk/linux-glibc:amd64
 
 # --- Linux glibc amd64, full QEMU VM (genuine kernel boot) --------------
 KIND_linux_amd64_vm     = vm
@@ -54,6 +59,7 @@ TIER_linux_arm64           = 1
 TOOLCHAINS_linux_arm64      = llvm gcc
 DOCKERFILE_linux_arm64      = Dockerfile.linux-glibc
 PLATFORM_linux_arm64        =
+IMAGE_linux_arm64 = bmk/linux-glibc:arm64
 
 # --- Linux musl amd64, Docker + qemu-user emulation (2nd tier) ----------
 KIND_linux_amd64_musl   = docker
@@ -62,6 +68,7 @@ TIER_linux_amd64_musl     = 2
 TOOLCHAINS_linux_amd64_musl = llvm gcc
 DOCKERFILE_linux_amd64_musl = Dockerfile.linux-musl
 PLATFORM_linux_amd64_musl   = linux/amd64
+IMAGE_linux_amd64_musl = bmk/linux-musl:amd64
 
 # --- FreeBSD amd64, QEMU VM (TCG) ----------------------------------------
 # Frozen set per harness-target-matrix-reconciled-req is {14.4, 15.0, 15.1};
@@ -94,8 +101,67 @@ KIND_netbsd_arm64       = vm
 ARCH_netbsd_arm64         = arm64
 TIER_netbsd_arm64          = 2
 TOOLCHAINS_netbsd_arm64     = llvm gcc
-IMAGE_URL_netbsd_arm64      = https://cdn.netbsd.org/pub/NetBSD/NetBSD-11.0/evbarm-aarch64/binary/gzimg/arm64.img.gz
+# 10.2, not the 11.0 the frozen set names: NetBSD 11.0 panics on Apple silicon
+# under hvf ("unknown CPU ... Illegal Instruction" in cpu_rescan, 2026-10-20);
+# 10.2 boots. Revisit when 11.x runs there (OBS netbsd-11-arm64-hvf-panic).
+IMAGE_URL_netbsd_arm64      = https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.2/evbarm-aarch64/binary/gzimg/arm64.img.gz
 SSH_PORT_netbsd_arm64       = 2222
+
+# --- FreeBSD arm64, QEMU VM (hvf-accelerated on an Apple-silicon host) ----
+# The practical FreeBSD runtime on this host: unlike freebsd_amd64 (TCG,
+# frozen) it boots in well under a minute (harness-arm64-bsd-native-dec).
+KIND_freebsd_arm64      = vm
+ARCH_freebsd_arm64        = arm64
+TIER_freebsd_arm64         = 1
+TOOLCHAINS_freebsd_arm64    = llvm gcc
+IMAGE_URL_freebsd_arm64     = https://download.freebsd.org/releases/VM-IMAGES/15.1-RELEASE/aarch64/Latest/FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.qcow2.xz
+SSH_PORT_freebsd_arm64      = 2226
+
+# --- How a vm platform is fetched, prepared and booted (vm.sh) --------------
+#   IMAGE_FILE  name under $(BMK_CACHE)/images       IMAGE_COMP xz | gz | none
+#   IMAGE_FMT   disk format after decompression      BOOT uefi-arm64 | bios-amd64
+#   MEM         guest MiB (default 2048)             CONSOLE provision/console-<name>.txt
+#   LAYER_SIZE  virtual size of the provisioned layer when the base is too small
+#   PKGSCRIPT   provision/packages-<name>.sh, run in the guest while provisioning:
+#               installs what the suite needs
+#   BLOCKED     if set, the reason vm.sh refuses to boot it
+IMAGE_FILE_freebsd_arm64 = FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.qcow2.xz
+IMAGE_COMP_freebsd_arm64 = xz
+IMAGE_FMT_freebsd_arm64  = qcow2
+BOOT_freebsd_arm64       = uefi-arm64
+MEM_freebsd_arm64        = 2560
+CONSOLE_freebsd_arm64    = freebsd
+PKGSCRIPT_freebsd_arm64   = freebsd
+
+IMAGE_FILE_netbsd_arm64  = NetBSD-10.2-arm64.img.gz
+IMAGE_COMP_netbsd_arm64  = gz
+IMAGE_FMT_netbsd_arm64   = raw
+BOOT_netbsd_arm64        = uefi-arm64
+MEM_netbsd_arm64         = 2560
+CONSOLE_netbsd_arm64     = netbsd
+LAYER_SIZE_netbsd_arm64  = 12G
+PKGSCRIPT_netbsd_arm64   = netbsd
+
+IMAGE_FILE_freebsd_amd64 = FreeBSD-15.1-RELEASE-amd64-ufs.qcow2.xz
+IMAGE_COMP_freebsd_amd64 = xz
+IMAGE_FMT_freebsd_amd64  = qcow2
+BOOT_freebsd_amd64       = bios-amd64
+CONSOLE_freebsd_amd64    = freebsd
+BLOCKED_freebsd_amd64    = QEMU/TCG boot stall on an arm64 host (OBS qemu-tcg-x86-64-boot-stall-on-host); runs where amd64 is native
+
+IMAGE_FILE_netbsd_amd64  = NetBSD-11.0-amd64-live.img.gz
+IMAGE_COMP_netbsd_amd64  = gz
+IMAGE_FMT_netbsd_amd64   = raw
+BOOT_netbsd_amd64        = bios-amd64
+CONSOLE_netbsd_amd64     = netbsd
+BLOCKED_netbsd_amd64     = QEMU/TCG boot stall on an arm64 host (OBS qemu-tcg-x86-64-boot-stall-on-host); runs where amd64 is native
+
+BMAKE_freebsd_arm64 = /usr/bin/make
+BMAKE_netbsd_arm64  = /usr/bin/make
+BMAKE_freebsd_amd64 = /usr/bin/make
+BMAKE_netbsd_amd64  = /usr/bin/make
+
+VM_PLATFORMS = freebsd_arm64 netbsd_arm64 freebsd_amd64 netbsd_amd64
 
 # --- Pending, documented only ---------------------------------------------
 # windows: tier 1 native MSVC + Cygwin (gcc/llvm), tier 2 mingw-w64 cross.

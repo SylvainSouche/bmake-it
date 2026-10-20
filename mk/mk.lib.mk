@@ -511,7 +511,7 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # .pc file it came from (pcfiledir, which pkgconf and freedesktop
 # pkg-config both report) and its mtime, and is discarded when that file
 # is gone or changed -- an upgraded or removed package is re-resolved, at
-# the cost of an exists() and a :mtime, no subprocess. The cache is a
+# the cost of an exists() and one stat (not make's :mtime, see _BMK_MTIME). The cache is a
 # makefile fragment, .include'd: reading it forks nothing either (it was
 # eight sed calls). The old line-based .import-resolve-cache is removed.
 # @impl 0f87-6ab6-0d63-eb19
@@ -519,6 +519,11 @@ _IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache.mk
 _IMPORT_CACHE_OLD  = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
 _IMPORT_KEY = V=3 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} OS_ARCH=${OS_ARCH} CC=${CC} PC=${_BMK_PKG_CONFIG} PCENV=${_BMK_PKG_CONFIG_ENV}
 _IMPORT_FP := ${_IMPORT_KEY:hash}
+# A file's modification time in seconds. Not make's :mtime modifier: bmake
+# 20200710 (Debian/Ubuntu) and NetBSD's older make do not have it, and an
+# unknown modifier is fatal. GNU stat takes -c, BSD stat -f; the one that does
+# not apply fails and the other answers. @impl 0f87-6ad7-1f32-4d7a
+_BMK_MTIME = stat -c %Y @F@ 2>/dev/null || stat -f %m @F@ 2>/dev/null || echo 0
 _IC_FP =
 .    if exists(${_IMPORT_CACHE_FILE})
 .      include "${_IMPORT_CACHE_FILE}"
@@ -527,8 +532,11 @@ _IMPORT_CACHE_VALID = no
 .    if "${_IC_FP}" == "${_IMPORT_FP}" && "${_IC_FOUND:Uno}" == "yes"
 .      if empty(_IC_PCFILE)
 _IMPORT_CACHE_VALID = yes
-.      elif exists(${_IC_PCFILE}) && "${_IC_PCFILE:mtime}" == "${_IC_PCMTIME:U0}"
+.      elif exists(${_IC_PCFILE})
+_IC_PCNOW != ${_BMK_MTIME:S,@F@,${_IC_PCFILE},g}
+.        if "${_IC_PCNOW}" == "${_IC_PCMTIME:U0}"
 _IMPORT_CACHE_VALID = yes
+.        endif
 .      endif
 .    endif
 .    if ${_IMPORT_CACHE_VALID} == "yes"
@@ -555,7 +563,7 @@ _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=libdir ${_IMP
 _IMPORT_PCDIR   != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=pcfiledir ${_IMPORT_PKGNAME} 2>/dev/null
 .        if !empty(_IMPORT_PCDIR) && exists(${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc)
 _IMPORT_PCFILE  = ${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc
-_IMPORT_PCMTIME := ${_IMPORT_PCFILE:mtime}
+_IMPORT_PCMTIME != ${_BMK_MTIME:S,@F@,${_IMPORT_PCFILE},g}
 .        endif
 # import-system-includedir-fallback-req: pkg-config omits -I<dir> for a
 # SYSTEM directory (/usr/include on Linux), so --cflags can be empty for
@@ -1071,6 +1079,7 @@ _stage_import:
 # checked for before use and their result checked after -- a missing unzip
 # once "extracted" nothing, said so, and cached it (2026-10-15).
 # @impl 7854-6ad0-c2db-ec05
+# @impl 0f87-6ad7-1f32-4d7a
 _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
@@ -1095,8 +1104,14 @@ _fetch_import:
 				if _msg=$$(curl -fsSL -o "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
 			elif _dl=$$(command -v wget 2>/dev/null); then \
 				if _msg=$$(wget -nv -O "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
+			elif case "$$(uname -s)" in \
+				FreeBSD|DragonFly) _dl=$$(command -v fetch 2>/dev/null); _dlq=-q ;; \
+				NetBSD|OpenBSD) _dl=$$(command -v ftp 2>/dev/null); _dlq= ;; \
+				*) _dl= ;; \
+				esac; [ -n "$$_dl" ]; then \
+				if _msg=$$("$$_dl" $$_dlq -o "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
 			else \
-				echo "error: IMPORT=${IMPORT}: cannot fetch $$_url -- neither curl nor wget is on PATH" >&2; exit 1; \
+				echo "error: IMPORT=${IMPORT}: cannot fetch $$_url -- none of curl, wget or this system's own fetcher (fetch on FreeBSD, ftp on NetBSD/OpenBSD) is on PATH" >&2; exit 1; \
 			fi; \
 			if [ "$$_rc" != 0 ]; then \
 				rm -f "$$_dist.tmp"; \

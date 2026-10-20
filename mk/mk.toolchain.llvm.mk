@@ -131,8 +131,15 @@ _CROSS_FLAGS = --target=${_CROSS_ARCH}-apple-macos${_MACOS_MIN_VERSION} --sysroo
 # found empirically: ld.lld reported "unable to find library -lc" even
 # though usr/lib/libc.so genuinely existed in the sysroot. -L makes it
 # explicit rather than relying on that auto-injection.
+# NetBSD's ld.elf_so maps at most two PT_LOAD segments and does not take a
+# GNU_RELRO one, but lld by default splits code from read-only data
+# (-z separate-code: four PT_LOAD) and adds RELRO. A shared library so linked
+# is rejected at run time with only "Shared object ... not found" (found by
+# running the cross-built Hello on a real NetBSD 10.2 guest). Native NetBSD
+# libraries have two segments; ask lld for the same.
+# @impl 0f87-6ad7-1f32-4d7a
 _CROSS_FLAGS = --target=${_CROSS_ARCH}-unknown-netbsd --sysroot=${BMK_NETBSD_SYSROOT} \
-    -fuse-ld=lld -L${BMK_NETBSD_SYSROOT}/usr/lib
+    -fuse-ld=lld -L${BMK_NETBSD_SYSROOT}/usr/lib -Wl,-z,noseparate-code -Wl,--no-rosegment -Wl,-z,norelro
 # TARGET=win: mingw-w64 (tier 2 and ABI=mingw on Cygwin) is set up below,
 # outside this -V/clean-skipped block -- see there.
 .  elif ${TARGET} == "win"

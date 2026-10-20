@@ -10,6 +10,12 @@ EXEC_PLATFORM="${3:-}"      # e.g. linux/amd64, empty = host arch
 LOG="${4:?}"
 
 mkdir -p "$(dirname "$LOG")"
+# The container runtime shares $HOME, not necessarily the drive the cache is
+# on: run from a local copy of the artifact.
+stage=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")
+trap 'rm -rf "$stage"' EXIT
+cp -R "$ARTIFACT_DIR" "$stage/Hello"
+ARTIFACT_DIR="$stage/Hello"
 set +e
 docker run --rm ${EXEC_PLATFORM:+--platform "$EXEC_PLATFORM"} \
     -v "$ARTIFACT_DIR:/hello:ro" debian:bookworm-slim sh -c "

@@ -1,4 +1,5 @@
 #!/bin/sh
+# @impl 0f87-6ad7-1929-a1bb
 # vm-lib.sh — shared QEMU boot/ssh-wait helpers for the VM-hosted platforms.
 # Not directly executable; sourced by provision/provision-vm.sh and friends.
 #
@@ -10,14 +11,22 @@
 # unlocked root account (FreeBSD's plain VM-IMAGE) or one this session
 # already provisioned with an authorized_keys entry (NetBSD).
 
+# Guests trust the harness key ($HARNESS_KEY, set by vm.sh); older callers
+# that set nothing keep ssh's default identities.
+_vm_ssh_opts() {
+    printf '%s' "-F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR"
+    _k=${HARNESS_KEY:-${BMK_CACHE:-$HOME/.bmk-cache}/keys/harness_ed25519}
+    [ -f "$_k" ] && printf ' %s' "-i $_k -o IdentitiesOnly=yes"
+    return 0
+}
+
 vm_wait_ssh() {
     # vm_wait_ssh <port> <timeout-seconds>
     port="${1:?}"
     timeout="${2:-180}"
     waited=0
     while [ "$waited" -lt "$timeout" ]; do
-        if ssh -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=3 -o BatchMode=yes -p "$port" root@localhost 'true' >/dev/null 2>&1; then
+        if ssh $(_vm_ssh_opts) -o ConnectTimeout=3 -o BatchMode=yes -p "$port" root@localhost 'true' >/dev/null 2>&1; then
             return 0
         fi
         sleep 3
@@ -30,8 +39,7 @@ vm_wait_ssh() {
 vm_ssh() {
     # vm_ssh <port> <command...>
     port="${1:?}"; shift
-    ssh -F /dev/null -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-        -o ConnectTimeout=5 -p "$port" root@localhost "$@"
+    ssh $(_vm_ssh_opts) -o ConnectTimeout=5 -p "$port" root@localhost "$@"
 }
 
 vm_scp_in() {
@@ -71,5 +79,6 @@ vm_shutdown() {
         sleep 2
         n=$((n + 2))
     done
-    kill -0 "$pid" 2>/dev/null && kill "$pid" 2>/dev/null
+    if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null || true; fi
+    return 0
 }

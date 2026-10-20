@@ -38,6 +38,18 @@ _GCC_CC != _found=""; \
 .  if !empty(_GCC_CC)
 CC  = ${_GCC_CC}
 CXX = ${_GCC_CC:S/gcc$/g++/}
+# @impl 0f87-6ad7-1f32-4d7a
+# A ports/pkgsrc gcc on a BSD keeps its runtime (libgcc_s, libstdc++) outside
+# the system library path and records no rpath to it: a C++ binary then loads
+# the base system's older libgcc_s and will not start (FreeBSD 15.1 with
+# gcc14: "version GCC_4.5.0 required by libstdc++.so.6 not found").
+.    if ${_HOST_OS} == "freebsd" || ${_HOST_OS} == "netbsd" || ${_HOST_OS} == "openbsd" || ${_HOST_OS} == "dragonfly"
+_GCC_RT_DIR != _f=$$(${_GCC_CC} -print-file-name=libgcc_s.so 2>/dev/null); \
+    case "$$_f" in /usr/lib/*|/lib/*) ;; /*) dirname "$$_f" ;; esac
+.      if !empty(_GCC_RT_DIR)
+LDFLAGS += -Wl,-rpath,${_GCC_RT_DIR}
+.      endif
+.    endif
 .  else
 .    error "TOOLCHAIN=gcc: no gcc found on PATH or this OS's known install prefixes (${_TOOL_PREFIXES}). Add gcc to PATH, set TOOLCHAIN=llvm, or set CC=/path/to/gcc explicitly."
 .  endif
