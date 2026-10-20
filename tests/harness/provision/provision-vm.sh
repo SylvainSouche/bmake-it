@@ -1,6 +1,11 @@
 #!/bin/sh
 # provision-vm.sh <platform-id> <image-path> <ssh-port>
 #
+# SUPERSEDED by vm.sh for freebsd_arm64 and netbsd_arm64 (layered disks, key
+# injection over the console, no repeated provisioning). Kept only for the
+# platforms vm.sh does not drive yet: linux_amd64_vm (cloud-init seed) and the
+# frozen amd64 BSDs.
+#
 # Boots the given VM headless (QEMU), waits for ssh, then installs the
 # packages that platform needs (idempotent -- skips if bmake+clang+gcc are
 # already present, so re-provisioning after a prior successful run is fast).
@@ -15,7 +20,7 @@ SSH_PORT="${3:?}"
 HARNESS_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 . "$HARNESS_DIR/vm-lib.sh"
 
-PIDFILE="$HOME/.bmk-cache/images/.$PLATFORM.qemu.pid"
+PIDFILE="${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.qemu.pid"
 
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
     echo "provision-vm.sh: $PLATFORM already running (pid $(cat "$PIDFILE")), reusing"
@@ -28,8 +33,8 @@ else
             qemu-system-x86_64 -M pc -accel tcg -cpu qemu64 -smp 2 -m 2048 \
                 -drive if=virtio,format=qcow2,file="$IMAGE" \
                 -device virtio-net-pci,netdev=n0 -netdev "user,id=n0,hostfwd=tcp::${SSH_PORT}-:22" \
-                -nographic -serial file:"$HOME/.bmk-cache/images/.$PLATFORM.serial.log" -monitor none -display none \
-                >"$HOME/.bmk-cache/images/.$PLATFORM.console.log" 2>&1 &
+                -nographic -serial file:"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.serial.log" -monitor none -display none \
+                >"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.console.log" 2>&1 &
             echo $! > "$PIDFILE"
             ;;
         netbsd_amd64)
@@ -37,14 +42,14 @@ else
                 -drive if=virtio,format=raw,file="$IMAGE" \
                 -device virtio-net-pci,netdev=n0 -netdev "user,id=n0,hostfwd=tcp::${SSH_PORT}-:22" \
                 -device virtio-rng-pci \
-                -nographic -serial file:"$HOME/.bmk-cache/images/.$PLATFORM.serial.log" -monitor none -display none \
-                >"$HOME/.bmk-cache/images/.$PLATFORM.console.log" 2>&1 &
+                -nographic -serial file:"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.serial.log" -monitor none -display none \
+                >"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.console.log" 2>&1 &
             echo $! > "$PIDFILE"
             ;;
         netbsd_arm64)
             EDK2_CODE=$(find /opt/local/share -iname "edk2-aarch64-code.fd" 2>/dev/null | head -1)
             [ -n "$EDK2_CODE" ] || { echo "provision-vm.sh: edk2-aarch64-code.fd not found (port install qemu should provide it)" >&2; exit 2; }
-            EDK2_VARS="$HOME/.bmk-cache/images/.$PLATFORM.edk2-vars.fd"
+            EDK2_VARS="${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.edk2-vars.fd"
             [ -f "$EDK2_VARS" ] || dd if=/dev/zero of="$EDK2_VARS" bs=1m count=64 2>/dev/null
             qemu-system-aarch64 -M virt,highmem=off -accel hvf -cpu host -smp 2 -m 2560 \
                 -drive if=pflash,format=raw,readonly=on,file="$EDK2_CODE" \
@@ -52,12 +57,12 @@ else
                 -drive if=virtio,format=raw,file="$IMAGE" \
                 -device virtio-net-pci,netdev=n0 -netdev "user,id=n0,hostfwd=tcp::${SSH_PORT}-:22" \
                 -device virtio-rng-pci \
-                -nographic -serial file:"$HOME/.bmk-cache/images/.$PLATFORM.serial.log" -monitor none -display none \
-                >"$HOME/.bmk-cache/images/.$PLATFORM.console.log" 2>&1 &
+                -nographic -serial file:"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.serial.log" -monitor none -display none \
+                >"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.console.log" 2>&1 &
             echo $! > "$PIDFILE"
             ;;
         linux_amd64_vm)
-            SEED="$HOME/.bmk-cache/images/.$PLATFORM.seed.iso"
+            SEED="${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.seed.iso"
             SEED_DIR=$(mktemp -d)
             cat > "$SEED_DIR/user-data" <<'CLOUDINIT'
 #cloud-config
@@ -83,8 +88,8 @@ CLOUDINIT
                 -drive if=virtio,format=qcow2,file="$IMAGE" \
                 -drive if=virtio,format=raw,file="$SEED",readonly=on \
                 -device virtio-net-pci,netdev=n0 -netdev "user,id=n0,hostfwd=tcp::${SSH_PORT}-:22" \
-                -nographic -serial file:"$HOME/.bmk-cache/images/.$PLATFORM.serial.log" -monitor none -display none \
-                >"$HOME/.bmk-cache/images/.$PLATFORM.console.log" 2>&1 &
+                -nographic -serial file:"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.serial.log" -monitor none -display none \
+                >"${BMK_CACHE:-$HOME/.bmk-cache}/images/.$PLATFORM.console.log" 2>&1 &
             echo $! > "$PIDFILE"
             ;;
         *)

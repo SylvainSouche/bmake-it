@@ -193,14 +193,38 @@ Open: whether the lockfile is in the first design
 
 ## Known gaps in today's tooling
 
-Found while writing this chapter, in the harness that tests Bmake It itself
-(not in the product):
+In the harness that tests Bmake It itself (not in the product), as of
+2026-10-20. The gaps found while writing this chapter — the ignored
+`tests/harness/build/` directory, the hardcoded `~/.bmk-cache`, the stale
+FreeBSD/NetBSD image URLs, the unwired VM platforms — are closed: the scripts
+are tracked, `BMK_CACHE` and `BMK_RUN` set where things live, `vm.sh` fetches,
+provisions and boots the guests, and `matrix.sh` runs every cell of
+`matrix.tsv` and says why a cell cannot run. Still open:
 
-- `tests/harness/build/` is matched by the `build/` pattern in `.gitignore`, so
-  its build scripts are not in git and `make build` fails on a fresh clone.
-- The harness Makefile looks in `~/.bmk-cache` and for Docker tags `bmk/*`; the
-  cache that exists on the maintainer's machine is `~/.rade-bmake-cache` with
-  `rade-bmake/*` tags, so the next run would fetch and build everything again.
-- The VM-hosted platforms (macOS under tart, NetBSD under QEMU, a Linux
-  amd64 VM) are scaffolded, not wired up; FreeBSD and NetBSD amd64 are frozen by
-  a QEMU/TCG boot stall; Windows has no entry at all.
+- **amd64 BSD guests.** FreeBSD and NetBSD amd64 stall under QEMU's software
+  emulation on an arm64 host, so their native cells and the run half of their
+  cross cells are *blocked*, with that reason in `matrix.tsv`; the cross
+  *builds* for them pass.
+- **NetBSD 11.x** panics on Apple silicon under hvf (`unknown CPU ... Illegal
+  Instruction`), so the arm64 guest is pinned to NetBSD 10.2.
+- **Cross to macOS** builds but does not link from the Debian 13 container:
+  its lld (LLVM 19) cannot read the current macOS SDK's TAPI stubs. A newer
+  LLVM in the image, or an older SDK, closes it.
+- **Windows**: no guest and no sysroot recipe yet (the cell is a *gap*). The
+  EWDK (MSVC build tools, verified) is cached for when there is one; a Windows
+  arm64 guest cannot be built unattended.
+- **The macOS guest** is a tart VM provisioned by hand once
+  (`provision-macos-vm.sh`, `provision/packages-macos.sh`); it has no
+  layers/reset like the QEMU guests.
+- **Emulated Linux platforms** (amd64 on an arm64 host) flake under load: a
+  case that passes only on a retry is reported as flaky, never hidden.
+- **Big stores on an exFAT drive.** The cache (`BMK_CACHE`) holds only regular
+  files, so it can live on an exFAT external drive. exFAT has no sparse files,
+  symlinks or clones, and such a drive may be slow (the maintainer's writes at
+  about 10 MB/s): an APFS sparse image on it was tried and measured at 1.5 MB/s,
+  so anything a VM *runs from* (tart's macOS VM, container storage) stays on the
+  fast local disk, cold data goes to the drive as one compressed archive, and
+  data a registry can serve again (tart's cached base images) is not stored
+  twice.
+- Container images keep the `bmk/*` tags; a machine that built them under the
+  earlier `rade-bmake/*` tags needs `docker tag` once (see `tests/README.md`).

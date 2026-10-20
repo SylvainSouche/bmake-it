@@ -86,7 +86,13 @@ _REQUIRES_FOUND.${_r} != (command -v ${_BMK_PKG_CONFIG} >/dev/null 2>&1 && env $
 .      if empty(_BMK_PKG_CONFIG)
 .        error "REQUIRES=${_r}: not found on PATH, and not checked with pkg-config -- ${_BMK_PKG_CONFIG_MISSING}"
 .      else
-.        error "REQUIRES=${_r}: not found via ${_BMK_PKG_CONFIG} ${_BMK_PKG_CONFIG_ENV} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.        # @impl 0f87-6ad7-1f32-4d7a
+.        if empty(_BMK_PKG_CONFIG_ENV)
+_REQUIRES_VIA = ${_BMK_PKG_CONFIG}
+.        else
+_REQUIRES_VIA = ${_BMK_PKG_CONFIG} (with ${_BMK_PKG_CONFIG_ENV})
+.        endif
+.        error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
 .      endif
 .    endif
 .  endif

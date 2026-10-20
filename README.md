@@ -44,7 +44,7 @@ on the host:
 
 `flex`/`bison` (or `yacc`/`lex`) are only needed if a module has `.y`/
 `.l` grammar sources — optional otherwise. `IMPORT=fetch:`/`fetch-bin:`
-modules need `curl` or `wget`, `sha256sum` or `shasum`, `tar` (and
+modules need `curl`, `wget` or the system's own downloader (`fetch` on FreeBSD, `ftp` on NetBSD/OpenBSD), `sha256sum` or `shasum`, `tar` (and
 `unzip` for a `.zip` distfile), and `patch` when `FETCH_PATCHES=` is set
 — on Cygwin, `unzip` and `patch` are separate packages in its installer;
 a missing one is reported by name.

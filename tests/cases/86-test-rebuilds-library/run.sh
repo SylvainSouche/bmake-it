@@ -6,6 +6,12 @@
 set -eu
 command -v kyua >/dev/null 2>&1 || exit 77
 pkg-config --exists atf-c++ 2>/dev/null || exit 77
+# An ATF C++ library built with another C++ runtime than this compiler's
+# (FreeBSD packages: libc++; gcc: libstdc++) cannot be linked at all: skip.
+case "${TOOLCHAIN:-}" in gcc) _cxx=g++ ;; *) _cxx=c++ ;; esac
+_p=$(mktemp -d); printf '#include <atf-c++.hpp>\nATF_TEST_CASE(t); ATF_TEST_CASE_HEAD(t) {} ATF_TEST_CASE_BODY(t) {}\nATF_INIT_TEST_CASES(tcs) { ATF_ADD_TEST_CASE(tcs, t); }\n' > "$_p/p.cpp"
+$_cxx $(pkg-config --cflags atf-c++) "$_p/p.cpp" $(pkg-config --libs atf-c++) -o "$_p/p" >/dev/null 2>&1 || { rm -rf "$_p"; exit 77; }
+rm -rf "$_p"
 
 cd ws/Fw/libcnt.m
 # The test expects the value the library returns NOW (1) -- passes.

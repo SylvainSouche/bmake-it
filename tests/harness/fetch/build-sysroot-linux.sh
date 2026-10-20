@@ -32,8 +32,12 @@ esac
 
 DEST_DIR=$(CDPATH= cd -- "$(dirname "$DEST")" && pwd)
 DEST_NAME=$(basename "$DEST")
+# The container runtime shares $HOME, not necessarily the drive the cache is
+# on: build into a local directory and move the tar into place afterwards.
+STAGE=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")
+trap 'rm -rf "$STAGE"' EXIT
 
-docker run --rm --platform "$PLATFORM" -v "$DEST_DIR:/out" debian:bookworm-slim sh -c '
+docker run --rm --platform "$PLATFORM" -v "$STAGE:/out" debian:bookworm-slim sh -c '
 set -e
 apt-get update -qq >/dev/null && apt-get install -y -qq libc6-dev gcc >/dev/null 2>&1
 mkdir -p /sysroot/usr/include /sysroot/usr/lib /sysroot/lib /sysroot/lib64 /sysroot/usr/lib/gcc
@@ -57,4 +61,5 @@ cd /sysroot && tar --no-xattrs --no-acls --no-mac-metadata -cf "/out/'"$DEST_NAM
     || tar -cf "/out/'"$DEST_NAME"'" .
 '
 
+mv "$STAGE/$DEST_NAME" "$DEST"
 echo "build-sysroot-linux.sh: wrote $DEST ($ARCH, $(du -h "$DEST" | cut -f1))"

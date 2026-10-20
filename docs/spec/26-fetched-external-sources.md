@@ -133,7 +133,7 @@ with no network I/O, unlike `pkg:`/`prefix:`'s real `!=` shell-outs.
    already exists in `distfiles/` is reused without any network access,
    which is also what makes a fingerprint change with the *same*
    basename (e.g. a mirror swapped out) succeed without re-fetching.
-   The downloader is `curl`, else `wget`. Each failed entry is reported
+   The downloader is `curl`, else `wget`, else the system's own (`fetch` on FreeBSD and DragonFly, `ftp` on NetBSD and OpenBSD; a bare FreeBSD has neither curl nor wget). Each failed entry is reported
    as it happens — the downloader's resolved path, its exit status and
    its own message — and if none succeeds the error lists every attempt
    (`REQ-fetch-failure-explained-req`). On Cygwin without Cygwin's own

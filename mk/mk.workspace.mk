@@ -430,15 +430,16 @@ _ws_test_build:
 		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
 		|| { echo "===> tests not run: the build failed" >&2; exit 1; }
 
+# @impl 0f87-6ad7-1f32-4d7a (status captured with `|| _trc=$$?`, see _run_tests in mk.framework.mk)
 test:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@if [ -z "${FW}" ] || [ "${_f}" = "${FW}" ]; then \
 		_rundir=${.CURDIR}/${_f}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+		_trc=0; \
 		${MAKE} -C ${_f} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}" BMK_TEST_BUILT=yes; \
-		_trc=$$?; \
+			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}" BMK_TEST_BUILT=yes || _trc=$$?; \
 		if [ "$$_trc" -ne 0 ]; then \
 			touch "$$_rundir/test.failed"; \
 			if [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \
