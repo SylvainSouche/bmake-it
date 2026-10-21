@@ -128,7 +128,10 @@ CXXFLAGS += -I${_FWDIR}/${BUILD_ROOT}/include
 .endif
 
 .if exists(${_FWDIR}/makefile)
-_PREREQS != bmake -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
+# @impl 0f87-6ad7-d974-4a81
+# ${MAKE}, not a command named bmake: NetBSD has no bmake (its make is /usr/bin/make),
+# and 2>/dev/null || true would hide the failure as an empty PREREQS.
+_PREREQS != ${MAKE} -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
 .  for _p in ${_PREREQS}
 # REQ-headers-resolved-from-source-req: a PREREQS framework is resolved
 # first within the current workspace, then falling back through PARENT_WS
@@ -146,7 +149,7 @@ _PREREQ_BASE.${_p} = ${_pws}
 .    if defined(_PREREQ_BASE.${_p})
 # public-headers-system-req (D3): see mk.prog.mk's identical comment.
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
-_PREREQ_SYS.${_p} != bmake -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
+_PREREQ_SYS.${_p} != ${MAKE} -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
 .      endif
 .      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
 _INCFLAG.${_p} = -isystem

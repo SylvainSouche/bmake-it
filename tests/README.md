@@ -234,6 +234,7 @@ sh tests/harness/pack-cases.sh
 | 93 | A static `OPENMP=yes` library used through `LIBS=` by a module that does not set `OPENMP=` links, and `.linkdeps` records `-fopenmp` (skips without an OpenMP runtime) |
 | 94 | `bmake run PROGRAM=<x>` runs any program through the build environment: a built program with arguments (from the workspace and from a module dir), the `PATH`/library/`BMK_*` chains, the caller's environment inherited, a program built only in a `PARENT_WS` found, an error naming the chain for a missing one, and an interactive `sh`/`bash`/`zsh` whose own startup file resets `PATH` still ends up with the workspace bin first and the user's rc having run (with a control proving the rc really resets it) |
 | 95 | `bmake docs` opt-in knobs: a framework with no public `include/` but `DOC_INPUT_EXTRA=` (local/include + a module's `src/`) is documented, headers only, and `DOC_WARN_IF_UNDOCUMENTED=YES` reports exactly its one undocumented entity; a framework setting nothing gets the unchanged Doxyfile; `DOC_EXTRACT_PRIVATE=YES` is passed through (skips doxygen if not installed) |
+| 96 | The product asks the make that is running (`${MAKE}`), never a command named `bmake`: a `PREREQS=` workspace builds, prerequisite headers found, through a copy of the make under another name with a failing `bmake` first on `PATH` that records any call to it (NetBSD has no `bmake`; found building OpenRider) |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

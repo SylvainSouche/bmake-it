@@ -1487,6 +1487,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-make-not-named-bmake": {
+    "active": true,
+    "id": "0f87-6ad7-d974-4a81",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-mingw-clang-emulated-tls": {
     "active": true,
     "id": "7854-6ad1-4114-22d7",
@@ -2267,6 +2273,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "make-name-not-assumed-req": {
+    "active": true,
+    "id": "0f87-6ad7-d974-5a80",
+    "status": "confirmed",
+    "type": "req"
+  },
   "make-port-deferred": {
     "active": true,
     "id": "6f38-6a8c-2025-9f02",
@@ -2284,6 +2296,12 @@
     "id": "0f87-6a94-6a49-e347",
     "status": "confirmed",
     "type": "req"
+  },
+  "make-run-as-bmake-by-name-obs": {
+    "active": true,
+    "id": "0f87-6ad7-d973-ab1d",
+    "status": "recorded",
+    "type": "obs"
   },
   "md-dependency-tracking-freebsd-specific-req": {
     "active": true,
@@ -3298,6 +3316,12 @@
     "id": "0f87-6ac1-0a1e-36c2",
     "status": "confirmed",
     "type": "req"
+  },
+  "sub-make-is-the-running-make-dec": {
+    "active": true,
+    "id": "0f87-6ad7-d974-cb94",
+    "status": "recorded",
+    "type": "dec"
   },
   "supported-languages": {
     "active": true,
