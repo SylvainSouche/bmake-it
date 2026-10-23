@@ -3539,6 +3539,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "toolchain-error-names-valid-ones-dec": {
+    "active": true,
+    "id": "0f87-6adb-1364-a1f4",
+    "status": "recorded",
+    "type": "dec"
+  },
   "toolchain-in-target-key": {
     "active": true,
     "id": "6f38-6a89-bb64-3c5c",
@@ -3728,6 +3734,18 @@
   "unit-test-per-language-tool-pluggable-req": {
     "active": true,
     "id": "0f87-6aa8-0975-8512",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "unknown-toolchain-error-unhelpful-obs": {
+    "active": true,
+    "id": "0f87-6adb-1364-ceb0",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "unknown-toolchain-names-valid-ones-req": {
+    "active": true,
+    "id": "0f87-6adb-1364-d578",
     "status": "confirmed",
     "type": "req"
   },
