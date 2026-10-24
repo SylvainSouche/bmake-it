@@ -347,11 +347,35 @@
     "status": "recorded",
     "type": "dec"
   },
+  "cross-import-from-sysroot-dec": {
+    "active": true,
+    "id": "0f87-6adc-d562-0e7f",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-import-from-sysroot-req": {
+    "active": true,
+    "id": "0f87-6adc-d562-e6c5",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-import-host-pc-obs": {
+    "active": true,
+    "id": "0f87-6adc-d562-2b27",
+    "status": "recorded",
+    "type": "obs"
+  },
   "cross-platform-targets": {
     "active": true,
     "id": "6f38-6a88-1836-d9b9",
     "status": "recorded",
     "type": "con"
+  },
+  "cross-requires-from-sysroot-req": {
+    "active": true,
+    "id": "0f87-6adc-d727-47b4",
+    "status": "confirmed",
+    "type": "req"
   },
   "cross-sysroot-os-only-obs": {
     "active": true,
@@ -382,6 +406,12 @@
     "id": "0f87-6a98-5d9c-ef85",
     "status": "recorded",
     "type": "obs"
+  },
+  "cross-test-local-emulated-req": {
+    "active": true,
+    "id": "0f87-6adc-d562-5864",
+    "status": "confirmed",
+    "type": "req"
   },
   "cross-test-needs-runner-req": {
     "active": true,
@@ -1259,10 +1289,28 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-cross-import-from-sysroot": {
+    "active": true,
+    "id": "0f87-6adc-d562-f11c",
+    "status": "verified",
+    "type": "impl"
+  },
+  "impl-cross-pkg-config-env": {
+    "active": true,
+    "id": "0f87-6adc-d727-1a3b",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-cross-target-catch-all-error": {
     "active": true,
     "id": "0f87-6a98-5de3-c340",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-test-local-emulated": {
+    "active": true,
+    "id": "0f87-6adc-d562-38f8",
+    "status": "verified",
     "type": "impl"
   },
   "impl-cross-test-runner": {

@@ -92,7 +92,12 @@ _REQUIRES_VIA = ${_BMK_PKG_CONFIG}
 .        else
 _REQUIRES_VIA = ${_BMK_PKG_CONFIG} (with ${_BMK_PKG_CONFIG_ENV})
 .        endif
-.        error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.        # @impl 0f87-6adc-d727-1a3b
+.        if ${BMK_IS_NATIVE_BUILD} == "no" && !empty(_BMK_PKG_CONFIG_SYSROOT)
+.          error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} -- this cross build looks in the target's sysroot ${_BMK_PKG_CONFIG_SYSROOT}: add the package there (a sysroot made from a ${TARGET}-${TARGET_ARCH} system that has it installed) before building"
+.        else
+.          error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.        endif
 .      endif
 .    endif
 .  endif

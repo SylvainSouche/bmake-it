@@ -461,15 +461,13 @@ _IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
 .    if ${_BMK_WIN_MINGW:Uno} == "yes"
 _IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
 _IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV} PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
-# Cross-compilation: never read host .pc files; sysroot-aware per
-# BMK_<OS>_SYSROOT= (the same variable mk.toolchain.llvm.mk's own cross
-# branches already require) -- implemented per the brief's own explicit
-# requirement, not empirically verified end-to-end (no foreign sysroot
-# with real .pc files available from this host; cross-compilation itself
-# is out of scope this round beyond keeping this behavior correct).
-.    elif ${TARGET} != ${_HOST_OS_LABEL}
-_IMPORT_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT}
-_IMPORT_PC_ENV  = env PKG_CONFIG_SYSROOT_DIR="${_IMPORT_SYSROOT}" PKG_CONFIG_LIBDIR="${_IMPORT_SYSROOT}/usr/lib/pkgconfig:${_IMPORT_SYSROOT}/usr/share/pkgconfig" PKG_CONFIG_PATH=
+# Cross-compilation (another OS, or another architecture of the same OS):
+# pkg-config limited to the target's own .pc directories in its sysroot,
+# chosen in mk.common.mk (_BMK_PKG_CONFIG_ENV) for IMPORT=pkg: and
+# REQUIRES= alike -- never the host's .pc files.
+# @impl 0f87-6adc-d562-f11c
+.    elif ${BMK_IS_NATIVE_BUILD} == "no"
+_IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV}
 .    else
 # Additive, not replacing: a real install found via pkg-config's own
 # built-in default search paths (e.g. MacPorts pkg-config already
@@ -509,7 +507,10 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 #
 # import-resolution-cache-req-v3: the key also covers OS_ARCH (ABI and
 # toolchain), CC and the pkg-config used -- on Cygwin a mingw build reused
-# the Cygwin build's answer, both being TARGET=win (2026-10-15). And the
+# the Cygwin build's answer, both being TARGET=win (2026-10-15). PCENV
+# carries a cross build's sysroot and search dirs: a cross build to
+# linux-amd64 from an arm64 Linux host reused an answer recorded with
+# another environment and staged the host's aarch64 libcurl. And the
 # chicken-and-egg above only holds for the FIRST lookup: a hit records the
 # .pc file it came from (pcfiledir, which pkgconf and freedesktop
 # pkg-config both report) and its mtime, and is discarded when that file
@@ -520,6 +521,7 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 # @impl 0f87-6ab6-0d63-eb19
 _IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache.mk
 _IMPORT_CACHE_OLD  = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
+# @impl 0f87-6adc-d562-f11c
 _IMPORT_KEY = V=3 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} OS_ARCH=${OS_ARCH} CC=${CC} PC=${_BMK_PKG_CONFIG} PCENV=${_BMK_PKG_CONFIG_ENV}
 _IMPORT_FP := ${_IMPORT_KEY:hash}
 # A file's modification time in seconds. Not make's :mtime modifier: bmake

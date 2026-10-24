@@ -35,6 +35,20 @@ _XTEST_MODE = missing
 _XTEST_MODE = remote
 .endif
 
+# TEST_RUNNER=local for a foreign Linux target: the host runs the target's
+# programs through a user-mode emulator (qemu-user's binfmt, as Docker
+# installs), which looks for the target's dynamic loader and libraries on
+# the host -- "qemu-x86_64: Could not open '/lib64/ld-linux-x86-64.so.2'",
+# testing linux-amd64 on an arm64 Linux host. QEMU_LD_PREFIX (unless
+# already set) points it at BMK_LINUX_SYSROOT; exported to kyua, it reaches
+# the test programs and the programs test scripts run. With it, OpenRider's
+# 209 tests pass for linux-amd64 on linux-arm64.
+# @impl 0f87-6adc-d562-38f8
+_XTEST_LOCAL_ENV =
+.if ${_XTEST_MODE} == "local" && ${_XTEST_FOREIGN} == "yes" && ${TARGET} == "linux" && !empty(BMK_LINUX_SYSROOT)
+_XTEST_LOCAL_ENV = export QEMU_LD_PREFIX="${QEMU_LD_PREFIX:U${BMK_LINUX_SYSROOT}}";
+.endif
+
 # The loader's search path variable on the target.
 .if ${TARGET} == "macos"
 _XTEST_LIBVAR = DYLD_LIBRARY_PATH
