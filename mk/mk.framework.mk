@@ -222,7 +222,8 @@ _build_modules:
 # workspace) and its own modules, copied up, plus share/. The workspace's
 # `test` builds everything once itself and passes BMK_TEST_BUILT=yes.
 # @impl 0f87-6ac1-0a1e-c402
-test: _fw_test_build _run_tests _check_test_failures
+.include "${BMK_MKDIR}/mk.crosstest.mk"
+test: _xtest_check _fw_test_build _run_tests _check_test_failures
 
 .if defined(BMK_TEST_BUILT) && ${BMK_TEST_BUILT} == "yes"
 _fw_test_build:

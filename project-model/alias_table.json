@@ -383,11 +383,35 @@
     "status": "recorded",
     "type": "obs"
   },
+  "cross-test-needs-runner-req": {
+    "active": true,
+    "id": "0f87-6adc-9b69-2f78",
+    "status": "confirmed",
+    "type": "req"
+  },
   "cross-test-runner-cand": {
     "active": true,
     "id": "0f87-6adc-9a3b-a8fa",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
+  },
+  "cross-test-runner-dec": {
+    "active": true,
+    "id": "0f87-6adc-9b68-03a3",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "cross-test-runner-req": {
+    "active": true,
+    "id": "0f87-6adc-9b69-35ea",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "cross-test-ships-dependencies-req": {
+    "active": true,
+    "id": "0f87-6adc-9b69-6254",
+    "status": "confirmed",
+    "type": "req"
   },
   "cross-test-universal-coverage": {
     "active": true,
@@ -1238,6 +1262,12 @@
   "impl-cross-target-catch-all-error": {
     "active": true,
     "id": "0f87-6a98-5de3-c340",
+    "status": "asserted",
+    "type": "impl"
+  },
+  "impl-cross-test-runner": {
+    "active": true,
+    "id": "0f87-6adc-9b69-7c32",
     "status": "asserted",
     "type": "impl"
   },

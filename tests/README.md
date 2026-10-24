@@ -237,6 +237,7 @@ sh tests/harness/pack-cases.sh
 | 96 | The product asks the make that is running (`${MAKE}`), never a command named `bmake`: a `PREREQS=` workspace builds, prerequisite headers found, through a copy of the make under another name with a failing `bmake` first on `PATH` that records any call to it (NetBSD has no `bmake`; found building OpenRider) |
 | 97 | An unknown `TOOLCHAIN=` (`clang`, `gnu`, `cl`, `bogus`) stops with "no toolchain of that name", lists `llvm`, `gcc`, `msvc` and says which one an alias means (`clang` is `llvm`) instead of "Could not find mk.toolchain.clang.mk"; `TOOLCHAIN=llvm` still works |
 | 98 | `IMPORT=fetch:` with a `file://` distfile builds with `curl` and `wget` removed from `PATH` on every host (NetBSD's `ftp` cannot fetch a `file://` URL, so the product copies it), and a missing `file://` distfile fails with "could not fetch any FETCH_URL" |
+| 99 | `bmake test` with `TEST_RUNNER=cmd:<program>` runs a `.tst` workspace's tests through the runner: staged with the module's shared library, the utility on `PATH` and `BMK_SHAREDIR`, with the build host's library directories hidden during the run (not on macOS, where SIP strips `DYLD_*`), reports and exit status back; `TEST_RUNNER.<os>-<arch>` wins over `TEST_RUNNER`; a foreign target with no runner stops before building naming the variables to set |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

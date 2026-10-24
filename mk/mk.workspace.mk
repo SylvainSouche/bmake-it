@@ -422,8 +422,11 @@ TEST_REPORT_DIR ?= test-report
 # the run: tests of a tree that does not build would only fail again, later
 # and noisier. The frameworks below are told (BMK_TEST_BUILT=yes) not to
 # build again.
+# cross-test-needs-runner-req: a foreign target with no runner stops here, before
+# the build, naming the variables to set. @impl 0f87-6adc-9b69-7c32
+.include "${BMK_MKDIR}/mk.crosstest.mk"
 # @impl 0f87-6ac1-0a1e-c402
-test: _ws_test_build
+test: _xtest_check _ws_test_build
 _ws_test_build:
 	@${MAKE} all REPORT=no \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
