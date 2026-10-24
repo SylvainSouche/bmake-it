@@ -218,7 +218,7 @@ test: _xtest_check _tst_stage
 			--ship "BMK_SHAREDIR=${_TST_SHARE}" || _rc=$$?; \
 	else \
 	export PATH="${_TST_PATH}:$$PATH" BMK_SHAREDIR="${_TST_SHARE}"; \
-	(cd ${_TST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
+	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
 	(cd ${_TST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
 	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \

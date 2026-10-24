@@ -1,8 +1,13 @@
 #!/bin/sh
-# build-sysroot-linux.sh <amd64|arm64> <dest.tar>
+# build-sysroot-linux.sh <amd64|arm64> <dest.tar> [image]
 #
 # Builds a Linux cross-compilation sysroot tarball for the given arch, using
 # a Docker container as the source of real glibc headers/libs/gcc-runtime.
+# [image] (default debian:bookworm-slim) is the container the sysroot is
+# taken from: a project's own image with its -dev packages installed gives a
+# sysroot holding those libraries and their pkg-config files too
+# (usr/lib/<multiarch>/pkgconfig, usr/share/pkgconfig), which cross builds
+# importing system libraries (IMPORT=pkg:) need.
 # Written as a tar and never extracted onto the host filesystem -- macOS's
 # default case-insensitive filesystem corrupts Linux kernel headers that
 # differ only by case (e.g. xt_CONNMARK.h vs xt_connmark.h), found
@@ -21,8 +26,9 @@
 #      the target under /usr/lib).
 set -eu
 
-ARCH="${1:?usage: build-sysroot-linux.sh <amd64|arm64> <dest.tar>}"
-DEST="${2:?usage: build-sysroot-linux.sh <amd64|arm64> <dest.tar>}"
+ARCH="${1:?usage: build-sysroot-linux.sh <amd64|arm64> <dest.tar> [image]}"
+DEST="${2:?usage: build-sysroot-linux.sh <amd64|arm64> <dest.tar> [image]}"
+IMAGE="${3:-debian:bookworm-slim}"
 
 case "$ARCH" in
     amd64) PLATFORM=linux/amd64 ;;
@@ -37,9 +43,9 @@ DEST_NAME=$(basename "$DEST")
 STAGE=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")
 trap 'rm -rf "$STAGE"' EXIT
 
-docker run --rm --platform "$PLATFORM" -v "$STAGE:/out" debian:bookworm-slim sh -c '
+docker run --rm --platform "$PLATFORM" -v "$STAGE:/out" "$IMAGE" sh -c '
 set -e
-apt-get update -qq >/dev/null && apt-get install -y -qq libc6-dev gcc >/dev/null 2>&1
+command -v gcc >/dev/null 2>&1 || { apt-get update -qq >/dev/null && apt-get install -y -qq libc6-dev gcc >/dev/null 2>&1; }
 mkdir -p /sysroot/usr/include /sysroot/usr/lib /sysroot/lib /sysroot/lib64 /sysroot/usr/lib/gcc
 cp -a /usr/include/. /sysroot/usr/include/
 MULTIARCH=$(gcc -dumpmachine)
@@ -47,6 +53,13 @@ mkdir -p "/sysroot/usr/lib/$MULTIARCH" "/sysroot/lib/$MULTIARCH"
 cp -a "/usr/lib/$MULTIARCH/." "/sysroot/usr/lib/$MULTIARCH/" 2>/dev/null || true
 cp -a "/lib/$MULTIARCH/." "/sysroot/lib/$MULTIARCH/" 2>/dev/null || true
 cp -a /usr/lib/gcc/. /sysroot/usr/lib/gcc/
+# Debian 13 and later keep the kernel uapi headers in usr/lib/linux/uapi,
+# with usr/include/<multiarch>/asm/* symlinks into it (relative ones, so
+# they resolve under the sysroot once that directory is there too).
+if [ -d /usr/lib/linux ]; then mkdir -p /sysroot/usr/lib/linux && cp -a /usr/lib/linux/. /sysroot/usr/lib/linux/; fi
+# Architecture-independent pkg-config files (headers-only packages, and
+# some libraries install theirs here).
+if [ -d /usr/share/pkgconfig ]; then mkdir -p /sysroot/usr/share/pkgconfig && cp -a /usr/share/pkgconfig/. /sysroot/usr/share/pkgconfig/; fi
 # Dynamic-linker interpreter symlink: dereferenced, arch-dependent location.
 # Search /usr/lib (the real directory), not /lib -- on merged-/usr distros
 # /lib is ITSELF a symlink to usr/lib, and find silently returns nothing

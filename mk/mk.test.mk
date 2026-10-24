@@ -147,7 +147,7 @@ test: _xtest_check all _build_tests _gen_kyuafile
 			$$([ "${REPORT}" = "yes" ] && echo --html) \
 			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" || _rc=$$?; \
 	else \
-	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
+	${_XTEST_LOCAL_ENV} (cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
 	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
 	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
