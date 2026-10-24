@@ -695,6 +695,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "fetch-file-url-needs-no-downloader-req": {
+    "active": true,
+    "id": "0f87-6adc-57c2-9f3c",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-import-binary-req": {
     "active": true,
     "id": "0f87-6ab6-4e1e-2778",
@@ -754,6 +760,12 @@
     "id": "7854-6ad0-c21a-b05c",
     "status": "recorded",
     "type": "obs"
+  },
+  "file-url-copied-not-downloaded-dec": {
+    "active": true,
+    "id": "0f87-6adc-57c2-972a",
+    "status": "recorded",
+    "type": "dec"
   },
   "flags-only-change-does-not-trigger-rebuild": {
     "active": true,
@@ -2650,6 +2662,12 @@
     "id": "0f87-6ad7-478d-bfc1",
     "status": "recorded",
     "type": "dec"
+  },
+  "netbsd-ftp-cannot-fetch-file-url-obs": {
+    "active": true,
+    "id": "0f87-6adc-57c2-b5e5",
+    "status": "recorded",
+    "type": "obs"
   },
   "netbsd-vm-flaky-ssh-was-filesystem-corruption": {
     "active": true,
