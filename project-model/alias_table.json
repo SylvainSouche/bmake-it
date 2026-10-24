@@ -71,6 +71,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "bmake-test-runs-on-the-host-only-obs": {
+    "active": true,
+    "id": "0f87-6adc-9a3a-95de",
+    "status": "recorded",
+    "type": "obs"
+  },
   "bmakeit-config-makefile-req": {
     "active": true,
     "id": "0f87-6acf-5fd8-2389",
@@ -347,6 +353,18 @@
     "status": "recorded",
     "type": "con"
   },
+  "cross-sysroot-os-only-obs": {
+    "active": true,
+    "id": "0f87-6adc-3af6-3b8e",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "cross-sysroot-with-prerequisites-cand": {
+    "active": true,
+    "id": "0f87-6adc-3afc-f0ef",
+    "status": "open",
+    "type": "cand"
+  },
   "cross-target-catch-all-error-dec": {
     "active": true,
     "id": "0f87-6a98-5d9c-e9ad",
@@ -364,6 +382,12 @@
     "id": "0f87-6a98-5d9c-ef85",
     "status": "recorded",
     "type": "obs"
+  },
+  "cross-test-runner-cand": {
+    "active": true,
+    "id": "0f87-6adc-9a3b-a8fa",
+    "status": "open",
+    "type": "cand"
   },
   "cross-test-universal-coverage": {
     "active": true,
