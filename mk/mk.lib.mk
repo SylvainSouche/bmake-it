@@ -1083,6 +1083,9 @@ _stage_import:
 # once "extracted" nothing, said so, and cached it (2026-10-15).
 # @impl 7854-6ad0-c2db-ec05
 # @impl 0f87-6ad7-1f32-4d7a
+# file:// URLs are copied (cp), never handed to a downloader: NetBSD's ftp(1) cannot
+# fetch one ("ftp_strdup: called with NULL argument", empty output) and a machine with
+# no curl/wget has nothing else. @impl 0f87-6ad7-1f32-4d7a
 _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
@@ -1099,7 +1102,12 @@ _fetch_import:
 		if [ ! -f "$$_dist" ]; then \
 			echo "===> fetching $$_url"; \
 			_out="$$_dist.tmp"; \
-			if _dl=$$(command -v curl 2>/dev/null); then \
+			if case "$$_url" in file://*) true ;; *) false ;; esac; then \
+				_dl=cp; _lpath="$${_url#file://}"; \
+				case "$$_lpath" in localhost/*) _lpath="/$${_lpath#localhost/}" ;; esac; \
+				case "$$_lpath" in /[A-Za-z]:*) _lpath="$${_lpath#/}" ;; esac; \
+				if _msg=$$(cp "$$_lpath" "$$_out" 2>&1); then _rc=0; else _rc=$$?; fi; \
+			elif _dl=$$(command -v curl 2>/dev/null); then \
 				case "$$_dl" in \
 				/usr/*|/bin/*) ;; \
 				*) if command -v cygpath >/dev/null 2>&1; then _out=$$(cygpath -w "$$_dist.tmp"); fi ;; \

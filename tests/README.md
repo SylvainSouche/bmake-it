@@ -236,6 +236,7 @@ sh tests/harness/pack-cases.sh
 | 95 | `bmake docs` opt-in knobs: a framework with no public `include/` but `DOC_INPUT_EXTRA=` (local/include + a module's `src/`) is documented, headers only, and `DOC_WARN_IF_UNDOCUMENTED=YES` reports exactly its one undocumented entity; a framework setting nothing gets the unchanged Doxyfile; `DOC_EXTRACT_PRIVATE=YES` is passed through (skips doxygen if not installed) |
 | 96 | The product asks the make that is running (`${MAKE}`), never a command named `bmake`: a `PREREQS=` workspace builds, prerequisite headers found, through a copy of the make under another name with a failing `bmake` first on `PATH` that records any call to it (NetBSD has no `bmake`; found building OpenRider) |
 | 97 | An unknown `TOOLCHAIN=` (`clang`, `gnu`, `cl`, `bogus`) stops with "no toolchain of that name", lists `llvm`, `gcc`, `msvc` and says which one an alias means (`clang` is `llvm`) instead of "Could not find mk.toolchain.clang.mk"; `TOOLCHAIN=llvm` still works |
+| 98 | `IMPORT=fetch:` with a `file://` distfile builds with `curl` and `wget` removed from `PATH` on every host (NetBSD's `ftp` cannot fetch a `file://` URL, so the product copies it), and a missing `file://` distfile fails with "could not fetch any FETCH_URL" |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 
