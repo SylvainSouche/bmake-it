@@ -213,18 +213,22 @@ provisions and boots the guests, and `matrix.sh` runs every cell of
 - **Windows**: no guest and no sysroot recipe yet (the cell is a *gap*). The
   EWDK (MSVC build tools, verified) is cached for when there is one; a Windows
   arm64 guest cannot be built unattended.
-- **A cross sysroot holds the target OS only, not its prerequisites** (found
-  building OpenRider for NetBSD; `cross-sysroot-os-only-obs`). Two consequences:
-  `IMPORT=pkg:` and `REQUIRES=` run the *build host's* `pkg-config` for every
-  cross target but mingw-w64 (so a library the OS itself ships, such as FreeBSD's
-  zlib, is "not found" because the base ships no `.pc`, and one the host happens
-  to have returns the host's flags); and `vm.sh sysroot` carries only `usr/include`,
-  `usr/lib` and `lib`, so FreeBSD's `/usr/local`, NetBSD's `/usr/pkg` and any
-  third-party library are in no sysroot. A cross build with prerequisites works
-  only for what the OS provides and only with a hand-set `PKG_CONFIG=`. The fix
-  is designed but not decided (`cross-sysroot-with-prerequisites-cand`): a
-  sysroot-aware `pkg-config` for every cross target, sysroots made from a guest
-  that has the packages installed, and the package list declared once.
+- **A cross sysroot must hold the target's prerequisites** (found building
+  OpenRider for NetBSD and for Linux; `cross-sysroot-os-only-obs`,
+  `cross-sysroot-with-prerequisites-cand`). *Lookup, done*
+  (`cross-import-from-sysroot-dec`): every cross build -- another OS, or another
+  architecture of the same OS -- runs `pkg-config` for `IMPORT=pkg:` and
+  `REQUIRES=` with `PKG_CONFIG_SYSROOT_DIR=<sysroot>` and `PKG_CONFIG_LIBDIR`
+  limited to the target's own `.pc` directories there (Linux
+  `usr/lib/<multiarch>/pkgconfig`, FreeBSD `usr/local/libdata/pkgconfig` and
+  `usr/libdata/pkgconfig`, NetBSD `usr/pkg/lib/pkgconfig` and
+  `usr/X11R7/lib/pkgconfig`, `usr/lib` and `usr/share` everywhere), never the
+  host's. *Content, Linux done*: `tests/harness/fetch/build-sysroot-linux.sh
+  <arch> <tar> <image>` makes the sysroot from an image that has the `-dev`
+  packages installed. *Still open*: FreeBSD and NetBSD sysroots with
+  `/usr/local` and `/usr/pkg` (`vm.sh sysroot` carries only `usr/include`,
+  `usr/lib` and `lib`), and declaring the package list once (the configuration
+  makefile below).
 - **The macOS guest** is a tart VM provisioned by hand once
   (`provision-macos-vm.sh`, `provision/packages-macos.sh`); it has no
   layers/reset like the QEMU guests.

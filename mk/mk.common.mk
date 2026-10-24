@@ -248,7 +248,19 @@ OS_ARCH := ${_TARGET_KEY}
 # plain pkg-config limited to BMK_MINGW_SYSROOT's lib/pkgconfig; PKG_CONFIG=
 # overrides both. Empty _BMK_PKG_CONFIG means "none usable" -- consumers
 # fail naming it rather than fall back to the host's .pc files.
+# Any other cross build (another OS, or another architecture of the same
+# OS: linux-amd64 from an arm64 Linux host read the host's aarch64 .pc
+# files when only the OS was compared) uses pkg-config limited to the .pc
+# directories of the target's own packages in BMK_<OS>_SYSROOT -- found
+# cross-building OpenRider (GLFW, libcurl, libtiff, OpenGL): Debian and
+# Ubuntu under usr/lib/<multiarch>/pkgconfig, FreeBSD's packages under
+# usr/local/libdata/pkgconfig (the base system's under usr/libdata),
+# NetBSD's pkgsrc under usr/pkg/lib/pkgconfig and its X11 (OpenGL) under
+# usr/X11R7/lib/pkgconfig; usr/lib/pkgconfig and usr/share/pkgconfig (musl
+# distributions, architecture-independent files) everywhere. pkg-config
+# prefixes the -I and -L it prints with PKG_CONFIG_SYSROOT_DIR.
 # @impl 7854-6ad1-10ad-4843
+# @impl 0f87-6adc-d727-1a3b
 _BMK_PKG_CONFIG_ENV =
 .if defined(PKG_CONFIG) && !empty(PKG_CONFIG)
 _BMK_PKG_CONFIG = ${PKG_CONFIG}
@@ -259,6 +271,30 @@ _BMK_PKG_CONFIG_ENV = PKG_CONFIG_LIBDIR=${BMK_MINGW_SYSROOT}/lib/pkgconfig
 .  else
 _BMK_PKG_CONFIG != command -v ${_MINGW_TRIPLE}-pkg-config 2>/dev/null || true
 .  endif
+.elif ${BMK_IS_NATIVE_BUILD} == "no"
+_BMK_PKG_CONFIG = pkg-config
+_BMK_PKG_CONFIG_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT:U}
+.  if ${TARGET} == "linux"
+# Debian's multiarch names (dpkg-architecture's DEB_HOST_MULTIARCH) for
+# Bmake It's architecture names; another arch is taken as <arch>-linux-gnu.
+_BMK_MULTIARCH.amd64   = x86_64-linux-gnu
+_BMK_MULTIARCH.arm64   = aarch64-linux-gnu
+_BMK_MULTIARCH.i386    = i386-linux-gnu
+_BMK_MULTIARCH.arm     = arm-linux-gnueabihf
+_BMK_MULTIARCH.armv7   = arm-linux-gnueabihf
+_BMK_MULTIARCH.armhf   = arm-linux-gnueabihf
+_BMK_MULTIARCH.riscv64 = riscv64-linux-gnu
+_BMK_MULTIARCH.ppc64le = powerpc64le-linux-gnu
+_BMK_MULTIARCH.s390x   = s390x-linux-gnu
+_BMK_PKG_CONFIG_DIRS = usr/lib/${_BMK_MULTIARCH.${TARGET_ARCH}:U${TARGET_ARCH}-linux-gnu}/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
+.  elif ${TARGET} == "freebsd"
+_BMK_PKG_CONFIG_DIRS = usr/local/libdata/pkgconfig usr/libdata/pkgconfig usr/local/share/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
+.  elif ${TARGET} == "netbsd"
+_BMK_PKG_CONFIG_DIRS = usr/pkg/lib/pkgconfig usr/X11R7/lib/pkgconfig usr/pkg/share/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
+.  else
+_BMK_PKG_CONFIG_DIRS = usr/lib/pkgconfig usr/share/pkgconfig
+.  endif
+_BMK_PKG_CONFIG_ENV = PKG_CONFIG_SYSROOT_DIR=${_BMK_PKG_CONFIG_SYSROOT} PKG_CONFIG_LIBDIR=${_BMK_PKG_CONFIG_DIRS:S|^|${_BMK_PKG_CONFIG_SYSROOT}/|:ts:} PKG_CONFIG_PATH=
 .else
 _BMK_PKG_CONFIG = pkg-config
 .endif

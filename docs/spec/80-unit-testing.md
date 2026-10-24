@@ -258,7 +258,9 @@ other setting. A runner is one of
 escape `TEST_RUNNER=local`. Target binaries are never run on the wrong machine
 silently. (This is a change for a host that runs a foreign architecture through
 emulation, such as `qemu-user`: set `TEST_RUNNER=local` to keep the old
-behaviour.) The target itself is the build host's own OS and architecture unless
+behaviour. For a Linux target, `TEST_RUNNER=local` also exports
+`QEMU_LD_PREFIX=${BMK_LINUX_SYSROOT}` unless it is set, so the emulator finds
+the target's dynamic loader and libraries; `cross-test-local-emulated-req`.) The target itself is the build host's own OS and architecture unless
 `TARGET=`/`TARGET_ARCH=` say otherwise, so ordinary `bmake test` is unchanged.
 
 **How it works.** The unit of work is the whole tests directory: `kyua` hands each
