@@ -1268,7 +1268,7 @@
   "impl-cross-test-runner": {
     "active": true,
     "id": "0f87-6adc-9b69-7c32",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-cxx-link-driver-selection": {
