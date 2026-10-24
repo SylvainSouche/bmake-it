@@ -275,7 +275,18 @@ _BMK_PKG_CONFIG != command -v ${_MINGW_TRIPLE}-pkg-config 2>/dev/null || true
 _BMK_PKG_CONFIG = pkg-config
 _BMK_PKG_CONFIG_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT:U}
 .  if ${TARGET} == "linux"
-_BMK_PKG_CONFIG_DIRS = usr/lib/${TARGET_ARCH:S/^amd64$/x86_64/:S/^arm64$/aarch64/}-linux-gnu/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
+# Debian's multiarch names (dpkg-architecture's DEB_HOST_MULTIARCH) for
+# Bmake It's architecture names; another arch is taken as <arch>-linux-gnu.
+_BMK_MULTIARCH.amd64   = x86_64-linux-gnu
+_BMK_MULTIARCH.arm64   = aarch64-linux-gnu
+_BMK_MULTIARCH.i386    = i386-linux-gnu
+_BMK_MULTIARCH.arm     = arm-linux-gnueabihf
+_BMK_MULTIARCH.armv7   = arm-linux-gnueabihf
+_BMK_MULTIARCH.armhf   = arm-linux-gnueabihf
+_BMK_MULTIARCH.riscv64 = riscv64-linux-gnu
+_BMK_MULTIARCH.ppc64le = powerpc64le-linux-gnu
+_BMK_MULTIARCH.s390x   = s390x-linux-gnu
+_BMK_PKG_CONFIG_DIRS = usr/lib/${_BMK_MULTIARCH.${TARGET_ARCH}:U${TARGET_ARCH}-linux-gnu}/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
 .  elif ${TARGET} == "freebsd"
 _BMK_PKG_CONFIG_DIRS = usr/local/libdata/pkgconfig usr/libdata/pkgconfig usr/local/share/pkgconfig usr/lib/pkgconfig usr/share/pkgconfig
 .  elif ${TARGET} == "netbsd"

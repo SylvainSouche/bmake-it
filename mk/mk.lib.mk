@@ -578,6 +578,19 @@ _IMPORT_PCMTIME != ${_BMK_MTIME:S,@F@,${_IMPORT_PCFILE},g}
 # NOT changed -- the compiler finds a system directory on its own.
 # @impl 0f87-6ac0-c275-d578
 _IMPORT_INCDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=includedir ${_IMPORT_PKGNAME} 2>/dev/null
+# A cross build's libdir and includedir are in the sysroot. pkg-config
+# prefixes the -I/-L it prints with PKG_CONFIG_SYSROOT_DIR, but --variable
+# only with pkgconf (Debian's); freedesktop pkg-config (MacPorts 0.29)
+# answers /usr/lib and /usr/include -- the host's, where staging would copy
+# the host's headers and libraries from. Prefixed here when missing.
+# @impl 0f87-6adc-d727-1a3b
+.        if !empty(_BMK_PKG_CONFIG_SYSROOT:U)
+.          for _v in _IMPORT_LIBDIR _IMPORT_INCDIR
+.            if !empty(${_v}) && empty(${_v}:M${_BMK_PKG_CONFIG_SYSROOT}/*)
+${_v} := ${_BMK_PKG_CONFIG_SYSROOT}${${_v}}
+.            endif
+.          endfor
+.        endif
 # shared-import-link-flags-fix-req: a shared library (.so/.dylib) embeds
 # its own dependency references (install_name/rpath on macOS, DT_NEEDED
 # on ELF), resolved by the dynamic linker at LOAD time, not link time --

@@ -3539,6 +3539,12 @@
     "status": "open",
     "type": "cand"
   },
+  "test-case-100-cross-pkg-config-sysroot": {
+    "active": true,
+    "id": "0f87-6adc-e6ab-ef14",
+    "status": "passing",
+    "type": "test"
+  },
   "test-cygwin-gcc-hello-win-amd64": {
     "active": true,
     "id": "0f87-6a9a-a9fa-3729",
