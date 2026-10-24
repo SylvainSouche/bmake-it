@@ -152,9 +152,23 @@ CXXFLAGS += -I${BMK_MKDIR}/../include
 .  include "${BMK_MKDIR}/mk.toolchain.${TOOLCHAIN}.mk"
 .elif exists(${.CURDIR}/../mk/mk.toolchain.${TOOLCHAIN}.mk)
 .  include "${.CURDIR}/../mk/mk.toolchain.${TOOLCHAIN}.mk"
-.else
-# Fallback: try relative to this file
+.elif exists(mk.toolchain.${TOOLCHAIN}.mk)
+# Fallback: found relative to the current search path
 .  include "mk.toolchain.${TOOLCHAIN}.mk"
+.else
+# unknown-toolchain-names-valid-ones-req: say what exists, and translate the
+# names people type (found when OpenRider was built with TOOLCHAIN=clang on
+# NetBSD: "Could not find mk.toolchain.clang.mk" did not say llvm was the name).
+# @impl 0f87-6ad7-d974-4a81
+_BMK_TC_HINT =
+.  if !empty(TOOLCHAIN:Mclang*) || !empty(TOOLCHAIN:Mlld*)
+_BMK_TC_HINT = The clang toolchain is called llvm: use TOOLCHAIN=llvm.
+.  elif !empty(TOOLCHAIN:Mgnu*) || !empty(TOOLCHAIN:Mg++) || !empty(TOOLCHAIN:Mgcc*)
+_BMK_TC_HINT = The GNU toolchain is called gcc: use TOOLCHAIN=gcc.
+.  elif !empty(TOOLCHAIN:Mcl) || !empty(TOOLCHAIN:Mvc*) || !empty(TOOLCHAIN:Mmicrosoft*)
+_BMK_TC_HINT = The Microsoft toolchain is called msvc: use TOOLCHAIN=msvc.
+.  endif
+.  error "TOOLCHAIN=${TOOLCHAIN}: there is no toolchain of that name (no mk.toolchain.${TOOLCHAIN}.mk). Known: llvm (clang and lld), gcc, msvc. ${_BMK_TC_HINT}"
 .endif
 
 # ---------------------------------------------------------------------------

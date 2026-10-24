@@ -13,7 +13,7 @@ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
   cross-build convention, rather than inventing new ones
   (`REQ-target-selection-uses-bmake-native-vars-req`). Unspecified =
   current host.
-- **`TOOLCHAIN=`** (`gcc`|`llvm`) — new, project-specific (no BSD-make-
+- **`TOOLCHAIN=`** (`gcc`|`llvm`|`msvc`; `llvm` is the clang/lld toolchain, there is no `clang`) — new, project-specific (no BSD-make-
   native equivalent exists). Unspecified = `llvm` (the default)
   (`REQ-toolchain-cli-variable-req`). Setting it `.include`s a dedicated
   `mk.toolchain.<name>.mk`, which sets the underlying `CC`/`CXX`/`LD`/
@@ -41,6 +41,9 @@ a plain compile/link-flag concern via the shared `CFLAGS`/`CXXFLAGS`/
 target needing its own sanitizer-specific logic
 (`REQ-sanitizer-support-req`).
 
+  An unknown name is an error that lists the toolchains that exist and says which
+  one a common alias means (`clang` is `llvm`, `gnu` is `gcc`, `cl` is `msvc`)
+  (`unknown-toolchain-names-valid-ones-req`).
 - **Mutual exclusion**: `address`, `thread`, and `memory` instrument the
   runtime in incompatible ways — at most one of the three. Combining any
   two fails loudly at parse time (`SANITIZE=address,thread` → an
