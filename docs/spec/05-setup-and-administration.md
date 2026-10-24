@@ -213,6 +213,18 @@ provisions and boots the guests, and `matrix.sh` runs every cell of
 - **Windows**: no guest and no sysroot recipe yet (the cell is a *gap*). The
   EWDK (MSVC build tools, verified) is cached for when there is one; a Windows
   arm64 guest cannot be built unattended.
+- **A cross sysroot holds the target OS only, not its prerequisites** (found
+  building OpenRider for NetBSD; `cross-sysroot-os-only-obs`). Two consequences:
+  `IMPORT=pkg:` and `REQUIRES=` run the *build host's* `pkg-config` for every
+  cross target but mingw-w64 (so a library the OS itself ships, such as FreeBSD's
+  zlib, is "not found" because the base ships no `.pc`, and one the host happens
+  to have returns the host's flags); and `vm.sh sysroot` carries only `usr/include`,
+  `usr/lib` and `lib`, so FreeBSD's `/usr/local`, NetBSD's `/usr/pkg` and any
+  third-party library are in no sysroot. A cross build with prerequisites works
+  only for what the OS provides and only with a hand-set `PKG_CONFIG=`. The fix
+  is designed but not decided (`cross-sysroot-with-prerequisites-cand`): a
+  sysroot-aware `pkg-config` for every cross target, sysroots made from a guest
+  that has the packages installed, and the package list declared once.
 - **The macOS guest** is a tart VM provisioned by hand once
   (`provision-macos-vm.sh`, `provision/packages-macos.sh`); it has no
   layers/reset like the QEMU guests.

@@ -131,6 +131,8 @@ Full detail, including the `test`/`test-all` targets: `80-unit-testing.md`.
 | `TEST_PROG=<name>` | In a `.tst` module: the program that is itself an ATF test program, registered with Kyua | New (`REQ-tst-test-prog-req`) |
 | `TEST_SRCS=<file> ...` | Sources (relative to `src/`) of the test program; required when `PROG=` and `TEST_PROG=` are both set, and then `PROG` is built from the rest | New (`REQ-tst-test-srcs-req`) |
 | `testcases/*.sh` | Auto-discovered; each script is a test (atf-sh). See `80-unit-testing.md` | New (`REQ-tst-scripts-are-tests-req`) |
+| `TEST_RUNNER.<os>-<arch>=<spec>`, `TEST_RUNNER=<spec>` | Where `bmake test` runs the tests of a target the build host cannot run: `ssh:[user@]host[:port]`, `docker:<image>[@<platform>]`, `cmd:<program>` or `local`. A foreign target with none is an error. See `80-unit-testing.md` | New (`REQ-cross-test-runner-req`) |
+| `BMK_SSH_OPTS` | Extra `ssh` options for an `ssh:` test runner (a key with `-i`, host-key policy); environment | New |
 
 ## Documentation-generation metadata (`.include <mk.docs.mk>`)
 
