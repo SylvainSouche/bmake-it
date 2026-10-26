@@ -1,0 +1,10 @@
+send:
+expect:login:
+send:root
+expect:#
+send:echo resize_gpt=YES >> /etc/rc.conf
+send:mkdir -p /root/.ssh && chmod 700 /root/.ssh
+send:echo "@PUBKEY@" > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
+send:echo provisioned-$((20+22))
+expect:provisioned-42
+send:reboot

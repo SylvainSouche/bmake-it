@@ -44,6 +44,7 @@ case "$BMAKE" in
         ;;
 esac
 KEEP_FAILED="${KEEP_FAILED:-0}"
+RETRY_FAILED="${RETRY_FAILED:-0}"
 FILTER="${1:-}"
 # Runs the whole suite under a non-default TOOLCHAIN (e.g. TOOLCHAIN=gcc)
 # when set. Baked into the wrapper as an environment default, not a
@@ -52,11 +53,15 @@ FILTER="${1:-}"
 # override precedence (command line beats environment).
 TOOLCHAIN="${TOOLCHAIN:-}"
 
-pass=0; fail=0; skip=0; errors=0
+pass=0; fail=0; skip=0; errors=0; flaky=0
 
 WORKDIR_BASE=$(mktemp -d "${TMPDIR:-/tmp}/bmk-tests.XXXXXX")
 WRAPDIR=$(mktemp -d "${TMPDIR:-/tmp}/bmk-wrap.XXXXXX")
-trap 'rm -rf "$WORKDIR_BASE" "$WRAPDIR"' EXIT INT TERM
+kept=0
+# KEEP_FAILED=1 keeps a failing case's work directory; the trap must not
+# delete it along with the rest.
+_cleanup() { rm -rf "$WRAPDIR"; [ "$kept" -gt 0 ] || rm -rf "$WORKDIR_BASE"; }
+trap _cleanup EXIT INT TERM
 
 cat > "$WRAPDIR/bmake" << EOF
 #!/bin/sh
@@ -107,18 +112,36 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
     chmod +x "$tdir/run.sh" 2>/dev/null || true
 
     log="$WORKDIR_BASE/$name.log"
-    status=0
-    (
-        cd "$tdir"
-        unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true
-        export BMK_MKDIR BMK_SCRIPTS
-        export MAKESYSPATH="${BMK_MKDIR}:${_SYS_MK}"
-        export PATH="$WRAPDIR:$PATH"
-        sh ./run.sh
-    ) >"$log" 2>&1 || status=$?
+    attempt=1
+    while :; do
+        status=0
+        (
+            cd "$tdir"
+            unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true
+            export BMK_MKDIR BMK_SCRIPTS
+            export MAKESYSPATH="${BMK_MKDIR}:${_SYS_MK}"
+            export PATH="$WRAPDIR:$PATH"
+            sh ./run.sh
+        ) >"$log" 2>&1 || status=$?
+        # RETRY_FAILED=1 (set for emulated platforms, where load makes timing
+        # flake): run a failing case once more in a fresh directory. A pass on
+        # the second try is counted AND reported as flaky -- never hidden; a
+        # second failure is a real failure.
+        if [ "$status" -ne 0 ] && [ "$status" -ne 77 ] && [ "$RETRY_FAILED" = 1 ] && [ "$attempt" -eq 1 ]; then
+            attempt=2
+            # keep the evidence: the first attempt's log would be overwritten
+            { echo "---- $name: first attempt failed (exit $status), retrying; its last lines:"; tail -n 12 "$log"; echo "---- end first attempt"; } >> "$WORKDIR_BASE/flaky-evidence.log" 2>/dev/null
+            rm -rf "$wdir"; mkdir -p "$wdir"
+            tar -xzf "$archive" -C "$wdir" 2>/dev/null || break
+            if [ -d "$wdir/$name" ]; then tdir="$wdir/$name"; else tdir="$wdir"; fi
+            chmod +x "$tdir/run.sh" 2>/dev/null || true
+            continue
+        fi
+        break
+    done
 
     if [ "$status" -eq 0 ]; then
-        echo "PASS"
+        if [ "$attempt" -eq 2 ]; then echo "PASS (flaky: passed on retry)"; flaky=$((flaky + 1)); else echo "PASS"; fi
         pass=$((pass + 1))
         rm -rf "$wdir" "$log"
     elif [ "$status" -eq 77 ]; then
@@ -135,6 +158,7 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             rm -rf "$wdir"
         else
             echo "(kept $wdir)" >&2
+            kept=$((kept + 1))
         fi
         rm -f "$log"
     fi
@@ -143,6 +167,10 @@ done
 echo
 echo "=== summary ==="
 echo "pass=$pass  fail=$fail  skip=$skip  error=$errors"
+if [ "$flaky" -gt 0 ]; then
+    echo "flaky=$flaky (passed only on a retry: RETRY_FAILED=1)"
+    [ -f "$WORKDIR_BASE/flaky-evidence.log" ] && cat "$WORKDIR_BASE/flaky-evidence.log"
+fi
 
 if [ "$fail" -gt 0 ] || [ "$errors" -gt 0 ]; then
     exit 1

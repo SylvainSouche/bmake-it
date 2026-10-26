@@ -3,6 +3,9 @@
 
 # Build output
 build/
+# ...except the harness's own build-step scripts (tests/harness/build/),
+# which are source, not build output.
+!tests/harness/build/
 
 # `bmake docs` output (Doxygen) inside the example workspace -- generated,
 # not source; docs/ at the repo root (spec, manual.tex) is unaffected since

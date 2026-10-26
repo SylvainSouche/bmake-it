@@ -86,7 +86,18 @@ _REQUIRES_FOUND.${_r} != (command -v ${_BMK_PKG_CONFIG} >/dev/null 2>&1 && env $
 .      if empty(_BMK_PKG_CONFIG)
 .        error "REQUIRES=${_r}: not found on PATH, and not checked with pkg-config -- ${_BMK_PKG_CONFIG_MISSING}"
 .      else
-.        error "REQUIRES=${_r}: not found via ${_BMK_PKG_CONFIG} ${_BMK_PKG_CONFIG_ENV} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.        # @impl 0f87-6ad7-1f32-4d7a
+.        if empty(_BMK_PKG_CONFIG_ENV)
+_REQUIRES_VIA = ${_BMK_PKG_CONFIG}
+.        else
+_REQUIRES_VIA = ${_BMK_PKG_CONFIG} (with ${_BMK_PKG_CONFIG_ENV})
+.        endif
+.        # @impl 0f87-6adc-d727-1a3b
+.        if ${BMK_IS_NATIVE_BUILD} == "no" && !empty(_BMK_PKG_CONFIG_SYSROOT)
+.          error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} (the target's sysroot ${_BMK_PKG_CONFIG_SYSROOT}) nor as a program on PATH -- a library the ${TARGET}-${TARGET_ARCH} program links goes in that sysroot (one made from a ${TARGET}-${TARGET_ARCH} system with the package installed); a tool the build runs, such as cmake or flex, is installed on this host"
+.        else
+.          error "REQUIRES=${_r}: not found via ${_REQUIRES_VIA} or on PATH -- install it via your host's package manager (see README.md Prerequisites) before building"
+.        endif
 .      endif
 .    endif
 .  endif

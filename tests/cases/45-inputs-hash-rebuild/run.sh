@@ -12,9 +12,16 @@ cd ws/Fw
 # not `cc` -- on Linux that is gcc, which can.
 _cc=$(bmake -V '${CC}')
 _t=$(mktemp)
-if ! printf 'int main(void){return 0;}' | $_cc -fsanitize=address -x c - -o "$_t" >/dev/null 2>&1; then
-    rm -f "$_t"; exit 77
+# Skip unless ASan works here: a sanitized heap overflow must be REPORTED.
+# (It may be missing, or built but unable to run: NetBSD refuses to run
+# instrumented code while ASLR is on -- "not compatible with enabled ASLR".)
+_src='#include <stdlib.h>
+int main(void){ volatile char *p = malloc(4); p[8] = 1; return p[8]; }'
+if ! { printf '%s' "$_src" | $_cc -fsanitize=address -x c - -o "$_t" >/dev/null 2>&1 \
+       && ! "$_t" >"$_t.out" 2>&1 && grep -q AddressSanitizer "$_t.out"; }; then
+    rm -f "$_t" "$_t.out"; exit 77
 fi
+rm -f "$_t.out"
 rm -f "$_t"
 
 bmake >build1.log 2>&1

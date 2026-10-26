@@ -227,7 +227,8 @@ _build_modules:
 # workspace) and its own modules, copied up, plus share/. The workspace's
 # `test` builds everything once itself and passes BMK_TEST_BUILT=yes.
 # @impl 0f87-6ac1-0a1e-c402
-test: _fw_test_build _run_tests _check_test_failures
+.include "${BMK_MKDIR}/mk.crosstest.mk"
+test: _xtest_check _fw_test_build _run_tests _check_test_failures
 
 .if defined(BMK_TEST_BUILT) && ${BMK_TEST_BUILT} == "yes"
 _fw_test_build:
@@ -249,6 +250,9 @@ _fw_build_prereqs:
 	fi
 .endfor
 
+# @impl 0f87-6ad7-1f32-4d7a
+# `|| _trc=$$?`, not a following `_trc=$$?`: make may run this line under
+# sh -e, which would stop the loop at the first failing module.
 _run_tests:
 .for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}
 	@if [ -n "${TEST}" ]; then \
@@ -262,11 +266,11 @@ _run_tests:
 	fi; \
 	if [ "$$_run" = yes ]; then \
 		_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+		_trc=0; \
 		${MAKE} -C ${_m} test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}"; \
-		_trc=$$?; \
+			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}" || _trc=$$?; \
 		if [ "$$_trc" -ne 0 ]; then \
 			touch "$$_rundir/test.failed"; \
 			if [ "${FAIL_FAST}" = "yes" ]; then exit $$_trc; fi; \

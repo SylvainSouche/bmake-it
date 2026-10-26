@@ -1,0 +1,35 @@
+# matrix.tsv -- the host x target x toolchain matrix (harness-tests-full-cross-build-matrix-req,
+# harness-target-matrix-v2-req). Read by matrix.sh. Tab-separated; '#' starts a comment.
+#
+#  kind    native  the unit suite, run inside <build> with <toolchain>
+#          cross   Hello built in <build> for <target> (llvm; gcc never cross-compiles),
+#                  then executed on <exec>
+#  build   a platform id from platforms.mk: where the compiler runs
+#  target  <os>-<arch> of the output (cross only)
+#  exec    a platform id to run the result on, or  blocked:<reason>  /  none:<reason>
+#          (cross-test-universal-coverage: an impossible cell is listed with its reason)
+#
+# cell id                          kind    build             target           toolchain  exec
+native-linux_arm64-llvm	native	linux_arm64	-	llvm	-
+native-linux_arm64-gcc	native	linux_arm64	-	gcc	-
+native-linux_amd64_emu-llvm	native	linux_amd64_emu	-	llvm	-
+native-linux_amd64_emu-gcc	native	linux_amd64_emu	-	gcc	-
+native-linux_amd64_musl-llvm	native	linux_amd64_musl	-	llvm	-
+native-linux_amd64_musl-gcc	native	linux_amd64_musl	-	gcc	-
+native-freebsd_arm64-llvm	native	freebsd_arm64	-	llvm	-
+native-freebsd_arm64-gcc	native	freebsd_arm64	-	gcc	-
+native-netbsd_arm64-llvm	native	netbsd_arm64	-	llvm	-
+native-netbsd_arm64-gcc	native	netbsd_arm64	-	gcc	-
+native-freebsd_amd64-llvm	native	freebsd_amd64	-	llvm	blocked:amd64 BSD guest needs hardware virtualisation; QEMU/TCG stalls at boot on this arm64 host
+native-netbsd_amd64-llvm	native	netbsd_amd64	-	llvm	blocked:amd64 BSD guest needs hardware virtualisation; QEMU/TCG stalls at boot on this arm64 host
+native-macos_arm64-llvm	native	macos_arm64	-	llvm	-
+native-macos_arm64-gcc	native	macos_arm64	-	gcc	-
+native-windows_amd64-msvc	native	windows_amd64	-	msvc	blocked:no Windows guest yet: needs a licensed install (EWDK/ISO cached; arm64 guest not automatable)
+cross-linux_arm64-linux-amd64	cross	linux_arm64	linux-amd64	llvm	linux_amd64_emu
+cross-linux_amd64_emu-linux-arm64	cross	linux_amd64_emu	linux-arm64	llvm	linux_arm64
+cross-linux_arm64-freebsd-arm64	cross	linux_arm64	freebsd-arm64	llvm	freebsd_arm64
+cross-linux_arm64-netbsd-arm64	cross	linux_arm64	netbsd-arm64	llvm	netbsd_arm64
+cross-linux_arm64-freebsd-amd64	cross	linux_arm64	freebsd-amd64	llvm	blocked:cannot run an amd64 BSD guest on this host (see native-freebsd_amd64)
+cross-linux_arm64-netbsd-amd64	cross	linux_arm64	netbsd-amd64	llvm	blocked:cannot run an amd64 BSD guest on this host (see native-netbsd_amd64)
+cross-linux_arm64-macos-arm64	cross	linux_arm64	macos-arm64	llvm	none:Apple licence: a macOS guest runs only on Apple hardware, and the SDK is not redistributable
+cross-linux_arm64-win-amd64	cross	linux_arm64	win-amd64	llvm	blocked:no Windows guest yet

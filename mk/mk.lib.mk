@@ -128,7 +128,10 @@ CXXFLAGS += -I${_FWDIR}/${BUILD_ROOT}/include
 .endif
 
 .if exists(${_FWDIR}/makefile)
-_PREREQS != bmake -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
+# @impl 0f87-6ad7-d974-4a81
+# ${MAKE}, not a command named bmake: NetBSD has no bmake (its make is /usr/bin/make),
+# and 2>/dev/null || true would hide the failure as an empty PREREQS.
+_PREREQS != ${MAKE} -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
 .  for _p in ${_PREREQS}
 # REQ-headers-resolved-from-source-req: a PREREQS framework is resolved
 # first within the current workspace, then falling back through PARENT_WS
@@ -146,7 +149,7 @@ _PREREQ_BASE.${_p} = ${_pws}
 .    if defined(_PREREQ_BASE.${_p})
 # public-headers-system-req (D3): see mk.prog.mk's identical comment.
 .      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
-_PREREQ_SYS.${_p} != bmake -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
+_PREREQ_SYS.${_p} != ${MAKE} -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
 .      endif
 .      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
 _INCFLAG.${_p} = -isystem
@@ -458,15 +461,13 @@ _IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
 .    if ${_BMK_WIN_MINGW:Uno} == "yes"
 _IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
 _IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV} PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
-# Cross-compilation: never read host .pc files; sysroot-aware per
-# BMK_<OS>_SYSROOT= (the same variable mk.toolchain.llvm.mk's own cross
-# branches already require) -- implemented per the brief's own explicit
-# requirement, not empirically verified end-to-end (no foreign sysroot
-# with real .pc files available from this host; cross-compilation itself
-# is out of scope this round beyond keeping this behavior correct).
-.    elif ${TARGET} != ${_HOST_OS_LABEL}
-_IMPORT_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT}
-_IMPORT_PC_ENV  = env PKG_CONFIG_SYSROOT_DIR="${_IMPORT_SYSROOT}" PKG_CONFIG_LIBDIR="${_IMPORT_SYSROOT}/usr/lib/pkgconfig:${_IMPORT_SYSROOT}/usr/share/pkgconfig" PKG_CONFIG_PATH=
+# Cross-compilation (another OS, or another architecture of the same OS):
+# pkg-config limited to the target's own .pc directories in its sysroot,
+# chosen in mk.common.mk (_BMK_PKG_CONFIG_ENV) for IMPORT=pkg: and
+# REQUIRES= alike -- never the host's .pc files.
+# @impl 0f87-6adc-d562-f11c
+.    elif ${BMK_IS_NATIVE_BUILD} == "no"
+_IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV}
 .    else
 # Additive, not replacing: a real install found via pkg-config's own
 # built-in default search paths (e.g. MacPorts pkg-config already
@@ -506,19 +507,28 @@ _IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 #
 # import-resolution-cache-req-v3: the key also covers OS_ARCH (ABI and
 # toolchain), CC and the pkg-config used -- on Cygwin a mingw build reused
-# the Cygwin build's answer, both being TARGET=win (2026-10-15). And the
+# the Cygwin build's answer, both being TARGET=win (2026-10-15). PCENV
+# carries a cross build's sysroot and search dirs: a cross build to
+# linux-amd64 from an arm64 Linux host reused an answer recorded with
+# another environment and staged the host's aarch64 libcurl. And the
 # chicken-and-egg above only holds for the FIRST lookup: a hit records the
 # .pc file it came from (pcfiledir, which pkgconf and freedesktop
 # pkg-config both report) and its mtime, and is discarded when that file
 # is gone or changed -- an upgraded or removed package is re-resolved, at
-# the cost of an exists() and a :mtime, no subprocess. The cache is a
+# the cost of an exists() and one stat (not make's :mtime, see _BMK_MTIME). The cache is a
 # makefile fragment, .include'd: reading it forks nothing either (it was
 # eight sed calls). The old line-based .import-resolve-cache is removed.
 # @impl 0f87-6ab6-0d63-eb19
 _IMPORT_CACHE_FILE = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache.mk
 _IMPORT_CACHE_OLD  = ${.CURDIR}/${BUILD_ROOT}/.import-resolve-cache
+# @impl 0f87-6adc-d562-f11c
 _IMPORT_KEY = V=3 IMPORT=${IMPORT} PKG_CONFIG_PATH=${PKG_CONFIG_PATH} EXTRA=${_PKG_CONFIG_EXTRA_DIRS} TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} OS_ARCH=${OS_ARCH} CC=${CC} PC=${_BMK_PKG_CONFIG} PCENV=${_BMK_PKG_CONFIG_ENV}
 _IMPORT_FP := ${_IMPORT_KEY:hash}
+# A file's modification time in seconds. Not make's :mtime modifier: bmake
+# 20200710 (Debian/Ubuntu) and NetBSD's older make do not have it, and an
+# unknown modifier is fatal. GNU stat takes -c, BSD stat -f; the one that does
+# not apply fails and the other answers. @impl 0f87-6ad7-1f32-4d7a
+_BMK_MTIME = stat -c %Y @F@ 2>/dev/null || stat -f %m @F@ 2>/dev/null || echo 0
 _IC_FP =
 .    if exists(${_IMPORT_CACHE_FILE})
 .      include "${_IMPORT_CACHE_FILE}"
@@ -527,8 +537,11 @@ _IMPORT_CACHE_VALID = no
 .    if "${_IC_FP}" == "${_IMPORT_FP}" && "${_IC_FOUND:Uno}" == "yes"
 .      if empty(_IC_PCFILE)
 _IMPORT_CACHE_VALID = yes
-.      elif exists(${_IC_PCFILE}) && "${_IC_PCFILE:mtime}" == "${_IC_PCMTIME:U0}"
+.      elif exists(${_IC_PCFILE})
+_IC_PCNOW != ${_BMK_MTIME:S,@F@,${_IC_PCFILE},g}
+.        if "${_IC_PCNOW}" == "${_IC_PCMTIME:U0}"
 _IMPORT_CACHE_VALID = yes
+.        endif
 .      endif
 .    endif
 .    if ${_IMPORT_CACHE_VALID} == "yes"
@@ -555,7 +568,7 @@ _IMPORT_LIBDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=libdir ${_IMP
 _IMPORT_PCDIR   != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=pcfiledir ${_IMPORT_PKGNAME} 2>/dev/null
 .        if !empty(_IMPORT_PCDIR) && exists(${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc)
 _IMPORT_PCFILE  = ${_IMPORT_PCDIR}/${_IMPORT_PKGNAME}.pc
-_IMPORT_PCMTIME := ${_IMPORT_PCFILE:mtime}
+_IMPORT_PCMTIME != ${_BMK_MTIME:S,@F@,${_IMPORT_PCFILE},g}
 .        endif
 # import-system-includedir-fallback-req: pkg-config omits -I<dir> for a
 # SYSTEM directory (/usr/include on Linux), so --cflags can be empty for
@@ -565,6 +578,19 @@ _IMPORT_PCMTIME := ${_IMPORT_PCFILE:mtime}
 # NOT changed -- the compiler finds a system directory on its own.
 # @impl 0f87-6ac0-c275-d578
 _IMPORT_INCDIR  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=includedir ${_IMPORT_PKGNAME} 2>/dev/null
+# A cross build's libdir and includedir are in the sysroot. pkg-config
+# prefixes the -I/-L it prints with PKG_CONFIG_SYSROOT_DIR, but --variable
+# only with pkgconf (Debian's); freedesktop pkg-config (MacPorts 0.29)
+# answers /usr/lib and /usr/include -- the host's, where staging would copy
+# the host's headers and libraries from. Prefixed here when missing.
+# @impl 0f87-6adc-d727-1a3b
+.        if !empty(_BMK_PKG_CONFIG_SYSROOT:U)
+.          for _v in _IMPORT_LIBDIR _IMPORT_INCDIR
+.            if !empty(${_v}) && empty(${_v}:M${_BMK_PKG_CONFIG_SYSROOT}/*)
+${_v} := ${_BMK_PKG_CONFIG_SYSROOT}${${_v}}
+.            endif
+.          endfor
+.        endif
 # shared-import-link-flags-fix-req: a shared library (.so/.dylib) embeds
 # its own dependency references (install_name/rpath on macOS, DT_NEEDED
 # on ELF), resolved by the dynamic linker at LOAD time, not link time --
@@ -1071,6 +1097,10 @@ _stage_import:
 # checked for before use and their result checked after -- a missing unzip
 # once "extracted" nothing, said so, and cached it (2026-10-15).
 # @impl 7854-6ad0-c2db-ec05
+# @impl 0f87-6ad7-1f32-4d7a
+# file:// URLs are copied (cp), never handed to a downloader: NetBSD's ftp(1) cannot
+# fetch one ("ftp_strdup: called with NULL argument", empty output) and a machine with
+# no curl/wget has nothing else. @impl 0f87-6ad7-1f32-4d7a
 _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
@@ -1087,7 +1117,12 @@ _fetch_import:
 		if [ ! -f "$$_dist" ]; then \
 			echo "===> fetching $$_url"; \
 			_out="$$_dist.tmp"; \
-			if _dl=$$(command -v curl 2>/dev/null); then \
+			if case "$$_url" in file://*) true ;; *) false ;; esac; then \
+				_dl=cp; _lpath="$${_url#file://}"; \
+				case "$$_lpath" in localhost/*) _lpath="/$${_lpath#localhost/}" ;; esac; \
+				case "$$_lpath" in /[A-Za-z]:*) _lpath="$${_lpath#/}" ;; esac; \
+				if _msg=$$(cp "$$_lpath" "$$_out" 2>&1); then _rc=0; else _rc=$$?; fi; \
+			elif _dl=$$(command -v curl 2>/dev/null); then \
 				case "$$_dl" in \
 				/usr/*|/bin/*) ;; \
 				*) if command -v cygpath >/dev/null 2>&1; then _out=$$(cygpath -w "$$_dist.tmp"); fi ;; \
@@ -1095,8 +1130,14 @@ _fetch_import:
 				if _msg=$$(curl -fsSL -o "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
 			elif _dl=$$(command -v wget 2>/dev/null); then \
 				if _msg=$$(wget -nv -O "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
+			elif case "$$(uname -s)" in \
+				FreeBSD|DragonFly) _dl=$$(command -v fetch 2>/dev/null); _dlq=-q ;; \
+				NetBSD|OpenBSD) _dl=$$(command -v ftp 2>/dev/null); _dlq= ;; \
+				*) _dl= ;; \
+				esac; [ -n "$$_dl" ]; then \
+				if _msg=$$("$$_dl" $$_dlq -o "$$_out" "$$_url" 2>&1); then _rc=0; else _rc=$$?; fi; \
 			else \
-				echo "error: IMPORT=${IMPORT}: cannot fetch $$_url -- neither curl nor wget is on PATH" >&2; exit 1; \
+				echo "error: IMPORT=${IMPORT}: cannot fetch $$_url -- none of curl, wget or this system's own fetcher (fetch on FreeBSD, ftp on NetBSD/OpenBSD) is on PATH" >&2; exit 1; \
 			fi; \
 			if [ "$$_rc" != 0 ]; then \
 				rm -f "$$_dist.tmp"; \

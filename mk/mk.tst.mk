@@ -28,6 +28,7 @@
 
 .if !defined(_MK_TST_MK_)
 _MK_TST_MK_ = 1
+
 _BMK_TST = yes
 
 .if !defined(BMK_MKDIR)
@@ -197,8 +198,10 @@ _tst_stage: ${_TST_STAGE_DEPS}
 	@echo 'atf_test_program{name="${_t}"}' >> ${_TST_KYUAFILE}
 .  endfor
 
+.include "${BMK_MKDIR}/mk.crosstest.mk"
+
 # @impl 0f87-6ac0-d892-bc8f
-test: _tst_stage
+test: _xtest_check _tst_stage
 .  if empty(_TST_SEL)
 .    if !empty(TEST)
 	@echo "error: TEST=${TEST} matches no test in ${.CURDIR:T}" >&2; exit 1
@@ -208,12 +211,23 @@ test: _tst_stage
 .  else
 	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rc=0; \
+	if [ "${_XTEST_MODE}" = remote ]; then \
+		echo "===> running the tests on ${_XTEST_RUNNER}"; \
+		sh ${_XTEST_SCRIPT} --runner '${_XTEST_RUNNER}' --tests ${_TST_BINDIR} --out "$$_rundir" --kyua ${KYUA} \
+			$$([ "${REPORT}" = "yes" ] && echo --html) \
+			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" \
+			--ship "PATH=${_TST_PATH:S/:/ /g:N${_TST_BINDIR}:ts:}" \
+			--ship "BMK_SHAREDIR=${_TST_SHARE}" || _rc=$$?; \
+	else \
 	export PATH="${_TST_PATH}:$$PATH" BMK_SHAREDIR="${_TST_SHARE}"; \
-	(cd ${_TST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
+	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
 	(cd ${_TST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
-	if [ "${REPORT}" = "yes" ]; then \
+	if [ "${REPORT}" = "yes" ] && [ "${_XTEST_MODE}" != remote ]; then \
 		(cd ${_TST_BINDIR} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+	fi; \
+	if [ "${REPORT}" = "yes" ]; then \
 		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \
 	fi; \
 	rm -rf ${.CURDIR}/${BUILD_ROOT}/runs/latest; \

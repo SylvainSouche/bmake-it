@@ -25,6 +25,8 @@
 .if !defined(_MK_TEST_MK_)
 _MK_TEST_MK_ = 1
 
+.include "${BMK_MKDIR}/mk.crosstest.mk"
+
 KYUA ?= kyua
 TESTS_CXX ?=
 TESTS_C ?=
@@ -136,14 +138,23 @@ _gen_kyuafile:
 # @impl 0f87-6ac0-c275-6edd
 # @impl 0f87-6aa9-0267-4adc
 # @impl 0f87-6aaa-72d2-8ffc
-test: all _build_tests _gen_kyuafile
+test: _xtest_check all _build_tests _gen_kyuafile
 	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rc=0; \
-	(cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
+	if [ "${_XTEST_MODE}" = remote ]; then \
+		echo "===> running the tests on ${_XTEST_RUNNER}"; \
+		sh ${_XTEST_SCRIPT} --runner '${_XTEST_RUNNER}' --tests ${_TEST_BINDIR} --out "$$_rundir" --kyua ${KYUA} \
+			$$([ "${REPORT}" = "yes" ] && echo --html) \
+			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" || _rc=$$?; \
+	else \
+	${_XTEST_LOCAL_ENV} (cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
 	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
-	if [ "${REPORT}" = "yes" ]; then \
+	if [ "${REPORT}" = "yes" ] && [ "${_XTEST_MODE}" != remote ]; then \
 		(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+	fi; \
+	if [ "${REPORT}" = "yes" ]; then \
 		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \
 	fi; \
 	rm -rf ${.CURDIR}/${BUILD_ROOT}/runs/latest; \

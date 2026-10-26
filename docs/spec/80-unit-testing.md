@@ -229,6 +229,68 @@ keeps it from overwriting the regular run's dashboard. See
 `40-cli-reference.md` for where build/test logs live and how this
 composes with an external CI/integration-manager process.
 
+## Cross targets: running the tests on the target
+
+`bmake test` runs `kyua` on the build host. For a target the host cannot run (a
+different OS or architecture) the test programs are target binaries, so they are
+run **on the target** by a *test runner*
+(`cross-test-runner-dec`, `cross-test-runner-req`).
+
+```sh
+bmake test TARGET=freebsd TARGET_ARCH=arm64 \
+     TEST_RUNNER.freebsd-arm64=ssh:root@localhost:2226
+```
+
+**Naming the runner.** `TEST_RUNNER.<os>-<arch>` names the runner for one target;
+`TEST_RUNNER` names one for every target (the per-target one wins). They are set
+on the command line or in the hook files (`pre.mk`, `local.mk`, ...) like every
+other setting. A runner is one of
+
+| Spec | Runs the tests |
+|---|---|
+| `ssh:[user@]host[:port]` | on that machine; `BMK_SSH_OPTS` gives ssh its key and options |
+| `docker:<image>[@<platform>]` | in a throw-away container (`@linux/amd64` for an emulated one) |
+| `cmd:<program>` | wherever `<program> <staged-dir>` makes them run (a board, `qemu-user`, a custom VM); it must run `sh <staged-dir>/run.sh <staged-dir>` there and leave `<staged-dir>/out` behind |
+| `local` | here, as before |
+
+**No runner, foreign target** (`cross-test-needs-runner-req`): `bmake test` stops
+**before building**, naming `TEST_RUNNER.<os>-<arch>`, `TEST_RUNNER` and the
+escape `TEST_RUNNER=local`. Target binaries are never run on the wrong machine
+silently. (This is a change for a host that runs a foreign architecture through
+emulation, such as `qemu-user`: set `TEST_RUNNER=local` to keep the old
+behaviour. For a Linux target, `TEST_RUNNER=local` also exports
+`QEMU_LD_PREFIX=${BMK_LINUX_SYSROOT}` unless it is set, so the emulator finds
+the target's dynamic loader and libraries; `cross-test-local-emulated-req`.) The target itself is the build host's own OS and architecture unless
+`TARGET=`/`TARGET_ARCH=` say otherwise, so ordinary `bmake test` is unchanged.
+
+**How it works.** The unit of work is the whole tests directory: `kyua` hands each
+ATF program a results file on its own filesystem, so the programs cannot be
+wrapped one at a time. `scripts/cross-test.sh` stages the tests directory
+together with what the tests load, a generated `run.sh` runs `kyua test` on the
+target, and the JUnit report (and the HTML one with `REPORT=yes`) comes back to
+`runs/<RUN_ID>/` and `runs/latest/` as for a local run. The exit status is the
+tests'.
+
+**What is shipped** (`cross-test-ships-dependencies-req`). The libraries the
+tests link (the module's own and the `LIBS=` chain) are named by `LD_LIBRARY_PATH`
+on the target; for a `.tst` module also the programs under test (first on `PATH`)
+and the shared data (`BMK_SHAREDIR`). The build host's absolute paths, which the
+binaries carry as an rpath, are not used.
+
+**The target needs `kyua` and `atf`** (`atf-sh` for script tests); `PATH` is
+extended with `/usr/pkg/bin`, `/usr/local/bin` and `/usr/sbin`, where they live
+on NetBSD and FreeBSD. A missing `kyua` is reported as such (exit 127).
+
+**Limits**
+- A **macOS target** cannot find shipped libraries this way: System Integrity
+  Protection strips `DYLD_*` when a program is started through `/usr/bin/env` or
+  `/bin/sh`, which every `atf-sh` test is. (The same restriction shaped
+  `bmake run`.) Staging, `PATH`, data and reports work.
+- Cross-*building* ATF **C/C++** tests for a BSD needs `atf`'s headers and
+  libraries for the target in the sysroot, which an OS-only sysroot does not carry
+  (`cross-sysroot-os-only-obs`); shell tests and `.tst` utilities have no such need.
+- Windows targets have no runner yet.
+
 ## Toolchain notes
 
 MacPorts' `atf-c++` 0.21 headers use `std::auto_ptr`, which libc++ drops

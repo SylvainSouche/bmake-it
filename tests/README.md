@@ -19,6 +19,88 @@ macOS AppleDouble sidecar files (`pack-cases.sh` now strips them). Both are
 model requirements now (`nested-invocation-reentrancy-guard-req`), not just
 patches.
 
+## The cross-platform matrix (tests/harness)
+
+The unit suite above runs on whatever host you are on. The *matrix* runs it
+(and a cross-built program) on every platform we can: Linux in containers,
+FreeBSD and NetBSD as real QEMU guests, macOS natively. It is plain shell and
+make and is not part of the product.
+
+```sh
+cd tests/harness
+export BMK_CACHE=/path/to/cache        # default ~/.bmk-cache; may be an external drive
+sh vm.sh status                        # what exists for each VM platform
+sh matrix.sh list                      # every cell: build host x target x toolchain
+sh matrix.sh run 'native-freebsd_arm64-*'
+sh matrix.sh run cross-linux_arm64-freebsd-arm64   # build on Linux, RUN on FreeBSD
+sh matrix.sh report                    # the grid: build and run result per cell
+make fetch provision build test report # all of it
+```
+
+- **Cells** are in `matrix.tsv`. A *native* cell runs the whole suite inside the
+  platform; a *cross* cell builds Hello for the target and then executes it
+  there. A cell that cannot run is listed with its reason (an amd64 BSD guest
+  stalls under software emulation on an arm64 host; a macOS guest needs Apple
+  hardware; there is no Windows guest yet), never silently dropped.
+- **VMs** (`vm.sh`): the published image is kept as downloaded, decompressed
+  once into a read-only *base*, provisioned once into a *layer* (ssh key,
+  sshd, the packages the suite needs), and each run boots a throw-away
+  *overlay* on the layer: `vm.sh reset <id>` restores the provisioned state
+  by deleting it. On a host of the same architecture the guest is
+  hardware-accelerated (FreeBSD 15.1 arm64 reaches ssh in under a minute on
+  an M-series Mac).
+- **Where things live**: `BMK_CACHE` holds images, bases, layers, overlays,
+  sysroots, keys, logs and results (`BMK_VMS` moves just the throw-away
+  overlays to a faster disk if the cache sits on a slow external drive); `BMK_RUN` (default under `$TMPDIR`) holds
+  sockets and pidfiles, which an exFAT drive cannot hold. A container runtime
+  such as Colima shares `$HOME` but usually not an external drive, so the
+  scripts stage what a container reads under `$HOME` first.
+- **Sysroots** for the BSDs are taken from the guest itself
+  (`vm.sh sysroot freebsd_arm64`), so a cross-built binary matches the OS it
+  runs on; Linux sysroots come from `fetch/build-sysroot-linux.sh`.
+- The container images are tagged `bmk/*`. If you already have the earlier
+  `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
+  (and likewise for the other two) instead of rebuilding.
+
+### Results (2026-10-20, Apple-silicon host)
+
+| Cell | llvm | gcc |
+|---|---|---|
+| macOS, host | 95 pass | |
+| macOS guest (tart) | 93 pass, 2 skip | 92 pass, 3 skip |
+| Linux glibc arm64 (container) | 91 pass, 4 skip | 94 pass, 1 skip |
+| Linux glibc amd64 (container, emulated) | 91 pass, 4 skip | 93 pass, 2 skip |
+| Linux musl amd64 (container, emulated) | 91 pass, 4 skip | 93 pass, 2 skip |
+| FreeBSD 15.1 arm64 (QEMU, hvf) | 94 pass, 1 skip | 91 pass, 4 skip |
+| NetBSD 10.2 arm64 (QEMU, hvf) | 91 pass, 4 skip | 93 pass, 2 skip |
+
+No failures. Skips are cases whose tool or capability is absent on that
+platform (OpenMP, ASan that cannot start, macOS-only dylib chains).
+Emulated platforms retry a failing case once and report one that passes only
+on the retry as `flaky=N`; the amd64 gcc run had five such first attempts.
+
+Cross cells, each built and then **run on the target** where a target exists
+here: Linux arm64 to Linux amd64, Linux amd64 to Linux arm64, Linux to FreeBSD
+arm64 and Linux to NetBSD arm64 all print `Hello, Bmake It!`. FreeBSD and NetBSD
+amd64 build but cannot run here (blocked, reported). Linux to macOS builds but
+does not link from the Debian 13 container (its lld cannot read this Mac's SDK
+stubs); Windows has no guest or sysroot recipe yet. `sh matrix.sh report` prints
+all of it.
+
+Running there found defects macOS and Debian hide: fetch needed curl or wget
+(bare FreeBSD has only `fetch`); `bmake test` stopped at the first failing
+module under a make that runs recipes with `sh -e`; an empty variable left a
+double space in an error text; a ports gcc's C++ binaries would not start;
+the import cache used the `:mtime` modifier that bmake 20200710 (Debian,
+Ubuntu) and NetBSD's make lack; and a shared library cross-built for NetBSD
+was rejected by its loader (two load segments, no RELRO). See
+`freebsd-base-run-findings-obs`, `mtime-modifier-missing-on-old-make-obs` and
+`netbsd-cross-binaries-run-req`.
+
+A guest needs RAM: the matrix runs one at a time (`MATRIX_KEEP_VMS=1` keeps
+them up). On a 16 GB Mac with the container VM running, expect swap use; stop
+the container VM (`colima stop`) while running the BSD and macOS cells.
+
 ## Design
 
 - **Orchestration is pure shell** (`harness/run-tests.sh`), not make — so there
@@ -152,6 +234,11 @@ sh tests/harness/pack-cases.sh
 | 93 | A static `OPENMP=yes` library used through `LIBS=` by a module that does not set `OPENMP=` links, and `.linkdeps` records `-fopenmp` (skips without an OpenMP runtime) |
 | 94 | `bmake run PROGRAM=<x>` runs any program through the build environment: a built program with arguments (from the workspace and from a module dir), the `PATH`/library/`BMK_*` chains, the caller's environment inherited, a program built only in a `PARENT_WS` found, an error naming the chain for a missing one, and an interactive `sh`/`bash`/`zsh` whose own startup file resets `PATH` still ends up with the workspace bin first and the user's rc having run (with a control proving the rc really resets it) |
 | 95 | `bmake docs` opt-in knobs: a framework with no public `include/` but `DOC_INPUT_EXTRA=` (local/include + a module's `src/`) is documented, headers only, and `DOC_WARN_IF_UNDOCUMENTED=YES` reports exactly its one undocumented entity; a framework setting nothing gets the unchanged Doxyfile; `DOC_EXTRACT_PRIVATE=YES` is passed through (skips doxygen if not installed) |
+| 96 | The product asks the make that is running (`${MAKE}`), never a command named `bmake`: a `PREREQS=` workspace builds, prerequisite headers found, through a copy of the make under another name with a failing `bmake` first on `PATH` that records any call to it (NetBSD has no `bmake`; found building OpenRider) |
+| 97 | An unknown `TOOLCHAIN=` (`clang`, `gnu`, `cl`, `bogus`) stops with "no toolchain of that name", lists `llvm`, `gcc`, `msvc` and says which one an alias means (`clang` is `llvm`) instead of "Could not find mk.toolchain.clang.mk"; `TOOLCHAIN=llvm` still works |
+| 98 | `IMPORT=fetch:` with a `file://` distfile builds with `curl` and `wget` removed from `PATH` on every host (NetBSD's `ftp` cannot fetch a `file://` URL, so the product copies it), and a missing `file://` distfile fails with "could not fetch any FETCH_URL" |
+| 99 | `bmake test` with `TEST_RUNNER=cmd:<program>` runs a `.tst` workspace's tests through the runner: staged with the module's shared library, the utility on `PATH` and `BMK_SHAREDIR`, with the build host's library directories hidden during the run (not on macOS, where SIP strips `DYLD_*`), reports and exit status back; `TEST_RUNNER.<os>-<arch>` wins over `TEST_RUNNER`; a foreign target with no runner stops before building naming the variables to set |
+| 100 | Cross builds resolve `IMPORT=pkg:` and `REQUIRES=` in the target sysroot (fake sysroots of `.pc` files, nothing compiled): Linux multiarch for the other architecture and riscv64, FreeBSD `usr/local/libdata`, NetBSD `usr/pkg/lib`, the host's own OS on the other architecture; libdir and includedir in the sysroot; a decoy `.pc` on `PKG_CONFIG_PATH` never leaks, and a native build still reads it; a missing `REQUIRES=` names the sysroot; `TEST_RUNNER=local` exports `QEMU_LD_PREFIX` for a foreign Linux target only (skips without pkg-config) |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 
