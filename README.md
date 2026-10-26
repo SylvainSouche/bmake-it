@@ -40,7 +40,7 @@ on the host:
 | FreeBSD, NetBSD | Already the base system's own `make` — nothing to install |
 | macOS | MacPorts `sudo port install bmake`, Homebrew `brew install bmake`, or pkgsrc/pkgin `pkgin install bmake` — pick whichever you already use; the toolchain itself should come from that same package manager too, not Xcode CLT by default. See Toolchain tiers below |
 | Debian, Ubuntu, other Linux | `sudo apt install bmake` (or your distro's equivalent package) |
-| Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` also needs cl.exe already on `PATH` (launch from a Visual Studio developer prompt, or `vcvarsall.bat`) — see `mk/mk.toolchain.msvc.mk`'s own header comments; there's no dedicated spec chapter for this yet |
+| Windows | Cygwin: select the `bmake` package in Cygwin's own `setup-x86_64.exe` package chooser. `TOOLCHAIN=msvc` finds MSVC by itself from a plain Cygwin shell, in this order: `cl.exe` already on `PATH` (a Visual Studio developer prompt); a mounted **EWDK** given as `BMK_EWDK_ROOT=F:\` (no Visual Studio install needed — the ISO's MSVC and Windows SDK are used in place); an installed Visual Studio or Build Tools found by `vswhere.exe`. See `mk/mk.vcvarsall.mk` and `mk/mk.toolchain.msvc.mk` |
 
 `flex`/`bison` (or `yacc`/`lex`) are only needed if a module has `.y`/
 `.l` grammar sources — optional otherwise. `IMPORT=fetch:`/`fetch-bin:`

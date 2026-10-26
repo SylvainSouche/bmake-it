@@ -37,7 +37,15 @@ for d in $PATH; do
     for f in "$d"/*; do
         n=${f##*/}
         case "$n" in curl|wget|curl.exe|wget.exe|'*') continue ;; esac
-        [ -e "$ROOT/nopath/$n" ] || ln -s "$f" "$ROOT/nopath/$n" 2>/dev/null || true
+        [ -e "$ROOT/nopath/$n" ] && continue
+        # Windows loads a program's DLLs (cygwin1.dll, ...) through PATH and
+        # cannot read a Cygwin symlink: Cygwin gcc's cc1.exe, outside
+        # /usr/bin, failed silently. A hard link (or a copy) is a real file.
+        # Only Cygwin's own DLLs: Windows always searches its system directory.
+        case "$BMK_T_OS:$d:$n" in
+            win:/usr/bin:*.dll|win:/bin:*.dll) ln "$f" "$ROOT/nopath/$n" 2>/dev/null || cp "$f" "$ROOT/nopath/$n" 2>/dev/null || true ;;
+            *) ln -s "$f" "$ROOT/nopath/$n" 2>/dev/null || true ;;
+        esac
     done
 done
 IFS=$oldifs

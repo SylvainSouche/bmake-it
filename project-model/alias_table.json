@@ -1484,7 +1484,7 @@
   "impl-harness-testlib": {
     "active": true,
     "id": "7854-6adf-8c28-260c",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-harness-vm-layers": {
@@ -1496,7 +1496,7 @@
   "impl-harness-windows-host-cells": {
     "active": true,
     "id": "7854-6adf-8cd3-e408",
-    "status": "asserted",
+    "status": "verified",
     "type": "impl"
   },
   "impl-header-dependency-tracking": {
@@ -1707,6 +1707,12 @@
     "active": true,
     "id": "0f87-6a98-5e9c-0a14",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-msvc-ewdk-root": {
+    "active": true,
+    "id": "7854-6adf-b80a-aecf",
+    "status": "verified",
     "type": "impl"
   },
   "impl-msvc-toolchain": {
@@ -2770,6 +2776,24 @@
     "id": "0f87-6a9a-b50f-e8d7",
     "status": "recorded",
     "type": "obs"
+  },
+  "msvc-ewdk-not-found-obs": {
+    "active": true,
+    "id": "7854-6adf-b808-7e34",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "msvc-ewdk-root-dec": {
+    "active": true,
+    "id": "7854-6adf-b809-46af",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "msvc-ewdk-root-req": {
+    "active": true,
+    "id": "7854-6adf-b809-6da6",
+    "status": "confirmed",
+    "type": "req"
   },
   "msvc-header-dependency-tracking-deferred": {
     "active": true,

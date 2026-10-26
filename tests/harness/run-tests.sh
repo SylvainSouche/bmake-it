@@ -52,6 +52,8 @@ FILTER="${1:-}"
 # bmake invocation (case 13-target-key does) still wins -- normal make
 # override precedence (command line beats environment).
 TOOLCHAIN="${TOOLCHAIN:-}"
+# The same for ABI= (e.g. ABI=mingw on a Cygwin host: mingw-w64 output).
+ABI="${ABI:-}"
 
 pass=0; fail=0; skip=0; errors=0; flaky=0
 
@@ -68,7 +70,7 @@ cat > "$WRAPDIR/bmake" << EOF
 exec env -u MAKEFLAGS -u MAKELEVEL -u MFLAGS \\
     MAKESYSPATH="${BMK_MKDIR}:${_SYS_MK}" \\
     BMK_MKDIR="${BMK_MKDIR}" \\
-    ${TOOLCHAIN:+TOOLCHAIN="$TOOLCHAIN"} \\
+    ${TOOLCHAIN:+TOOLCHAIN="$TOOLCHAIN"} ${ABI:+ABI="$ABI"} \\
     ${BMAKE} -m "${BMK_MKDIR}" -m "${_SYS_MK}" BMK_MKDIR="${BMK_MKDIR}" "\$@"
 EOF
 chmod +x "$WRAPDIR/bmake"
@@ -79,6 +81,7 @@ echo "sys.mk from $_SYS_MK"
 echo "archives: $ARCHIVES_DIR"
 echo "work:     $WORKDIR_BASE"
 [ -n "$TOOLCHAIN" ] && echo "TOOLCHAIN=$TOOLCHAIN (forced for whole suite)"
+[ -n "$ABI" ] && echo "ABI=$ABI (forced for whole suite)"
 echo
 
 for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do

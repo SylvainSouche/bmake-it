@@ -19,16 +19,38 @@ _MK_VCVARSALL_MK_ = 1
 # separators, by bmake's own stat() calls) -- only vswhere.exe's own
 # -property output (already Windows-style, since it's a native program
 # reporting Windows paths) needs the reverse treatment, handled below.
+# msvc-ewdk-root-req: a mounted EWDK (Enterprise WDK ISO: MSVC build tools +
+# Windows SDK, no installer) instead of an installed Visual Studio. Its
+# layout is a Visual Studio root and an SDK root under "Program Files" of
+# the mounted drive; vswhere knows nothing about it. BMK_EWDK_ROOT names
+# that drive or directory, Windows (F:\) or Cygwin (/cygdrive/f) form.
+# @impl 7854-6adf-b80a-aecf
+.  if !empty(BMK_EWDK_ROOT)
+_EWDK_U != cygpath -u '${BMK_EWDK_ROOT}' 2>/dev/null
+_EWDK_VS_U != for _d in "${_EWDK_U}/Program Files/Microsoft Visual Studio"/*/BuildTools; do [ -d "$$_d" ] && echo "$$_d"; done | sort -V | tail -1
+.    if empty(_EWDK_VS_U)
+.      error "TOOLCHAIN=msvc: BMK_EWDK_ROOT=${BMK_EWDK_ROOT} has no 'Program Files/Microsoft Visual Studio/<version>/BuildTools' -- is the EWDK ISO mounted there? (Windows: right-click the ISO, Mount; or Mount-DiskImage)"
+.    endif
+_VS_ROOT != cygpath -w "${_EWDK_VS_U}"
+# a shell test: bmake's exists() cannot take a path with spaces ("Program Files")
+_EWDK_SDK_OK != [ -d "${_EWDK_U}/Program Files/Windows Kits/10/Include" ] && echo yes || true
+.    if empty(_EWDK_SDK_OK)
+.      error "TOOLCHAIN=msvc: BMK_EWDK_ROOT=${BMK_EWDK_ROOT} has no 'Program Files/Windows Kits/10/Include' (the Windows SDK an EWDK carries)"
+.    endif
+_SDK_ROOT != cygpath -w "${_EWDK_U}/Program Files/Windows Kits/10"
+.  else
 _VSWHERE = /cygdrive/c/Program Files (x86)/Microsoft Visual Studio/Installer/vswhere.exe
-.  if !exists(${_VSWHERE})
-.    error "TOOLCHAIN=msvc: vswhere.exe not found at '${_VSWHERE}' -- no Visual Studio Installer-managed product (VS2017+, including Build Tools) appears to be installed."
-.  endif
+.    if !exists(${_VSWHERE})
+.      error "TOOLCHAIN=msvc: vswhere.exe not found at '${_VSWHERE}' -- no Visual Studio Installer-managed product (VS2017+, including Build Tools) appears to be installed. With a mounted EWDK instead, set BMK_EWDK_ROOT=<its drive, e.g. F:\\>."
+.    endif
 
 # vswhere itself is a native Windows exe; -latest picks the newest
 # installed instance if more than one product/edition is present.
 _VS_ROOT != "${_VSWHERE}" -latest -products '*' -property installationPath 2>/dev/null | tr -d '\r'
-.  if empty(_VS_ROOT)
-.    error "TOOLCHAIN=msvc: vswhere.exe found no installed Visual Studio product with the C++ build tools workload."
+.    if empty(_VS_ROOT)
+.      error "TOOLCHAIN=msvc: vswhere.exe found no installed Visual Studio product with the C++ build tools workload. With a mounted EWDK instead, set BMK_EWDK_ROOT=<its drive, e.g. F:\\>."
+.    endif
+_SDK_ROOT = C:\Program Files (x86)\Windows Kits\10
 .  endif
 
 # The toolset version vcvarsall.bat itself would pick with no explicit
@@ -63,8 +85,9 @@ _MSVC_BIN != cygpath -u "${_MSVC_TOOLROOT}\bin\Host${_MSVC_HOST_ARCH}\${_MSVC_TA
 
 # Windows SDK: highest-versioned subdirectory under Include/ (matches
 # vcvarsall.bat's own "latest installed SDK" default when none is pinned).
-_SDK_ROOT = C:\Program Files (x86)\Windows Kits\10
-_SDK_VER != ls "$$(cygpath -u '${_SDK_ROOT}\Include')" 2>/dev/null | sort -V | tail -1
+# Only version-named directories (10.*): an EWDK's Include/ also holds
+# 'wdf', which sorts after them (msvc-ewdk-root-req).
+_SDK_VER != ls "$$(cygpath -u '${_SDK_ROOT}\Include')" 2>/dev/null | grep -E '^10\.[0-9]' | sort -V | tail -1
 .  if empty(_SDK_VER)
 .    error "TOOLCHAIN=msvc: no Windows SDK found under '${_SDK_ROOT}\\Include' -- the C++ workload should have installed one alongside MSVC."
 .  endif

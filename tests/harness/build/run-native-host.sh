@@ -27,10 +27,27 @@ esac
 # The system mk directory this host's bmake uses (Cygwin: /usr/share/bmake/mk).
 sysmk=$(plat "$P" SYSMK)
 
+# TOOLCHAIN=msvc from the cached EWDK (msvc-ewdk-root-req): mount the ISO in
+# BMK_CACHE/msvc read-only unless it already is, and hand its drive to the
+# suite as BMK_EWDK_ROOT. A missing or unmountable ISO blocks the cell.
+ewdk=""
+if [ "$TOOLCHAIN" = msvc ] && [ -z "${BMK_EWDK_ROOT:-}" ]; then
+    iso=$(ls "$BMK_CACHE"/msvc/EWDK_*.iso 2>/dev/null | head -1)
+    if [ -z "$iso" ]; then
+        echo "BLOCKED no EWDK ISO in $BMK_CACHE/msvc" >"$LOG.status"; cat "$LOG.status"; exit 0
+    fi
+    winiso=$(cygpath -w "$iso")
+    letter=$(powershell.exe -NoProfile -Command "\$i = Get-DiskImage -ImagePath '$winiso'; if (-not \$i.Attached) { \$i = Mount-DiskImage -ImagePath '$winiso' -Access ReadOnly -PassThru }; (\$i | Get-Volume).DriveLetter" 2>/dev/null | tr -d '\r\n ')
+    if [ -z "$letter" ]; then
+        echo "BLOCKED could not mount $iso (check its sha256 against $BMK_CACHE/msvc/MANIFEST.sha256)" >"$LOG.status"; cat "$LOG.status"; exit 0
+    fi
+    ewdk="$letter:\\"
+fi
+
 set +e
 (
     cd "$HARNESS_DIR" &&
-    env ${sysmk:+BMK_SYS_MK="$sysmk"} BMK_MKDIR="$BMK_ROOT/mk" BMK_SCRIPTS="$BMK_ROOT/scripts" \
+    env ${sysmk:+BMK_SYS_MK="$sysmk"} ${ewdk:+BMK_EWDK_ROOT="$ewdk"} BMK_MKDIR="$BMK_ROOT/mk" BMK_SCRIPTS="$BMK_ROOT/scripts" \
         TOOLCHAIN="$TOOLCHAIN" sh ./run-tests.sh
 ) >"$LOG" 2>&1
 status=$?

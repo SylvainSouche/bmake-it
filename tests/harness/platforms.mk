@@ -174,7 +174,9 @@ HOSTOS_windows_amd64     = CYGWIN*
 SYSMK_windows_amd64      = /usr/share/bmake/mk
 ARCH_windows_amd64       = amd64
 TIER_windows_amd64       = 1
-TOOLCHAINS_windows_amd64 = llvm gcc
+TOOLCHAINS_windows_amd64 = llvm gcc msvc
+# msvc: run-native-host.sh mounts $(BMK_CACHE)/msvc/EWDK_*.iso read-only and
+# passes its drive as BMK_EWDK_ROOT (msvc-ewdk-root-req).
 
 # --- Pending, documented only ---------------------------------------------
 # windows: tier 1 native MSVC + Cygwin (gcc/llvm), tier 2 mingw-w64 cross.
