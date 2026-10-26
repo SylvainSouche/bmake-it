@@ -8,6 +8,11 @@
 # the build then failed with "prerequisite library glfw ... has not been
 # built yet". Built here for the host's own shared-library naming.
 set -eu
+. "$BMK_TESTLIB"
+# A versioned symlink chain is an ELF/macOS layout: a Windows DLL carries its
+# version inside the file and has no such chain (windows-shlib-versioninfo-
+# uniform-naming-req), so there is nothing to test there.
+if [ "$BMK_T_OS" = win ]; then echo "skip: no versioned shared-library symlink chains on Windows" >&2; exit 77; fi
 ROOT=$(pwd)
 P="$ROOT/fake/prefix"
 CC=${CC:-cc}
@@ -27,7 +32,7 @@ printf 'LIB=chain\nIMPORT=prefix:%s\nIMPORT_HEADERS=chain\n.include <mk.lib.mk>\
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 "$bin" | grep -q "^85$"
 

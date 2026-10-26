@@ -10,6 +10,7 @@
 # (matched by basename) still verifies. Multiple FETCH_URL= mirrors fail
 # over to the next entry when an earlier one is unreachable.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() {
@@ -74,9 +75,9 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(with_libdir "$(prog_libdir "$bin")" "$bin")
 echo "$out" | grep -q "hello from original fakelib, patched"
 grep -q "verified fakelib-1.0.tar.gz (sha256 ok)" build1.log
 grep -q "fetched+extracted fakelib-1.0.tar.gz" build1.log

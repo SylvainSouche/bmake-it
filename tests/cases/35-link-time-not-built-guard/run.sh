@@ -4,6 +4,7 @@
 # the missing dependency, not an opaque linker error -- and once the
 # dependency IS built, the same module must link/run normally.
 set -eu
+. "$BMK_TESTLIB"
 
 cd ws/Fw/app.m
 if bmake all 2>err.log; then
@@ -20,10 +21,10 @@ cd ../../..
 # which is exactly where the guard above searches.
 (cd ws/Fw && bmake)
 
-bin=$(find ws -type f -name app | head -1)
+bin=$(find ws -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ] || { echo "app binary not found" >&2; exit 1; }
 libdir=$(find ws/Fw/build -type d -name lib | head -1)
 [ -n "$libdir" ] || { echo "Fw build lib dir not found" >&2; exit 1; }
-DYLD_LIBRARY_PATH="$libdir" LD_LIBRARY_PATH="$libdir" "$bin" >/dev/null
+with_libdir "$libdir" "$bin" >/dev/null
 
 echo "link-time-not-built-guard OK"

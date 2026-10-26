@@ -6,6 +6,7 @@
 # chains; PROGRAM=sh is an interactive subshell; and the launched shell's
 # own startup files must not override that environment.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 cd ws
 bmake >build.log 2>&1
@@ -21,19 +22,26 @@ echo "$out" | grep -q "^BMK_BINDIR=$BIN$"
 
 # --- PATH, the library variable and the chains ----------------------------------
 out=$(bmake run PROGRAM=showenv ARGS="PATH LIBVAR BMK_LIBDIR BMK_SHAREDIR BMK_LIBVAR" 2>&1)
-echo "$out" | grep -q "^PATH=$BIN:"                 # workspace bin first, caller's PATH after
+v=$(libpath_var)
+if [ "$v" = PATH ]; then
+    # Windows: the loader searches PATH itself, so the lib chain is prepended
+    # to PATH too -- lib first, then bin, then the caller's PATH
+    echo "$out" | grep -q "^PATH=$LIB:$BIN:"
+else
+    echo "$out" | grep -q "^PATH=$BIN:"             # workspace bin first, caller's PATH after
+fi
 echo "$out" | grep -q "^LIBVAR=$LIB"                # library variable = lib chain first
 echo "$out" | grep -q "^BMK_LIBDIR=$LIB$"
 echo "$out" | grep -q "^BMK_SHAREDIR=$SHARE$"
-case "$(uname -s)" in Darwin) v=DYLD_LIBRARY_PATH ;; *) v=LD_LIBRARY_PATH ;; esac
 echo "$out" | grep -q "^BMK_LIBVAR=$v$"
 # the caller's environment is inherited, not replaced
 out=$(MY_INHERITED=yes bmake run PROGRAM=showenv ARGS="MY_INHERITED" 2>&1)
 echo "$out" | grep -q "^MY_INHERITED=yes$"
 # an existing library path is kept after ours, with no empty trailing entry
 # (not on macOS: a user-set DYLD_* is stripped by the recipe's own /bin/sh,
-# before `run` can see it -- an OS rule, not ours)
-if [ "$(uname -s)" != Darwin ]; then
+# before `run` can see it -- an OS rule, not ours; not on Windows either,
+# where that variable is PATH itself and /keep/me alone would hide every tool)
+if [ "$(uname -s)" != Darwin ] && [ "$v" != PATH ]; then
     out=$(env "$v=/keep/me" bmake run PROGRAM=showenv ARGS="LIBVAR" 2>&1)
     echo "$out" | grep -q "^LIBVAR=$LIB:/keep/me$"
 fi

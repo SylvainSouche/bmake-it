@@ -6,6 +6,7 @@
 # forwarded into the command's environment, and that the result is
 # staged and runnable exactly like any other fetch-build import.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() {
@@ -37,14 +38,16 @@ EOF
 # The custom command itself proves BMK_FETCH_INSTALL_PREFIX and the
 # forwarded CC are both real and usable: it hand-builds a shared
 # library and installs it with plain mkdir/cp/cc, nothing preset-shaped.
-# -dynamiclib/.dylib are macOS-only; Linux and the BSDs use -shared -fPIC/.so.
-if [ "$(uname -s)" = Darwin ]; then SHFLAGS=-dynamiclib; EXT=dylib; else SHFLAGS="-shared -fPIC"; EXT=so; fi
+# The platform's shared-library flags and names (testlib's shlib_flags):
+# -dynamiclib/.dylib on macOS, -shared -fPIC/.so on Linux and the BSDs, a
+# DLL plus its import library libfoo.dll.a on Windows.
+SHL=$(shlib_flags '$${BMK_FETCH_INSTALL_PREFIX}/lib' foo)
 cat > "$ROOT/ws/Fw/libfoo.m/makefile" <<EOF
 LIB=foo
 IMPORT=fetch:foo
 FETCH_URL=file://$ROOT/fake/dist/foo-1.0.tar.gz
 FETCH_BUILD=custom
-FETCH_BUILD_CMD=mkdir -p \$\${BMK_FETCH_INSTALL_PREFIX}/include \$\${BMK_FETCH_INSTALL_PREFIX}/lib && \$\${CC} $SHFLAGS -o \$\${BMK_FETCH_INSTALL_PREFIX}/lib/libfoo.$EXT foo.c && cp foo.h \$\${BMK_FETCH_INSTALL_PREFIX}/include/
+FETCH_BUILD_CMD=mkdir -p \$\${BMK_FETCH_INSTALL_PREFIX}/include \$\${BMK_FETCH_INSTALL_PREFIX}/lib && \$\${CC} $SHL foo.c && cp foo.h \$\${BMK_FETCH_INSTALL_PREFIX}/include/
 IMPORT_HEADERS=foo.h
 .include <mk.lib.mk>
 EOF
@@ -54,9 +57,11 @@ bmake >build1.log 2>&1
 grep -q "FETCH_BUILD=custom:" build1.log
 grep -q "built via FETCH_BUILD=custom" build1.log
 
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+# the library it loads stays in the fetch's install prefix (a Windows DLL is
+# not staged: install/packaging of runtime files is still open)
+out=$(with_libdir "$PWD/Fw/libfoo.m/work/_install/lib" "$bin")
 echo "$out" | grep -q "hello from a custom FETCH_BUILD_CMD"
 
 # FETCH_BUILD=custom with no FETCH_BUILD_CMD= is a clean, named error.

@@ -7,6 +7,7 @@
 # backends/ -- had nowhere to write its .o). Mirrors ImGui's own layout:
 # a top-level source plus one under backends/.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() {
@@ -67,9 +68,9 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(with_libdir "$(prog_libdir "$bin")" "$bin")
 echo "$out" | grep -q "core backend"
 
 # The nested object landed in its own subdirectory, not flattened or

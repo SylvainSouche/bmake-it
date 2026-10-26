@@ -4,6 +4,7 @@
 # Lib's headers visible at compile time and its library resolvable at
 # link/run time.
 set -eu
+. "$BMK_TESTLIB"
 
 cd ws/App
 bmake add-prereq FW=Lib
@@ -13,13 +14,13 @@ cd ../..
 cd ws
 bmake all
 
-bin=$(find App -type f -name app | head -1)
+bin=$(find App -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ] || { echo "app binary not found" >&2; exit 1; }
 
 libdir=$(find Lib/build -type d -name lib | head -1)
 [ -n "$libdir" ] || { echo "Lib build lib dir not found" >&2; exit 1; }
 
-out=$(DYLD_LIBRARY_PATH="$libdir" LD_LIBRARY_PATH="$libdir" "$bin")
+out=$(with_libdir "$libdir" "$bin")
 [ "$out" = "same-ws-lib" ] || { echo "expected 'same-ws-lib', got '$out'" >&2; exit 1; }
 
 echo "add-prereq-same-ws-link OK ($out)"

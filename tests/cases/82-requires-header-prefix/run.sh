@@ -9,6 +9,7 @@
 # not search: it must pass; a genuinely absent header must still fail,
 # naming the prefixes tried.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 PFX="$ROOT/fake/pfx"
 mkdir -p "$PFX/bin" "$PFX/include/vendor"
@@ -22,7 +23,7 @@ echo "_TOOL_PREFIXES = $PFX/bin" > $M/mk/pre.mk
 printf 'PROG=app\nREQUIRES=header:vendor/vend.h\n.include <mk.prog.mk>\n' > $M/makefile
 cd ws
 bmake >build1.log 2>&1
-[ -n "$(find . -type f -name app | head -1)" ]
+[ -n "$(find . -type f -name "$(prog_name app)" | head -1)" ]
 
 # Genuinely absent: still an error, naming what was tried.
 printf 'PROG=app\nREQUIRES=header:vendor/absent-3f8a2b.h\n.include <mk.prog.mk>\n' > Fw/app.m/makefile

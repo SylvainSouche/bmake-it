@@ -163,8 +163,22 @@ BMAKE_netbsd_amd64  = /usr/bin/make
 
 VM_PLATFORMS = freebsd_arm64 netbsd_arm64 freebsd_amd64 netbsd_amd64
 
+# --- Windows (the machine running matrix.sh itself, under Cygwin) ---------
+# KIND host: build/run-native-host.sh runs the suite right here; HOSTOS is the
+# `uname -s` glob the machine must match, else the cell is BLOCKED with that
+# reason (harness-windows-host-cells-req). Not in $(PLATFORMS): nothing to
+# fetch or provision -- the host is set up by hand (Cygwin packages listed
+# in tests/README.md).
+KIND_windows_amd64       = host
+HOSTOS_windows_amd64     = CYGWIN*
+SYSMK_windows_amd64      = /usr/share/bmake/mk
+ARCH_windows_amd64       = amd64
+TIER_windows_amd64       = 1
+TOOLCHAINS_windows_amd64 = llvm gcc
+
 # --- Pending, documented only ---------------------------------------------
 # windows: tier 1 native MSVC + Cygwin (gcc/llvm), tier 2 mingw-w64 cross.
+# Cygwin llvm/gcc now run as KIND host above; MSVC and mingw cells are next.
 # mk.toolchain.msvc.mk now exists in the product (this was the actual
 # blocker before) -- the remaining gap is test-infrastructure only: no
 # Windows VM entry here yet. A genuine amd64 install ISO download was

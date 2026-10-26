@@ -9,6 +9,7 @@
 # actually links and runs against the real compiled library, not just
 # a header check.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 
@@ -27,8 +28,7 @@ cat > "$ROOT/fake/many.c" <<'EOF'
 int many_value(void) { return 42; }
 EOF
 CC=${CC:-cc}
-"$CC" -I"$FAKE/include" -dynamiclib -o "$FAKE/lib/libmany.dylib" "$ROOT/fake/many.c" 2>/dev/null \
-    || "$CC" -I"$FAKE/include" -shared -o "$FAKE/lib/libmany.so" "$ROOT/fake/many.c"
+make_shared_lib "$FAKE/lib" many -I"$FAKE/include" "$ROOT/fake/many.c"
 
 cat > "$FAKE/lib/pkgconfig/many.pc" <<EOF
 prefix=$FAKE
@@ -46,9 +46,9 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(with_libdir "$FAKE/lib" "$bin")
 echo "$out" | grep -q "^7 42$"
 
 incdir=$(find . -type d -path "*Fw/build/*/include" | head -1)

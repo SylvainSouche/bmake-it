@@ -21,13 +21,14 @@
 # exact real-world symptom) and proves both frameworks survive intact,
 # including via `otool -L` on the actual linked binary.
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 
 mkdir -p Fw/app.m/mk
 echo 'LDFLAGS += -lm' > Fw/app.m/mk/local.mk
 
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "^2$"
@@ -49,7 +50,7 @@ if [ "$(uname -s)" = "Darwin" ]; then
     echo 'LDFLAGS += -framework CoreFoundation -framework IOKit' > Fw/app.m/mk/local.mk
     ( cd Fw/app.m && bmake clean >/dev/null 2>&1 )
     bmake >build2.log 2>&1
-    bin=$(find . -type f -name app | head -1)
+    bin=$(find . -type f -name "$(prog_name app)" | head -1)
     [ -n "$bin" ]
 
     link_line2=$(grep -- "-framework" build2.log | tail -1)

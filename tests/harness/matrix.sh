@@ -50,9 +50,14 @@ native_cell() { # native_cell <cell> <build> <toolchain>
                 vm_release "$b" ;;
         vm-host) sh "$HARNESS_DIR/build/run-native-macos.sh" "$tc" "$log" >/dev/null 2>&1
                 mac_release "$b" ;;
+        # harness-windows-host-cells-req: the platform is this machine itself
+        # @impl 7854-6adf-8cd3-e408
+        host)   sh "$HARNESS_DIR/build/run-native-host.sh" "$b" "$tc" "$log" >/dev/null 2>&1 ;;
         *)      record "$cell" "-" "blocked" "no runner for $b yet"; return ;;
     esac
-    s=$(status_of "$log"); r=fail; [ "$s" = PASS ] && r=pass
+    s=$(status_of "$log")
+    if [ "$s" = BLOCKED ]; then record "$cell" "-" "blocked" "$(detail_of "$log")"; return; fi
+    r=fail; [ "$s" = PASS ] && r=pass
     record "$cell" "$r" "-" "$(detail_of "$log")"
 }
 

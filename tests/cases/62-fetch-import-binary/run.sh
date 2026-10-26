@@ -4,6 +4,7 @@
 # the extracted tree as a conventional prefix (include/, lib/) via the
 # SAME _stage_import: mechanism pkg:/prefix: already use -- no compiling.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() {
@@ -48,7 +49,7 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "hello from prebuilt binlib"

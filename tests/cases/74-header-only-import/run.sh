@@ -11,6 +11,7 @@
 # (and failing) to find it; instead it must stage only the header and
 # build clean.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 
@@ -44,7 +45,7 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 cd ws
 ( cd Fw/libglm.m && bmake >../../libglm_build.log 2>&1 && bmake copy-up >>../../libglm_build.log 2>&1 )
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "^1$"

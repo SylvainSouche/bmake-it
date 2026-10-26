@@ -110,6 +110,19 @@ the container VM (`colima stop`) while running the BSD and macOS cells.
   then deletes the work directory (unless `KEEP_FAILED=1`).
 - **Isolated bmake**: every invocation goes through a wrapper that clears
   `MAKEFLAGS`/`MAKELEVEL`/`MFLAGS` and sets `MAKESYSPATH` + `BMK_MKDIR`.
+- **Target-neutral cases** (`harness-cases-target-neutral-req`): a case never
+  hardcodes Unix names. It sources `. "$BMK_TESTLIB"`
+  (`harness/testlib.sh`, exported by the runner) and asks it:
+  `prog_name app` (`app.exe` on Windows), `find_prog <dir> app`,
+  `static_lib x` (`libx.a` / `x.lib`), `shared_lib x [major]`
+  (`libx.so.3` / `libx.3.dylib` / `x.dll`), `make_shared_lib <dir> x <cc
+  args>` for a fake library (a DLL plus `libx.dll.a` on Windows),
+  `with_libdir <dirs> <cmd>` (prepends to `LD_LIBRARY_PATH`,
+  `DYLD_LIBRARY_PATH` or `PATH`), `prog_libdir <program>` (Windows has no
+  rpath), and `need_tool <tool> [why]`, which skips the case (exit 77)
+  when a tool is missing. Cases run with `LC_ALL=C`, so tool messages can be
+  grepped. Before these, 45 of the 100 cases failed on Cygwin for those
+  reasons alone (2026-10-26).
 
 ## Running
 
@@ -134,6 +147,12 @@ sh tests/harness/run-tests.sh
 ```sh
 sh tests/harness/pack-cases.sh
 ```
+
+Caution: an archive can hold **empty directories** a case relies on (e.g.
+`fake/pkgroot/lib/`), and `tests/cases/` cannot, because git does not
+track empty directories. To repack an edited case without losing them,
+extract its current archive, copy `tests/cases/<case>/.` over it, and tar
+that (how the 2026-10-26 Cygwin changes were repacked).
 
 ## Case index (spec + implementation risk)
 

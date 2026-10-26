@@ -6,6 +6,7 @@
 # actually invoked (not silently skipped); the consumer links and runs
 # against the cmake-installed library.
 set -eu
+. "$BMK_TESTLIB"
 if ! command -v cmake >/dev/null 2>&1; then
     echo "skip: cmake not found on PATH" >&2
     exit 77
@@ -76,7 +77,7 @@ grep -q "verified foo-1.0.tar.gz (sha256 ok)" build1.log
 grep -q "FETCH_BUILD=cmake: configure && build && install" build1.log
 grep -q "built via FETCH_BUILD=cmake" build1.log
 
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "hello from original cmake-built foo, patched"

@@ -5,6 +5,7 @@
 # work" doesn't hide a bug), then adding the next, higher-precedence
 # candidate and confirming the winner shifts.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 CC=${CC:-cc}
 
@@ -34,7 +35,7 @@ build_and_check() {
     expect=$1
     ( cd ws && bmake clean >/dev/null 2>&1 || true )
     ( cd ws && bmake >build.log 2>&1 )
-    [ -n "$BIN" ] || BIN=$(find ws -type f -name app | head -1)
+    [ -n "$BIN" ] || BIN=$(find ws -type f -name "$(prog_name app)" | head -1)
     out=$("$BIN")
     echo "$out" | grep -q "resolved via $expect" || {
         echo "expected '$expect' to win, got: $out" >&2

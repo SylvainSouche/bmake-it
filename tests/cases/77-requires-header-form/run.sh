@@ -14,6 +14,7 @@
 # directives, so a C++-only body preprocesses fine even invoked in C
 # mode.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakeheaders"
 
@@ -47,7 +48,7 @@ CXXFLAGS+=-I$FAKE/include
 EOF
 
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "^42$"
@@ -65,7 +66,7 @@ cd Fw/app.m
 bmake clean >/dev/null 2>&1
 bmake all >../../build2.log 2>&1
 cd ../..
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 
 # --- negative case: the header genuinely isn't reachable (no -I at all)

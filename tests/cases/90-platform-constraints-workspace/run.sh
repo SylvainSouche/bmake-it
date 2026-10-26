@@ -6,6 +6,7 @@
 # while one that is itself excluded is just skipped; and a module that
 # links a library its sibling excluded gets an error naming the library.
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 OS=$(bmake -V '${TARGET}')
 
@@ -29,7 +30,7 @@ grep -q "===> framework FwB cannot be built: it needs FwA, which is not built he
 grep -q "give FwB the same PLATFORMS=/TOOLCHAINS=" build1.log
 grep -q "===> framework FwC skipped: PLATFORMS excludes" build1.log
 grep -q "===> building framework FwD" build1.log
-[ -n "$(find FwD -type f -name app -path '*/bin/*' | head -1)" ]
+[ -n "$(find FwD -type f -name "$(prog_name app)" -path '*/bin/*' | head -1)" ]
 [ ! -d FwA/app.m/build ] || { echo "an excluded framework's module was entered" >&2; exit 1; }
 [ ! -d FwB/app.m/build ] || { echo "FwB was built" >&2; exit 1; }
 # Only FwB is a failure; the excluded frameworks are not.
@@ -52,7 +53,7 @@ printf 'int x_fn(void);\nint main(void){return x_fn();}\n' > FwD/app.m/src/main.
 rm -rf FwD/build FwD/*.m/build
 rc=0; bmake >build3.log 2>&1 || rc=$?
 [ $rc != 0 ] || { echo "expected app.m to fail linking an excluded library" >&2; exit 1; }
-grep -q "cannot link app: library x is not built here" build3.log
+grep -q "cannot link $(prog_name app): library x is not built here" build3.log
 grep -q "give it the same PLATFORMS=/TOOLCHAINS=" build3.log
 
 echo "platform-constraints-workspace OK"

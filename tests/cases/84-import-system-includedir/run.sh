@@ -7,6 +7,7 @@
 # whose includedir names the real header directory -- exactly what
 # pkg-config reports for a package installed in a system directory.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 CC=${CC:-cc}
@@ -31,7 +32,7 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 "$bin" | grep -q "hello from a system-include import"
 grep -q "staged header(s) sys1 from $FAKE/include" build1.log

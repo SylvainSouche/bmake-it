@@ -4,6 +4,7 @@
 # with the CONSUMER (app.m) never touched across the swap. Both must
 # link and run correctly.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
 CC=${CC:-cc}
@@ -12,7 +13,7 @@ cd ws
 
 # --- Half 1: compiled from source ---
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "compiled-swap"

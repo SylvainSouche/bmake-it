@@ -12,6 +12,7 @@
 #  - on macOS, no mismatched-deployment-target linker warning between a
 #    fetch-built dependency and the rest of the build.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() {
@@ -102,7 +103,7 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "^43$"

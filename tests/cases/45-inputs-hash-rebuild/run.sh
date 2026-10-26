@@ -5,6 +5,7 @@
 # instrumented ones) and the resulting binary must genuinely crash under
 # ASan on a real heap-buffer-overflow, not just accept the flag silently.
 set -eu
+. "$BMK_TESTLIB"
 cd ws/Fw
 # Skip where an ASan binary cannot be linked at all with the compiler bmake
 # itself uses (Ubuntu 24.04 aarch64's clang 18 package lacks
@@ -25,7 +26,7 @@ rm -f "$_t.out"
 rm -f "$_t"
 
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 
 # Plain build: the bug is real but silent without instrumentation.

@@ -11,6 +11,7 @@
 # with nothing else changed -- the next build must find it, not replay a
 # cached "not found" (OpenRider on Cygwin, 2026-10-15).
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
 CC=${CC:-cc}
@@ -52,7 +53,7 @@ bmake >build1.log 2>&1 || { echo "the package was installed after a failed build
 count1=$(wc -l < "$COUNTER_FILE")
 [ "$count1" -gt "$count0" ] || { echo "expected real pkg-config calls once the package is installed" >&2; exit 1; }
 
-bin=$(find . -type f \( -name app -o -name app.exe \) | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "cached-value"

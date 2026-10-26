@@ -5,6 +5,7 @@
 # consumer automatically. app.m deliberately declares only LIBS=pubpkg,
 # never -lpriv, proving it.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
 CC=${CC:-cc}
@@ -32,7 +33,7 @@ export PKG_CONFIG_PATH="$FAKE/pub/lib/pkgconfig"
 
 cd ws
 bmake >build.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "priv-value"

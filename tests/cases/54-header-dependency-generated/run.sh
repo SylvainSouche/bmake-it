@@ -7,10 +7,12 @@
 # actually opened, generated or not) but never directly exercised until
 # this case.
 set -eu
+. "$BMK_TESTLIB"
+need_tool yacc "the generated header comes from a yacc grammar"
 cd ws
 
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "no-token-b"

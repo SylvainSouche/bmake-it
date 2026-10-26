@@ -6,6 +6,10 @@
 # workspace level. With FAIL_FAST=yes it must stop before the good
 # module's test is even attempted.
 set -eu
+. "$BMK_TESTLIB"
+# bmake test runs through Kyua and the tests are atf-c (as in case 86).
+need_tool kyua "bmake test runs the tests through it"
+pkg-config --exists atf-c 2>/dev/null || { echo "skip: atf-c not installed" >&2; exit 77; }
 cd ws
 bmake >build.log 2>&1
 

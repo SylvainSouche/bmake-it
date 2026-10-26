@@ -7,6 +7,7 @@
 # PATH). file:// URLs are copied by the product itself: NetBSD's ftp(1) cannot fetch
 # one, so before this a NetBSD machine without curl could not use a local mirror.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 sha256() { (sha256sum "$1" 2>/dev/null || shasum -a 256 "$1" 2>/dev/null || sha256 -q "$1" 2>/dev/null) | awk '{print $1}'; }
@@ -35,11 +36,12 @@ for d in $PATH; do
     [ -d "$d" ] || continue
     for f in "$d"/*; do
         n=${f##*/}
-        case "$n" in curl|wget|'*') continue ;; esac
+        case "$n" in curl|wget|curl.exe|wget.exe|'*') continue ;; esac
         [ -e "$ROOT/nopath/$n" ] || ln -s "$f" "$ROOT/nopath/$n" 2>/dev/null || true
     done
 done
 IFS=$oldifs
+REAL_PATH=$PATH
 PATH="$ROOT/nopath"; export PATH
 if command -v curl >/dev/null 2>&1 || command -v wget >/dev/null 2>&1; then
     echo "setup: curl or wget is still on PATH" >&2; exit 1
@@ -49,9 +51,11 @@ cd ws
 # 1. a file:// distfile needs no downloader on ANY host (NetBSD's ftp(1) cannot fetch
 #    one at all -- "ftp_strdup: called with NULL argument" -- so it is copied)
 bmake >build1.log 2>&1 || { cat build1.log >&2; echo "file:// fetch must not need curl, wget or a system downloader" >&2; exit 1; }
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-"$bin" | grep -q "hello from fakelib"
+# Run it with the real PATH: removing curl only matters to the build, and a
+# Windows program cannot load cygwin1.dll through nopath's Cygwin symlinks.
+( PATH=$REAL_PATH; with_libdir "$(prog_libdir "$bin")" "$bin" ) | grep -q "hello from fakelib"
 
 # 2. a file:// URL that does not exist fails cleanly, naming the failure
 rm -rf Fw/libfakelib.m/distfiles Fw/libfakelib.m/work Fw/libfakelib.m/build

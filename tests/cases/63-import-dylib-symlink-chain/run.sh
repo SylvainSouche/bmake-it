@@ -13,6 +13,7 @@
 # just by inspecting the staged files -- a broken symlink still passes
 # a naive "file exists" check.
 set -eu
+. "$BMK_TESTLIB"
 if [ "$(uname -s)" != "Darwin" ]; then
     echo "skip: macOS-specific dylib symlink-chain layout" >&2
     exit 77
@@ -61,7 +62,7 @@ for name in libfoo.dylib libfoo.34.dylib; do
 done
 [ -f "$libdir/libfoo.34.3.5.dylib" ]
 
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "hello from real macos-style symlinked dylib"

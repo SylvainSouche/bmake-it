@@ -4,6 +4,7 @@
 # bmake variable) is searched for .pc files pkg-config's own built-in
 # defaults and PKG_CONFIG_PATH would never reach on their own.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
 CC=${CC:-cc}
@@ -41,7 +42,7 @@ grep -q "resolved via pkg-config:greet4" build.log
 
 cd ../..
 bmake >build2.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "hello from a non-default pkgconfig dir"

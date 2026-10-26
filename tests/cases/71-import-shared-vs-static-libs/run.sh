@@ -12,6 +12,7 @@
 # .pc Libs.private: names a library that doesn't exist anywhere: the
 # old code would fail to link; the fix links and runs clean.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/prefix"
 
@@ -27,8 +28,7 @@ cat > "$ROOT/fake/big.c" <<'EOF'
 const char *big_msg(void) { return "big"; }
 EOF
 CC=${CC:-cc}
-"$CC" -I"$FAKE/include" -dynamiclib -o "$FAKE/lib/libbig.dylib" "$ROOT/fake/big.c" 2>/dev/null \
-    || "$CC" -I"$FAKE/include" -shared -o "$FAKE/lib/libbig.so" "$ROOT/fake/big.c"
+make_shared_lib "$FAKE/lib" big -I"$FAKE/include" "$ROOT/fake/big.c"
 
 cat > "$FAKE/lib/pkgconfig/big.pc" <<EOF
 prefix=$FAKE
@@ -47,9 +47,9 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(with_libdir "$FAKE/lib" "$bin")
 echo "$out" | grep -q "big"
 
 # The final link line must never have named the nonexistent transitive

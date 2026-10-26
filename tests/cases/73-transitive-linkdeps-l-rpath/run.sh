@@ -12,13 +12,21 @@
 # links but dyld still can't load a shared transitive dependency found
 # only this way.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -path "*Fw3/app.m*" -name app | head -1)
+bin=$(find . -path "*Fw3/app.m*" -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+if [ "$BMK_T_OS" = win ]; then
+    # Windows has no rpath: the loader searches PATH, so the run needs the
+    # framework lib directories there -- the link half is still proven above.
+    libs=$(find . -type d -path "*/build/*/lib" | tr '\n' ':')
+    out=$(with_libdir "${libs%:}" "$bin")
+else
+    out=$("$bin")
+fi
 echo "$out" | grep -q "base"
 
 echo "transitive-linkdeps-l-rpath OK"

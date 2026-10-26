@@ -119,6 +119,13 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             cd "$tdir"
             unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true
             export BMK_MKDIR BMK_SCRIPTS
+            # harness-cases-target-neutral-req: target names and loader paths
+            # come from testlib.sh, never hardcoded for Unix in a case.
+            # @impl 7854-6adf-8c28-260c
+            export BMK_TESTLIB="$SCRIPT_DIR/testlib.sh"
+            # Tool messages in one language: cases grep them ("undefined",
+            # ...), and a French-locale linker says "référence indéfinie".
+            export LC_ALL=C
             export MAKESYSPATH="${BMK_MKDIR}:${_SYS_MK}"
             export PATH="$WRAPDIR:$PATH"
             sh ./run.sh

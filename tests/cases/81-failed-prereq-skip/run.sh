@@ -5,6 +5,7 @@
 # attempted; D still builds (keep-going); the exit status is non-zero; and
 # the final summary lists the root failure (A) before the skipped ones.
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 if bmake >build.log 2>&1; then
     echo "expected the workspace build to fail" >&2
@@ -26,7 +27,7 @@ fi
 
 # The independent framework still builds.
 grep -q "===> building framework D" build.log
-[ -n "$(find D -type f -name app | head -1)" ]
+[ -n "$(find D -type f -name "$(prog_name app)" | head -1)" ]
 
 # Summary: root failure first, then the skipped frameworks.
 grep -q "workspace BUILD FAILED: A B C" build.log

@@ -14,6 +14,7 @@
 #     (find -newer a stamp) and print no "staged"/"imported"/"resolved
 #     via" lines for the imported module.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 
@@ -35,12 +36,12 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 "$bin" | grep -q "hello from fake pkg-config import 7"
 
-n=$(grep -c "^ar rcs .*libgeo.a" build1.log || true)
-[ "$n" = "1" ] || { echo "libgeo.a archived $n times, expected 1" >&2; exit 1; }
+n=$(grep -c "^ar rcs .*$(static_lib geo)" build1.log || true)
+[ "$n" = "1" ] || { echo "$(static_lib geo) archived $n times, expected 1" >&2; exit 1; }
 if grep -q "copy-up collision" build1.log; then
     echo "unexpected copy-up collision on a clean build" >&2
     exit 1
@@ -50,7 +51,7 @@ for m in libgeo.m app.m libgreet2.m; do
     n=$(grep -c "^===> building module $m\$" build1.log || true)
     [ "$n" = "1" ] || { echo "module $m entered $n times in one build, expected 1" >&2; exit 1; }
 done
-[ "$(grep -c '^===> built static libgeo.a' build1.log || true)" = "1" ]
+[ "$(grep -c "^===> built static $(static_lib geo)" build1.log || true)" = "1" ]
 
 sleep 1
 touch ../stamp

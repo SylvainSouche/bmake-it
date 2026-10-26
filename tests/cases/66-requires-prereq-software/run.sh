@@ -8,6 +8,7 @@
 # found, before any build work starts -- proven here by the build never
 # even reaching the compile step.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 
@@ -40,7 +41,7 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 "$bin"
 

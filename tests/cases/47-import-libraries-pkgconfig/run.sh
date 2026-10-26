@@ -6,6 +6,7 @@
 # PREREQS=/LIBS= -- no IMPORT-specific consumer-side mechanism at all.
 # A missing/unresolvable IMPORT= fails loudly and names what was tried.
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 
@@ -29,7 +30,7 @@ export PKG_CONFIG_PATH="$FAKE/lib/pkgconfig"
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "hello from fake pkg-config import"

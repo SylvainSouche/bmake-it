@@ -5,10 +5,11 @@
 # trigger exactly the affected object to rebuild; an unrelated rebuild
 # with nothing changed recompiles nothing at all.
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 
 bmake >build1.log 2>&1
-bin=$(find App -type f -name app | head -1)
+bin=$(find App -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "v1 L1"

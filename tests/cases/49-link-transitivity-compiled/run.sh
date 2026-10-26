@@ -10,10 +10,11 @@
 # failed with undefined printf/abort/__libc_start_main (macOS hid this --
 # libSystem makes -lc a no-op).
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 bmake >build.log 2>&1
 
-bin=$(find . -type f -name app | head -1)
+bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 out=$("$bin")
 echo "$out" | grep -q "c-value"

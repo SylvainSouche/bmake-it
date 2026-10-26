@@ -7,6 +7,7 @@
 # same name. (a) editing a module and rebuilding is silent; (b) a second
 # module producing the same program name still warns.
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 
 bmake >build1.log 2>&1
@@ -21,7 +22,7 @@ if grep -q "copy-up collision" build2.log; then
     grep "copy-up collision" build2.log >&2; exit 1
 fi
 # ... and the new program really is what is in the workspace bin.
-bin=$(find build -type f -name app -path "*/bin/*" | head -1)
+bin=$(find build -type f -name "$(prog_name app)" -path "*/bin/*" | head -1)
 [ -n "$bin" ]
 rc=0; "$bin" || rc=$?
 [ "$rc" = 7 ]
@@ -32,6 +33,6 @@ printf 'PROG=app\n.include <mk.prog.mk>\n' > Fw/b.m/makefile
 echo 'int main(void){return 9;}' > Fw/b.m/src/main.c
 sleep 1
 bmake >build3.log 2>&1 || true
-grep -q "copy-up collision: 'app' differs" build3.log
+grep -q "copy-up collision: '$(prog_name app)' differs" build3.log
 
 echo "copy-up-collision-same-module OK"
