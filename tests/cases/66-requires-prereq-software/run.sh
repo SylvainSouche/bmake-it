@@ -59,7 +59,9 @@ if bmake all 2>err.log; then
     exit 1
 fi
 grep -q "REQUIRES=this-tool-does-not-exist-anywhere-3f8a2b" err.log
-grep -q "not found via pkg-config or on PATH" err.log
+# "via pkg-config" natively; via the target's own pkg-config (e.g.
+# .../x86_64-w64-mingw32-pkg-config under ABI=mingw) otherwise
+grep -q "not found via .*pkg-config.* or on PATH" err.log
 # Fails at parse time -- no compile was ever attempted.
 if grep -q "main.o" err.log; then
     echo "expected the failure before any compile step, but one was attempted" >&2

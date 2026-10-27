@@ -12,7 +12,7 @@ CC=${CC:-cc}
 for who in probe pkg hook env; do
     "$CC" -c "$ROOT/fake/src/impl_${who}.c" -o "$ROOT/fake/src/impl_${who}.o"
     mkdir -p "$ROOT/fake/p_${who}/lib"
-    ar rcs "$ROOT/fake/p_${who}/lib/libgreet3.a" "$ROOT/fake/src/impl_${who}.o"
+    fake_ar "$ROOT/fake/p_${who}/lib/libgreet3.a" "$ROOT/fake/src/impl_${who}.o"
 done
 
 mkdir -p "$ROOT/fake/p_pkg/lib/pkgconfig"
@@ -48,6 +48,7 @@ build_and_check() {
 mkdir -p "$MODDIR/mk"
 cat > "$MODDIR/mk/pre.mk" <<EOF
 _TOOL_PREFIXES = $ROOT/fake/p_probe/bin
+_IMPORT_PROBE_PREFIXES = $ROOT/fake/p_probe
 EOF
 build_and_check probe
 
@@ -58,6 +59,7 @@ build_and_check pkg
 # Step 3: add a mk/ hook -- must now win over pkg-config (and probing).
 cat > "$MODDIR/mk/pre.mk" <<EOF
 _TOOL_PREFIXES = $ROOT/fake/p_probe/bin
+_IMPORT_PROBE_PREFIXES = $ROOT/fake/p_probe
 IMPORT_PREFIX = $ROOT/fake/p_hook
 EOF
 build_and_check hook

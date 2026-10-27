@@ -11,6 +11,9 @@
 # .pc files: nothing is compiled (bmake -n and -V), so any host runs it.
 set -eu
 command -v pkg-config >/dev/null 2>&1 || exit 77
+# Every build here names its own target (and TOOLCHAIN=llvm): an ABI= the
+# suite forces (ABI=mingw on a Windows host) does not exist for them.
+bmake() { command bmake ABI= "$@"; }
 ROOT=$(pwd)
 SYS=$ROOT/sysroot
 

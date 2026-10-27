@@ -10,6 +10,7 @@
 # rebuilding the whole workspace (which would rebuild everything anyway
 # and could pass even with the bug present).
 set -eu
+. "$BMK_TESTLIB"
 ROOT=$(pwd)
 
 cd ws
@@ -21,7 +22,7 @@ bmake >build1.log 2>&1
 KEY=$(bmake -V OS_ARCH)
 bin="Fw2/app.m/build/$KEY/bin/app"
 [ -x "$bin" ]
-out1=$("$bin")
+out1=$(run_prog "$bin")
 echo "$out1" | grep -q "v1"
 
 # Change the library's source and rebuild ONLY the library module (and
@@ -45,7 +46,7 @@ bmake >app_rebuild.log 2>&1
 grep -q -- "-o .*/bin/app" app_rebuild.log
 cd "$ROOT/ws"
 
-out2=$("$bin")
+out2=$(run_prog "$bin")
 echo "$out2" | grep -q "v2"
 if [ "$out1" = "$out2" ]; then
     echo "expected the binary to change after the library it links against was rebuilt" >&2

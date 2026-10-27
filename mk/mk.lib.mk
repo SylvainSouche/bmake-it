@@ -561,6 +561,21 @@ _IMPORT_PC_NONE  = ${_BMK_PKG_CONFIG_MISSING}
 .    else
 _IMPORT_PC_FOUND != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --exists ${_IMPORT_PKGNAME} 2>/dev/null && echo yes || echo no
 .      if ${_IMPORT_PC_FOUND} == "yes"
+# pkg-config-sysroot-only-inside-req: a sysroot-aware pkg-config (the mingw
+# wrapper, or PKG_CONFIG_SYSROOT_DIR for a cross build) prefixes the
+# sysroot to EVERY path, also those of a .pc file that lies outside the
+# sysroot (given through PKG_CONFIG_PATH): its headers were then looked for
+# under /usr/x86_64-w64-mingw32/sys-root/tmp/... (2026-10-26). If the .pc
+# file it reports does not exist but the one without the prefix does, the
+# package is queried without the sysroot. Packages inside it are unaffected.
+# @impl 7854-6adf-d52d-a222
+_IMPORT_PCDIR_SYS != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --variable=pcfiledir ${_IMPORT_PKGNAME} 2>/dev/null
+.        if !empty(_IMPORT_PCDIR_SYS) && !exists(${_IMPORT_PCDIR_SYS}/${_IMPORT_PKGNAME}.pc)
+_IMPORT_PCDIR_RAW != ${_IMPORT_PC_ENV} PKG_CONFIG_SYSROOT_DIR= ${_BMK_PKG_CONFIG} --variable=pcfiledir ${_IMPORT_PKGNAME} 2>/dev/null
+.          if !empty(_IMPORT_PCDIR_RAW) && exists(${_IMPORT_PCDIR_RAW}/${_IMPORT_PKGNAME}.pc)
+_IMPORT_PC_ENV := ${_IMPORT_PC_ENV} PKG_CONFIG_SYSROOT_DIR=
+.          endif
+.        endif
 _IMPORT_VERSION != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --modversion ${_IMPORT_PKGNAME} 2>/dev/null
 _IMPORT_SOURCE   = pkg-config:${_IMPORT_PKGNAME}(${_IMPORT_VERSION})
 _IMPORT_CFLAGS  != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --cflags ${_IMPORT_PKGNAME} 2>/dev/null
@@ -607,7 +622,10 @@ ${_v} := ${_BMK_PKG_CONFIG_SYSROOT}${${_v}}
 # is shared too (lib-file-forms-include-mingw-import-req).
 # @impl 0f87-6abe-3ef3-cd79
 # @impl 7854-6ad0-fb85-c2c6
-.      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dll.a)
+# (MSVC: <LIB>.lib is a static or an import library alike; a <LIB>.dll
+# beside it, or in the bin/ beside lib/, says shared -- case 71, 2026-10-27)
+.      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dll.a) || \
+          (${TOOLCHAIN} == "msvc" && (exists(${_IMPORT_LIBDIR}/${LIB}.dll) || exists(${_IMPORT_LIBDIR}/../bin/${LIB}.dll)))
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs ${_IMPORT_PKGNAME} 2>/dev/null
 .      else
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
@@ -644,10 +662,14 @@ _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 # too, for Cygwin. BMK_MINGW_SYSROOT if set, else the layouts mingw-w64 gcc
 # packages use (Cygwin/Fedora sys-root/mingw, Debian /usr/<triple>).
 # @impl 7854-6ad1-10ad-4843
+# import-probe-prefixes-overridable-req: _IMPORT_PROBE_PREFIXES is the
+# prefix list probing searches; a mk/ hook may set it (?=). A hook that only
+# re-pointed _TOOL_PREFIXES (the host's) reached no mingw build (2026-10-26).
+# @impl 7854-6adf-d52e-121d
 .  if ${_BMK_WIN_MINGW:Uno} == "yes"
-_IMPORT_PROBE_PREFIXES = ${BMK_MINGW_SYSROOT:U/usr/${_MINGW_TRIPLE}/sys-root/mingw /usr/${_MINGW_TRIPLE}}
+_IMPORT_PROBE_PREFIXES ?= ${BMK_MINGW_SYSROOT:U/usr/${_MINGW_TRIPLE}/sys-root/mingw /usr/${_MINGW_TRIPLE}}
 .  else
-_IMPORT_PROBE_PREFIXES = ${_TOOL_PREFIXES:H:O:u}
+_IMPORT_PROBE_PREFIXES ?= ${_TOOL_PREFIXES:H:O:u}
 .  endif
 .  if !defined(_IMPORT_SOURCE)
 .    for _p in ${_IMPORT_PROBE_PREFIXES}
@@ -994,6 +1016,18 @@ _write_linkdeps:
 # library is exactly what it declared (the message was misleading on Linux).
 # @impl 0f87-6ac1-0a1e-546e
 # @impl 0f87-6abe-8e68-741b
+# The library files staged: lib<LIB>.* everywhere; under TOOLCHAIN=msvc also
+# <LIB>.lib (static or import library) and <LIB>.dll, the names link.exe
+# looks for and MSVC output carries (cases 47, 56 ... found none, 2026-10-27).
+# @impl 0f87-6a9a-b51c-b267
+_IMPORT_LIB_GLOBS = lib${LIB}.*
+_IMPORT_LIB_NAMES = lib${LIB}.a, lib${LIB}.dll.a, lib${LIB}.so*, lib${LIB}.dylib
+_IMPORT_LIB_MSVC_CASE = *.a
+.if ${TOOLCHAIN} == "msvc"
+_IMPORT_LIB_GLOBS += ${LIB}.lib ${LIB}.dll
+_IMPORT_LIB_NAMES := ${LIB}.lib, ${LIB}.dll, ${_IMPORT_LIB_NAMES}
+_IMPORT_LIB_MSVC_CASE = *.lib|*.dll
+.endif
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
 	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
@@ -1028,11 +1062,11 @@ _stage_import:
 		fi; \
 	else \
 		_found=no; _copied=""; \
-		for _f in "${_IMPORT_LIBDIR}"/lib${LIB}.*; do \
+		for _f in ${_IMPORT_LIB_GLOBS:@g@"${_IMPORT_LIBDIR}"/${g}@}; do \
 			[ -e "$$_f" ] || continue; \
 			_base=$$(basename "$$_f"); \
 			case "$$_base" in \
-				*.a|*.so|*.so.*|*.dylib) ;; \
+				*.a|*.so|*.so.*|*.dylib|${_IMPORT_LIB_MSVC_CASE}) ;; \
 				*) continue ;; \
 			esac; \
 			_found=yes; \
@@ -1058,7 +1092,7 @@ _stage_import:
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
-			echo "error: IMPORT=${IMPORT}: no library file for ${LIB} (lib${LIB}.a, lib${LIB}.dll.a, lib${LIB}.so*, lib${LIB}.dylib) in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
+			echo "error: IMPORT=${IMPORT}: no library file for ${LIB} (${_IMPORT_LIB_NAMES}) in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
 			exit 1; \
 		fi; \
 	fi; \
@@ -1297,7 +1331,8 @@ _fetch_build:
 	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do \
 		_npfxpath="$$_npfxpath$$(realpath "$$_pp" 2>/dev/null || printf '%s' "$$_pp");"; \
 	done; \
-	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=${CC} CXX=${CXX} CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_ntoolchainldflags PREFIXPATH=$$_npfxpath DEPLOY=${_FETCH_MACOS_MIN_VERSION:U} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
+	_bcc=${CC:Q}; _bcxx=${CXX:Q}; \
+	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=$$_bcc CXX=$$_bcxx CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_ntoolchainldflags PREFIXPATH=$$_npfxpath DEPLOY=${_FETCH_MACOS_MIN_VERSION:U} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
 	if [ -f ${.CURDIR}/work/.build-fp ] && [ "$$(cat ${.CURDIR}/work/.build-fp)" = "$$_bfp" ]; then \
 		exit 0; \
 	fi; \
@@ -1307,7 +1342,7 @@ _fetch_build:
 	mkdir -p "$$_prefix" "$$_builddir"; \
 	_njobs=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); \
 	unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true; \
-	export CC="${CC}" CXX="${CXX}" CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${_TOOLCHAIN_LDFLAGS}"; \
+	export CC=${CC:Q} CXX=${CXX:Q} CFLAGS=${CFLAGS:Q} CXXFLAGS=${CXXFLAGS:Q} LDFLAGS=${_TOOLCHAIN_LDFLAGS:Q}; \
 	export CMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}"; \
 	_pcpath=""; \
 	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do _pcpath="$$_pcpath$$_pp/lib/pkgconfig:"; done; \
@@ -1434,7 +1469,7 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 		esac; \
 		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
 	done; \
-	echo "${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags"; \
+	echo ${_CCLINK:Q} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags; \
 	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags
 	@echo "===> built shared ${SHLIB_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
 .if ${TARGET} != "win"

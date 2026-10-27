@@ -11,7 +11,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find App -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "v1 L1"
 
 # --- no-op rebuild: nothing changed, nothing should recompile ---
@@ -28,7 +28,7 @@ sleep 1
 sed -i.bak 's/L1/L2-CHANGED/' App/app.m/include/local.h
 bmake >build3.log 2>&1
 grep -q "\-c .*main\.c" build3.log
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "v1 L2-CHANGED"
 
 # --- framework-public header changes (Pub/include, reached only via
@@ -37,7 +37,7 @@ sleep 1
 sed -i.bak 's/v1/v2-CHANGED/' Pub/include/api.h
 bmake >build4.log 2>&1
 grep -q "\-c .*main\.c" build4.log
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "v2-CHANGED L2-CHANGED"
 
 echo "header-dependency-tracking OK"

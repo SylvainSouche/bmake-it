@@ -64,7 +64,7 @@ done
 
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "hello from real macos-style symlinked dylib"
 
 echo "import-dylib-symlink-chain OK"

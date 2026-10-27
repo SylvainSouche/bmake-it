@@ -18,18 +18,25 @@ CC=${CC:-cc}
 
 mkdir -p "$FAKE/pkgroot/lib/pkgconfig"
 "$CC" -c -I"$FAKE/pkgroot/include" "$FAKE/src/impl.c" -o "$FAKE/src/impl.o"
-ar rcs "$FAKE/pkgroot/lib/libcached.a" "$FAKE/src/impl.o"
+fake_ar "$FAKE/pkgroot/lib/libcached.a" "$FAKE/src/impl.o"
 
 export PKG_CONFIG_PATH="$FAKE/pkgroot/lib/pkgconfig"
 export REAL_PKG_CONFIG=$(command -v pkg-config)
 export COUNTER_FILE="$ROOT/pkgconfig-calls.log"
 : > "$COUNTER_FILE"
 export PATH="$FAKE/bin:$PATH"
+# Under ABI=mingw Bmake It asks the mingw pkg-config (pkg-config-matches-
+# output-abi-req): count calls under that name too, delegating to the real one.
+if [ "${ABI:-}" = mingw ]; then
+    real_m=$(command -v x86_64-w64-mingw32-pkg-config)
+    printf '#!/bin/sh\nREAL_PKG_CONFIG=%s exec %s "$@"\n' "$real_m" "$FAKE/bin/pkg-config" > "$FAKE/bin/x86_64-w64-mingw32-pkg-config"
+    chmod +x "$FAKE/bin/x86_64-w64-mingw32-pkg-config"
+fi
 
 # Not installed yet: the build fails, and leaves no cache behind.
 rc=0; (cd ws && bmake >build0.log 2>&1) || rc=$?
 [ "$rc" != 0 ] || { echo "expected the build to fail while the package is not installed" >&2; exit 1; }
-if [ -n "$(find ws -name .import-resolve-cache)" ]; then
+if [ -n "$(find ws -name '.import-resolve-cache*')" ]; then
     echo "a failed resolution must not be cached" >&2; exit 1
 fi
 count0=$(wc -l < "$COUNTER_FILE")
@@ -55,7 +62,7 @@ count1=$(wc -l < "$COUNTER_FILE")
 
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "cached-value"
 
 # Second build, nothing changed at all -- must not call pkg-config again.

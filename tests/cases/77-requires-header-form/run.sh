@@ -50,7 +50,7 @@ EOF
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "^42$"
 
 # --- same header, but reachable only via CFLAGS (not CXXFLAGS) -- proves

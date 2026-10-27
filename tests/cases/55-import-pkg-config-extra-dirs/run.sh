@@ -10,7 +10,7 @@ FAKE="$ROOT/fake"
 CC=${CC:-cc}
 
 "$CC" -c -I"$FAKE/pkgroot/include" "$FAKE/src/impl.c" -o "$FAKE/src/impl.o"
-ar rcs "$FAKE/pkgroot/lib/libgreet4.a" "$FAKE/src/impl.o"
+fake_ar "$FAKE/pkgroot/lib/libgreet4.a" "$FAKE/src/impl.o"
 
 cat > "$FAKE/nonstandard-pcdir/greet4.pc" <<EOF
 prefix=$FAKE/pkgroot
@@ -44,7 +44,7 @@ cd ../..
 bmake >build2.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "hello from a non-default pkgconfig dir"
 
 echo "import-pkg-config-extra-dirs OK"

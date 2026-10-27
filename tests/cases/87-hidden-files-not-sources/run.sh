@@ -13,7 +13,7 @@ printf 'int hidden_dir_symbol(void) { return syntax error; }\n' > Fw/app.m/src/.
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-"$bin" | grep -q "^ok$"
+run_prog "$bin" | grep -q "^ok$"
 if grep -q '\._\|\.hidden' build1.log; then
     echo "a hidden file was compiled:" >&2; grep '\._\|\.hidden' build1.log >&2; exit 1
 fi

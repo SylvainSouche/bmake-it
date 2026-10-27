@@ -25,7 +25,7 @@ if [ "$BMK_T_OS" = win ]; then
     libs=$(find . -type d -path "*/build/*/lib" | tr '\n' ':')
     out=$(with_libdir "${libs%:}" "$bin")
 else
-    out=$("$bin")
+    out=$(run_prog "$bin")
 fi
 echo "$out" | grep -q "base"
 

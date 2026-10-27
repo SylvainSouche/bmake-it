@@ -10,6 +10,9 @@
 # @impl 7854-6adf-8cd3-e408
 set -u
 P="${1:?}"; TOOLCHAIN="${2:?}"; LOG="${3:?}"
+# <toolchain>+<abi> (matrix.tsv: llvm+mingw) also forces ABI= for the suite.
+ABI=""
+case "$TOOLCHAIN" in *+*) ABI=${TOOLCHAIN#*+}; TOOLCHAIN=${TOOLCHAIN%%+*} ;; esac
 
 HARNESS_DIR=$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)
 BMK_ROOT=$(CDPATH= cd -- "$HARNESS_DIR/../.." && pwd)
@@ -48,7 +51,7 @@ set +e
 (
     cd "$HARNESS_DIR" &&
     env ${sysmk:+BMK_SYS_MK="$sysmk"} ${ewdk:+BMK_EWDK_ROOT="$ewdk"} BMK_MKDIR="$BMK_ROOT/mk" BMK_SCRIPTS="$BMK_ROOT/scripts" \
-        TOOLCHAIN="$TOOLCHAIN" sh ./run-tests.sh
+        TOOLCHAIN="$TOOLCHAIN" ${ABI:+ABI="$ABI"} sh ./run-tests.sh
 ) >"$LOG" 2>&1
 status=$?
 set -e

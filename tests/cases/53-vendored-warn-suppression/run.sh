@@ -27,6 +27,7 @@ fi
 
 # App's OWN warning must still fire -- WARN=none/PUBLIC_HEADERS_SYSTEM
 # only apply to Vendor, not to App's own code.
-grep -q "unused variable 'app_unused_var'" build.log
+# (gcc/clang: "unused variable 'x'"; MSVC: C4101 "'x': unreferenced local variable")
+grep -qE "unused variable 'app_unused_var'|'app_unused_var': unreferenced local variable" build.log
 
 echo "vendored-warn-suppression OK"

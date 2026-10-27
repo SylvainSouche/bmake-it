@@ -296,6 +296,9 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 # sort+uniq -- static link order can matter.
 # @impl 0f87-6abe-3f50-0560
 # @impl 0f87-6abe-8c3c-9ca3
+# msvc-cc-shell-quoting-req: the link command is echoed with :Q, never
+# inside "..." (MSVC's INCLUDE=\"...;...\" in CC split the line).
+# @impl 7854-6adf-d52c-bc05
 	@_ldflags=""; _seen=""; \
 	for _f in ${LDFLAGS}; do \
 		_skip=no; \
@@ -308,7 +311,7 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES}
 		esac; \
 		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
 	done; \
-	echo "${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags"; \
+	echo ${_CCLINK:Q} -o ${.TARGET} ${OBJS} $$_ldflags; \
 	${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 

@@ -20,7 +20,7 @@ FAKE="$ROOT/fake/fakepkg"
 
 CC=${CC:-cc}
 "$CC" -c "$ROOT/fake/fakesrc/impl.c" -o "$ROOT/fake/fakesrc/impl.o"
-ar rcs "$FAKE/lib/libgreet2.a" "$ROOT/fake/fakesrc/impl.o"
+fake_ar "$FAKE/lib/libgreet2.a" "$ROOT/fake/fakesrc/impl.o"
 cat > "$FAKE/lib/pkgconfig/greet2.pc" <<PCEOF
 prefix=$FAKE
 includedir=\${prefix}/include
@@ -38,9 +38,10 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-"$bin" | grep -q "hello from fake pkg-config import 7"
+run_prog "$bin" | grep -q "hello from fake pkg-config import 7"
 
-n=$(grep -c "^ar rcs .*$(static_lib geo)" build1.log || true)
+# (the archiver: ar, or Bmake It's lib.exe wrapper under TOOLCHAIN=msvc)
+n=$(grep -cE "^(ar|sh [^ ]*msvc-lib-wrapper\.sh) rcs .*$(static_lib geo)" build1.log || true)
 [ "$n" = "1" ] || { echo "$(static_lib geo) archived $n times, expected 1" >&2; exit 1; }
 if grep -q "copy-up collision" build1.log; then
     echo "unexpected copy-up collision on a clean build" >&2
@@ -71,7 +72,7 @@ if grep -qE "^===> built (static|shared|app)" build2.log; then
     echo "second unchanged build printed a 'built' message" >&2
     exit 1
 fi
-if grep -qE "^(/[^ ]*clang|/[^ ]*gcc|cc|ar rcs)" build2.log; then
+if grep -qE "^(/[^ ]*clang|/[^ ]*gcc|cc|ar rcs|sh [^ ]*msvc-(cc|lib)-wrapper)" build2.log; then
     echo "second unchanged build ran a compiler/archiver" >&2
     exit 1
 fi

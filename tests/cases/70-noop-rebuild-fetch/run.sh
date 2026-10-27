@@ -41,7 +41,7 @@ grep -q "===> fetched+extracted" build1.log
 
 for i in 2 3 4; do
     bmake >build$i.log 2>&1
-    n=$(grep -c "clang\|cc \|gcc " build$i.log || true)
+    n=$(grep -cE "clang|cc |gcc |msvc-cc-wrapper" build$i.log || true)
     if [ "$n" -ne 0 ]; then
         echo "expected build $i to be a genuine no-op (0 compile/archive commands), got $n" >&2
         cat build$i.log >&2
@@ -63,7 +63,7 @@ EOF
 sed -i.bak "s#FETCH_URL=.*#FETCH_URL=file://$ROOT/fake/dist/foo-2.0.tar.gz#" makefile
 bmake >build_changed.log 2>&1
 grep -q "===> fetched+extracted" build_changed.log
-n=$(grep -c "clang\|cc \|gcc " build_changed.log || true)
+n=$(grep -cE "clang|cc |gcc |msvc-cc-wrapper" build_changed.log || true)
 [ "$n" -gt 0 ]
 grep -q "v2" work/_resolved/foo.c
 

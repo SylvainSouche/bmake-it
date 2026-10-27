@@ -29,7 +29,9 @@
 .if !defined(_MK_TOOLCHAIN_MSVC_MK_)
 _MK_TOOLCHAIN_MSVC_MK_ = 1
 
-.if ${BMK_IS_NATIVE_BUILD} == "no"
+# `clean TARGET=all` compiles nothing: it only wipes every target's output,
+# so it must not stop here (case 14 under TOOLCHAIN=msvc did).
+.if ${BMK_IS_NATIVE_BUILD} == "no" && ${CLEAN_ALL_TARGETS} != "yes"
 .  error "TOOLCHAIN=msvc cannot cross-compile (MSVC only ever targets Windows, from Windows) -- for a non-Cygwin host producing win-target output, use TOOLCHAIN=llvm instead (mingw-w64 cross-compilation)."
 .endif
 
@@ -38,21 +40,25 @@ _MSVC_CL != command -v cl 2>/dev/null || true
 .  if empty(_MSVC_CL)
 # @impl 0f87-6a9a-d311-f245
 .    include "${BMK_MKDIR}/mk.vcvarsall.mk"
-_MSVC_ENV_PREFIX = env PATH="${_MSVC_BIN}:$$PATH" INCLUDE="${_MSVC_INCLUDE}" LIB="${_MSVC_LIB}"
+# Handed to the wrappers in the environment, so CC stays a plain command
+# line (no quotes, no spaces inside words): anything may run it as $CC.
+BMK_MSVC_BIN     := ${_MSVC_BIN}
+BMK_MSVC_INCLUDE := ${_MSVC_INCLUDE}
+BMK_MSVC_LIB     := ${_MSVC_LIB}
+.    export BMK_MSVC_BIN BMK_MSVC_INCLUDE BMK_MSVC_LIB
 .  else
 _MSVC_LIB_TOOL != command -v lib 2>/dev/null || true
 .    if empty(_MSVC_LIB_TOOL)
 .      error "TOOLCHAIN=msvc: cl.exe was found on PATH but lib.exe was not -- PATH is only partially set up for MSVC. Launch from a full Visual Studio Developer environment, or unset PATH's partial override and let mk.vcvarsall.mk discover it instead."
 .    endif
-_MSVC_ENV_PREFIX =
 .  endif
 .endif
 
 # @impl 0f87-6a98-96de-1865
-CC  = ${_MSVC_ENV_PREFIX} sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
-CXX = ${_MSVC_ENV_PREFIX} sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
+CC  = sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
+CXX = sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
 LD  = ${CC}
-AR  = ${_MSVC_ENV_PREFIX} sh ${BMK_MKDIR}/../scripts/msvc-lib-wrapper.sh
+AR  = sh ${BMK_MKDIR}/../scripts/msvc-lib-wrapper.sh
 AS  ?= as
 RANLIB = true
 

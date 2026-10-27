@@ -12,7 +12,7 @@ FAKE="$ROOT/fake/fakepkg"
 
 CC=${CC:-cc}
 "$CC" -c "$ROOT/fake/fakesrc/impl.c" -o "$ROOT/fake/fakesrc/impl.o"
-ar rcs "$FAKE/lib/libgreet2.a" "$ROOT/fake/fakesrc/impl.o"
+fake_ar "$FAKE/lib/libgreet2.a" "$ROOT/fake/fakesrc/impl.o"
 
 cat > "$FAKE/lib/pkgconfig/greet2.pc" <<EOF
 prefix=$FAKE
@@ -32,7 +32,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "hello from fake pkg-config import"
 grep -q "resolved via pkg-config:greet2" build1.log
 grep -q "3.1.4" build1.log

@@ -11,10 +11,10 @@ FAKE="$ROOT/fake"
 CC=${CC:-cc}
 
 "$CC" -c -I"$FAKE/priv/include" "$FAKE/src/priv_impl.c" -o "$FAKE/src/priv_impl.o"
-ar rcs "$FAKE/priv/libpriv.a" "$FAKE/src/priv_impl.o"
+fake_ar "$FAKE/priv/libpriv.a" "$FAKE/src/priv_impl.o"
 
 "$CC" -c -I"$FAKE/pub/include" -I"$FAKE/priv/include" "$FAKE/src/pub_impl.c" -o "$FAKE/src/pub_impl.o"
-ar rcs "$FAKE/pub/lib/libpubpkg.a" "$FAKE/src/pub_impl.o"
+fake_ar "$FAKE/pub/lib/libpubpkg.a" "$FAKE/src/pub_impl.o"
 
 cat > "$FAKE/pub/lib/pkgconfig/pubpkg.pc" <<EOF
 prefix=$FAKE/pub
@@ -35,7 +35,7 @@ cd ws
 bmake >build.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "priv-value"
 
 linkdeps=$(find . -name libpubpkg.linkdeps | head -1)

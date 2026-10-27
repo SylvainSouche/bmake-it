@@ -13,7 +13,7 @@ FAKE="$ROOT/fake"
 CC=${CC:-cc}
 
 "$CC" -c -I"$FAKE/parent_pkg/include" "$FAKE/src/parent_impl.c" -o "$FAKE/src/parent_impl.o"
-ar rcs "$FAKE/parent_pkg/lib/libutil.a" "$FAKE/src/parent_impl.o"
+fake_ar "$FAKE/parent_pkg/lib/libutil.a" "$FAKE/src/parent_impl.o"
 cat > "$FAKE/parent_pkg/lib/pkgconfig/util.pc" <<EOF
 prefix=$FAKE/parent_pkg
 includedir=\${prefix}/include
@@ -26,7 +26,7 @@ Libs: -L\${libdir} -lutil
 EOF
 
 "$CC" -c -I"$FAKE/local_pkg/include" "$FAKE/src/local_impl.c" -o "$FAKE/src/local_impl.o"
-ar rcs "$FAKE/local_pkg/lib/libutil.a" "$FAKE/src/local_impl.o"
+fake_ar "$FAKE/local_pkg/lib/libutil.a" "$FAKE/src/local_impl.o"
 cat > "$FAKE/local_pkg/lib/pkgconfig/util-local.pc" <<EOF
 prefix=$FAKE/local_pkg
 includedir=\${prefix}/include

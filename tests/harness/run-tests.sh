@@ -57,6 +57,19 @@ ABI="${ABI:-}"
 
 pass=0; fail=0; skip=0; errors=0; flaky=0
 
+# Under ABI=mingw a C++ program needs the mingw runtime DLLs (libstdc++-6.dll,
+# libgcc_s_seh-1.dll, libwinpthread-1.dll) on PATH to start, as `bmake run`
+# provides (mingw-run-path-includes-runtime-req): append the mingw sysroot's
+# bin/ to the cases' PATH, after everything else.
+# @impl 7854-6adf-d52e-740f
+RUNTIME_PATH=""
+if [ "$ABI" = mingw ]; then
+    _mingw_sys=$(x86_64-w64-mingw32-gcc -print-sysroot 2>/dev/null || true)
+    for _mb in ${BMK_MINGW_SYSROOT:+"$BMK_MINGW_SYSROOT/bin"} ${_mingw_sys:+"$_mingw_sys/mingw/bin"} /usr/x86_64-w64-mingw32/bin; do
+        [ -d "$_mb" ] && { RUNTIME_PATH=":$_mb"; break; }
+    done
+fi
+
 WORKDIR_BASE=$(mktemp -d "${TMPDIR:-/tmp}/bmk-tests.XXXXXX")
 WRAPDIR=$(mktemp -d "${TMPDIR:-/tmp}/bmk-wrap.XXXXXX")
 kept=0
@@ -130,7 +143,7 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             # ...), and a French-locale linker says "référence indéfinie".
             export LC_ALL=C
             export MAKESYSPATH="${BMK_MKDIR}:${_SYS_MK}"
-            export PATH="$WRAPDIR:$PATH"
+            export PATH="$WRAPDIR:$PATH$RUNTIME_PATH"
             sh ./run.sh
         ) >"$log" 2>&1 || status=$?
         # RETRY_FAILED=1 (set for emulated platforms, where load makes timing

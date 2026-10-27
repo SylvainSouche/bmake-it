@@ -15,6 +15,55 @@ case "$(uname -s)" in
     *)                    BMK_T_OS=elf ;;
 esac
 
+# harness-windows-runtime-programs-req (CC default, run_prog, with_libdir's
+# \r stripping and path normalisation, below)
+# @impl 7854-6adf-d52e-740f
+# The compiler a case builds its fake libraries with must produce objects
+# for the runtime under test: under ABI=mingw a Cygwin-built DLL cannot be
+# loaded by a mingw program. Cases use "$CC" (CC=${CC:-cc}); default it.
+if [ -z "${CC:-}" ]; then
+    case "${ABI:-}" in mingw) CC=x86_64-w64-mingw32-gcc ;; esac
+fi
+# Under TOOLCHAIN=msvc the fake libraries are built with Bmake It's own
+# cl.exe/lib.exe wrappers, environment included (mk.vcvarsall.mk finds the
+# toolset): asked from bmake itself, its CC and AR become two scripts.
+if [ "${TOOLCHAIN:-}" = msvc ]; then
+    _tl_d=$(mktemp -d "${TMPDIR:-/tmp}/bmk-tc.XXXXXX")
+    cat > "$_tl_d/makefile" <<'EOF'
+.include <mk.common.mk>
+bmk-tc:
+	@echo "$${BMK_MSVC_BIN:-}"
+	@echo "$${BMK_MSVC_INCLUDE:-}"
+	@echo "$${BMK_MSVC_LIB:-}"
+	@echo ${CC:Q}
+	@echo ${AR:Q}
+EOF
+    if ! _tl_tc=$(cd "$_tl_d" && bmake bmk-tc) || [ -z "$_tl_tc" ]; then
+        echo "testlib: cannot get the MSVC compiler and archiver from bmake (TOOLCHAIN=msvc, above)" >&2
+        exit 1
+    fi
+    _tl_l() { printf '%s\n' "$_tl_tc" | sed -n "$1p"; }
+    BMK_MSVC_BIN=$(_tl_l 1) BMK_MSVC_INCLUDE=$(_tl_l 2) BMK_MSVC_LIB=$(_tl_l 3)
+    export BMK_MSVC_BIN BMK_MSVC_INCLUDE BMK_MSVC_LIB
+    printf '#!/bin/sh\nexec %s "$@"\n' "$(_tl_l 4)" > "$_tl_d/cc"
+    printf '#!/bin/sh\nexec %s "$@"\n' "$(_tl_l 5)" > "$_tl_d/ar"
+    chmod +x "$_tl_d/cc" "$_tl_d/ar"
+    CC="$_tl_d/cc"; BMK_T_AR="$_tl_d/ar"
+fi
+
+# fake_ar <dir>/lib<name>.a <objects...>: archive a case's fake static
+# library as the linker under test looks for -l<name>: lib<name>.a, or
+# <name>.lib made by lib.exe under TOOLCHAIN=msvc.
+fake_ar() {
+    _fa=$1; shift
+    if [ "${TOOLCHAIN:-}" = msvc ]; then
+        _fb=$(basename "$_fa" .a)
+        "$BMK_T_AR" rcs "$(dirname "$_fa")/${_fb#lib}.lib" "$@"
+    else
+        ar rcs "$_fa" "$@"
+    fi
+}
+
 # prog_name <name>: the file name of program <name> (PROG=<name>).
 prog_name() {
     case $BMK_T_OS in win) echo "$1.exe" ;; *) echo "$1" ;; esac
@@ -53,7 +102,36 @@ libpath_var() {
 with_libdir() {
     _v=$(libpath_var); _dirs=$1; shift
     eval "_old=\${$_v:-}"
-    env "$_v=$_dirs${_old:+:$_old}" "$@"
+    # A Windows-runtime program (mingw, MSVC) writes \r\n: strip the \r so a
+    # case can compare its output exactly. The program's exit status is kept.
+    _wl_out=$(mktemp "${TMPDIR:-/tmp}/bmk-wl.XXXXXX")
+    _wl_rc=0
+    env "$_v=$_dirs${_old:+:$_old}" "$@" >"$_wl_out" || _wl_rc=$?
+    tr -d '\r' <"$_wl_out"; rm -f "$_wl_out"
+    return $_wl_rc
+}
+
+# run_prog <cmd> [args...]: run a built program (or `bmake run ...`), with
+# the \r a Windows-runtime program writes stripped; exit status kept.
+#   A native Windows program (mingw, MSVC) also sees PATH in Windows form --
+#   Cygwin converts it for them -- and prints NAME=C:\...;C:\...: such a
+#   value is turned back into the POSIX form the case compares with.
+run_prog() {
+    _rp_out=$(mktemp "${TMPDIR:-/tmp}/bmk-rp.XXXXXX")
+    _rp_rc=0
+    "$@" >"$_rp_out" 2>&1 || _rp_rc=$?
+    if [ "$BMK_T_OS" = win ] && command -v cygpath >/dev/null 2>&1; then
+        tr -d '\r' <"$_rp_out" | while IFS= read -r _rp_l; do
+            case "$_rp_l" in
+                [A-Za-z_]*=[A-Za-z]:\\*) printf '%s=%s\n' "${_rp_l%%=*}" "$(cygpath -u -p "${_rp_l#*=}")" ;;
+                *) printf '%s\n' "$_rp_l" ;;
+            esac
+        done
+    else
+        tr -d '\r' <"$_rp_out"
+    fi
+    rm -f "$_rp_out"
+    return $_rp_rc
 }
 
 # prog_libdir <path-to-built-program>: the lib/ beside its bin/ -- where
@@ -68,6 +146,8 @@ prog_libdir() {
 # Windows a DLL plus its import library lib<name>.dll.a (ld and lld do not
 # look for lib<name>.so there).
 shlib_flags() {
+    # MSVC: link.exe looks for -l<name> as <name>.lib
+    [ "${TOOLCHAIN:-}" = msvc ] && { echo "-shared -o $1/$2.dll -Wl,--out-implib,$1/$2.lib"; return; }
     case $BMK_T_OS in
         win)   echo "-shared -o $1/lib$2.dll -Wl,--out-implib,$1/lib$2.dll.a" ;;
         macos) echo "-dynamiclib -o $1/lib$2.dylib" ;;

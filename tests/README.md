@@ -116,12 +116,17 @@ the container VM (`colima stop`) while running the BSD and macOS cells.
   `prog_name app` (`app.exe` on Windows), `find_prog <dir> app`,
   `static_lib x` (`libx.a` / `x.lib`), `shared_lib x [major]`
   (`libx.so.3` / `libx.3.dylib` / `x.dll`), `make_shared_lib <dir> x <cc
-  args>` for a fake library (a DLL plus `libx.dll.a` on Windows),
+  args>` for a fake library (a DLL plus `libx.dll.a` on Windows; `x.dll`
+  plus `x.lib` under `TOOLCHAIN=msvc`), `fake_ar <dir>/libx.a <objs>` for a
+  fake static one (`x.lib` from `lib.exe` under `TOOLCHAIN=msvc`),
   `with_libdir <dirs> <cmd>` (prepends to `LD_LIBRARY_PATH`,
   `DYLD_LIBRARY_PATH` or `PATH`), `prog_libdir <program>` (Windows has no
   rpath), and `need_tool <tool> [why]`, which skips the case (exit 77)
-  when a tool is missing. Cases run with `LC_ALL=C`, so tool messages can be
-  grepped. Before these, 45 of the 100 cases failed on Cygwin for those
+  when a tool is missing. Cases compile their fake libraries with `"$CC"`,
+  which testlib sets to the toolchain under test: the mingw compiler under
+  `ABI=mingw`, Bmake It's own `cl.exe` wrapper (environment included, asked
+  from bmake) under `TOOLCHAIN=msvc`. Cases run with `LC_ALL=C`, so tool
+  messages can be grepped. Before these, 45 of the 100 cases failed on Cygwin for those
   reasons alone (2026-10-26).
 
 ## Running

@@ -34,7 +34,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-"$bin" | grep -q "^85$"
+run_prog "$bin" | grep -q "^85$"
 
 # The staged lib/ has the real file exactly once, as a regular file, and
 # no link points at itself.

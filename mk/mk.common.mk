@@ -228,6 +228,29 @@ _WIN_ABI = cygwin
 _KEY_ABI := ${_WIN_ABI}
 .else
 _KEY_ABI := ${ABI:U}
+# abi-valid-for-target-req: an ABI the target OS does not have is an error,
+# not a key suffix -- ABI=mingw with TARGET=linux silently gave the key
+# linux-amd64-mingw (2026-10-26). Linux: glibc or musl; macOS and the BSDs
+# have one ABI and take none. In a -V query: a warning, and it is ignored.
+# @impl 7854-6adf-d52d-366a
+.  if ${TARGET} == "linux"
+_ABI_VALID = glibc musl
+.  else
+_ABI_VALID =
+.  endif
+# (TARGET=all names no target: `clean TARGET=all` only wipes every output)
+.  if !empty(_KEY_ABI) && empty(_ABI_VALID:M${_KEY_ABI}) && ${TARGET} != "all"
+.    if empty(.MAKEFLAGS:M-V*)
+.      if empty(_ABI_VALID)
+.        error "ABI=${_KEY_ABI} does not exist for TARGET=${TARGET}: ${TARGET} has a single ABI and takes no ABI= (mingw, cygwin and msvc are Windows ABIs)"
+.      else
+.        error "ABI=${_KEY_ABI} does not exist for TARGET=${TARGET}: its ABIs are ${_ABI_VALID} (mingw, cygwin and msvc are Windows ABIs)"
+.      endif
+.    else
+.      warning "ABI=${_KEY_ABI} does not exist for TARGET=${TARGET}; ignored"
+_KEY_ABI :=
+.    endif
+.  endif
 .endif
 # @impl 0f87-6a98-772e-6156
 .if !empty(_KEY_ABI)
@@ -341,22 +364,17 @@ CXXFLAGS += -w
 _CXX_EXTS = cc cpp cxx
 
 # ---------------------------------------------------------------------------
-# Header dependency tracking (header-dependency-tracking-req): gcc/clang
-# only -- -MMD -MP alongside -MF <obj>.d, per source, added by each compile
-# recipe in mk.prog.mk/mk.lib.mk (the -MF path is per-source, so it can't
-# live here). Left genuinely UNDEFINED (not merely empty) for TOOLCHAIN=msvc
-# so ${_DEP_CFLAGS:D...} at each call site expands to nothing there --
-# msvc-cc-wrapper.sh forwards any flag it doesn't recognize straight to
-# cl.exe, and -MMD/-MP/-MF are exactly that (msvc-header-dependency-
-# tracking-deferred: cl.exe's own equivalent, /showIncludes, is stdout-
-# based, not a generated file, and needs wrapper-side parsing not built
-# yet). ${_OBJDIR} already lives under ${BUILD_ROOT}, which clean: already
-# removes entirely -- no separate cleanup needed for the .d files.
+# Header dependency tracking (header-dependency-tracking-req): -MMD -MP
+# alongside -MF <obj>.d, per source, added by each compile recipe in
+# mk.prog.mk/mk.lib.mk (the -MF path is per-source, so it can't live here).
+# Every toolchain: under TOOLCHAIN=msvc, msvc-cc-wrapper.sh writes the same
+# file from cl.exe's /showIncludes (it was left out there until 2026-10-27,
+# msvc-header-dependency-tracking-deferred). ${_OBJDIR} already lives under
+# ${BUILD_ROOT}, which clean: already removes entirely -- no separate
+# cleanup needed for the .d files.
 # @impl 0f87-6ab5-8442-b2dc
 # ---------------------------------------------------------------------------
-.if ${TOOLCHAIN} != "msvc"
 _DEP_CFLAGS = -MMD -MP
-.endif
 
 # ---------------------------------------------------------------------------
 # Inputs-hash rebuild (inputs-hash-rebuild-req): bmake's staleness model is
@@ -383,10 +401,19 @@ _DEP_CFLAGS = -MMD -MP
 INPUTS_HASH_EXTRA ?=
 _INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
 
+# msvc-cc-shell-quoting-req: the hashed string is handed to the shell with
+# :Q, never pasted inside "...": under TOOLCHAIN=msvc, CC carries
+# INCLUDE="F:\Program Files\...;..." -- its own quotes ended the outer
+# string and the ;s split the line into commands ("F:Program: command not
+# found", 2026-10-26). Same characters as before, so the same hash.
+# @impl 7854-6adf-d52c-bc05
+# (BMK_MSVC_BIN: the MSVC toolset's own directory, which TOOLCHAIN=msvc
+# hands its wrappers outside CC -- another toolset version rebuilds too)
+_INPUTS_HASH_STR = CC=${CC} CXX=${CXX} CFLAGS=${CFLAGS} CXXFLAGS=${CXXFLAGS} LDFLAGS=${LDFLAGS} SANITIZE=${SANITIZE} TOOLCHAIN=${TOOLCHAIN} MSVC=${BMK_MSVC_BIN:U} EXTRA=${INPUTS_HASH_EXTRA}
 .PHONY: _check_inputs_hash
 _check_inputs_hash:
 	@mkdir -p ${.CURDIR}/${BUILD_ROOT}
-	@_new=$$(printf '%s' "CC=${CC} CXX=${CXX} CFLAGS=${CFLAGS} CXXFLAGS=${CXXFLAGS} LDFLAGS=${LDFLAGS} SANITIZE=${SANITIZE} TOOLCHAIN=${TOOLCHAIN} EXTRA=${INPUTS_HASH_EXTRA}" | cksum); \
+	@_new=$$(printf '%s' ${_INPUTS_HASH_STR:Q} | cksum); \
 	if [ ! -f ${_INPUTS_HASH_FILE} ] || [ "$$(cat ${_INPUTS_HASH_FILE} 2>/dev/null)" != "$$_new" ]; then \
 		echo "$$_new" > ${_INPUTS_HASH_FILE}; \
 	fi
@@ -560,8 +587,8 @@ _RUN_LDPATH_VAR = LD_LIBRARY_PATH
 # BMK_MINGW_SYSROOT/bin when given, else the installed mingw-w64 gcc's
 # <sysroot>/mingw/bin (Cygwin, Fedora) and /usr/<triple>/bin, whichever
 # exist. Computed only for `run`, so ordinary builds pay no subprocess.
-# Placed after the workspace's own lib chain: a project DLL of the same
-# name still wins.
+# Placed after the workspace's own lib and bin chains (lib, bin, then this,
+# then the caller's PATH): a project DLL or program of the same name wins.
 # @impl 7854-6ad1-437f-70a7
 _RUN_MINGW_BIN =
 .if make(run) && ${_BMK_WIN_MINGW} == "yes"
@@ -583,7 +610,7 @@ _RUN_MINGW_PATH = :${_RUN_MINGW_BIN:ts:}
 _RUN_MINGW_PATH =
 .endif
 .if ${_RUN_LDPATH_VAR} == "PATH"
-_RUN_LIBSET = PATH="$$_libs${_RUN_MINGW_PATH}:$$PATH"; BMK_LIBVAL=
+_RUN_LIBSET = PATH="$$_libs:$$PATH"; BMK_LIBVAL=
 .else
 _RUN_LIBSET = eval "_old=\$$${_RUN_LDPATH_VAR}"; BMK_LIBVAL="$$_libs$${_old:+:$$_old}"
 .endif
@@ -615,7 +642,7 @@ run:
 	for _p in ${PARENT_WS}; do \
 		_bins="$$_bins:$$_p/${BINDIR_LOCAL}"; _libs="$$_libs:$$_p/${LIBDIR_LOCAL}"; _shares="$$_shares:$$_p/${SHAREDIR_LOCAL}"; \
 	done; \
-	PATH="$$_bins$${PATH:+:$$PATH}"; \
+	PATH="$$_bins${_RUN_MINGW_PATH}$${PATH:+:$$PATH}"; \
 	if ! command -v "${PROGRAM}" >/dev/null 2>&1; then \
 		echo "error: ${PROGRAM} not found in $$_bins or on PATH -- build first (run does not build)" >&2; exit 1; \
 	fi; \

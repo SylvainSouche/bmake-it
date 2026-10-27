@@ -8,10 +8,11 @@
 set -eu
 ROOT=$(pwd)
 FAKE="$ROOT/fake"
+. "$BMK_TESTLIB"
 CC=${CC:-cc}
 
 "$CC" -c -I"$FAKE/pkgroot/include" "$FAKE/src/impl.c" -o "$FAKE/src/impl.o"
-ar rcs "$FAKE/pkgroot/lib/libext.a" "$FAKE/src/impl.o"
+fake_ar "$FAKE/pkgroot/lib/libext.a" "$FAKE/src/impl.o"
 cat > "$FAKE/pkgroot/lib/pkgconfig/ext.pc" <<EOF
 prefix=$FAKE/pkgroot
 includedir=\${prefix}/include
@@ -28,11 +29,12 @@ export PKG_CONFIG_PATH="$FAKE/pkgroot/lib/pkgconfig"
 (cd ws/Ext/libext.m && bmake copy-up)
 
 cd ws/App/app.m
-if bmake all 2>err.log; then
+if bmake all >err.log 2>&1; then
     echo "expected link to fail without LIBS=ext (PREREQS= is headers-only)" >&2
     exit 1
 fi
-grep -qi "undefined" err.log
+# (MSVC's link.exe says "unresolved external symbol")
+grep -qiE "undefined|unresolved" err.log
 
 { echo "LIBS=ext"; cat makefile; } > makefile.new && mv makefile.new makefile
 bmake clean >/dev/null 2>&1

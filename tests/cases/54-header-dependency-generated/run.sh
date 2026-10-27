@@ -14,7 +14,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "no-token-b"
 
 # Regenerate the grammar with a new token -- the promoted grammar.h
@@ -24,7 +24,7 @@ sed -i.bak 's/%token TOKEN_A/%token TOKEN_A\n%token TOKEN_B/' Gen/libgen.m/src/g
 sed -i.bak 's/start: TOKEN_A ;/start: TOKEN_A TOKEN_B ;/' Gen/libgen.m/src/grammar.y
 bmake >build2.log 2>&1
 grep -q -- "-c .*main\.c" build2.log
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "has-token-b"
 
 echo "header-dependency-generated OK"

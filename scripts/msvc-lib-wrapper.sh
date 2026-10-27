@@ -9,6 +9,10 @@
 # @impl 0f87-6a98-96de-1865
 set -eu
 
+# The MSVC environment, as msvc-cc-wrapper.sh takes it.
+[ -z "${BMK_MSVC_BIN:-}" ] || PATH="$BMK_MSVC_BIN:$PATH"
+[ -z "${BMK_MSVC_LIB:-}" ] || export LIB="$BMK_MSVC_LIB"
+
 # First arg is ar's own flag bundle (always "rcs" as invoked from
 # mk.lib.mk) -- lib.exe has no equivalent, so it's simply discarded.
 shift

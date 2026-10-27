@@ -14,14 +14,14 @@ KEY=$(bmake -V '${OS_ARCH}')
 BIN="$PWD/build/$KEY/bin"; LIB="$PWD/build/$KEY/lib"; SHARE="$PWD/build/$KEY/share"
 
 # --- a program, with arguments, found through the workspace bin ------------------
-out=$(bmake run PROGRAM=showenv ARGS="BMK_TARGET BMK_BINDIR" 2>&1)
+out=$(run_prog bmake run PROGRAM=showenv ARGS="BMK_TARGET BMK_BINDIR")
 echo "$out" | grep -q "^BMK_TARGET=$KEY$"
 echo "$out" | grep -q "^BMK_BINDIR=$BIN$"
 # ... also from inside a module directory (it walks up to the workspace root)
-( cd Fw/showenv.m && bmake run PROGRAM=showenv ARGS="BMK_TARGET" 2>&1 ) | grep -q "^BMK_TARGET=$KEY$"
+( cd Fw/showenv.m && run_prog bmake run PROGRAM=showenv ARGS="BMK_TARGET" ) | grep -q "^BMK_TARGET=$KEY$"
 
 # --- PATH, the library variable and the chains ----------------------------------
-out=$(bmake run PROGRAM=showenv ARGS="PATH LIBVAR BMK_LIBDIR BMK_SHAREDIR BMK_LIBVAR" 2>&1)
+out=$(run_prog bmake run PROGRAM=showenv ARGS="PATH LIBVAR BMK_LIBDIR BMK_SHAREDIR BMK_LIBVAR")
 v=$(libpath_var)
 if [ "$v" = PATH ]; then
     # Windows: the loader searches PATH itself, so the lib chain is prepended
@@ -35,7 +35,9 @@ echo "$out" | grep -q "^BMK_LIBDIR=$LIB$"
 echo "$out" | grep -q "^BMK_SHAREDIR=$SHARE$"
 echo "$out" | grep -q "^BMK_LIBVAR=$v$"
 # the caller's environment is inherited, not replaced
-out=$(MY_INHERITED=yes bmake run PROGRAM=showenv ARGS="MY_INHERITED" 2>&1)
+# (exported, not a prefix: `VAR=x function` does not export VAR to the
+# function's commands in every sh -- FreeBSD's does not)
+out=$(MY_INHERITED=yes; export MY_INHERITED; run_prog bmake run PROGRAM=showenv ARGS="MY_INHERITED")
 echo "$out" | grep -q "^MY_INHERITED=yes$"
 # an existing library path is kept after ours, with no empty trailing entry
 # (not on macOS: a user-set DYLD_* is stripped by the recipe's own /bin/sh,
@@ -45,7 +47,7 @@ if [ "$(uname -s)" != Darwin ] && [ "$v" != PATH ]; then
     out=$(env "$v=/keep/me" bmake run PROGRAM=showenv ARGS="LIBVAR" 2>&1)
     echo "$out" | grep -q "^LIBVAR=$LIB:/keep/me$"
 fi
-out=$(bmake run PROGRAM=showenv ARGS="LIBVAR" 2>&1)
+out=$(run_prog bmake run PROGRAM=showenv ARGS="LIBVAR")
 case "$out" in *:) echo "an empty trailing library-path entry: $out" >&2; exit 1 ;; esac
 
 # --- PARENT_WS: a program built only in a parent workspace is found --------------
@@ -58,8 +60,8 @@ printf '#include <stdio.h>\nint main(void){puts("from the parent workspace");ret
 ( cd "$PAR" && bmake >build.log 2>&1 )
 CHILD="$ROOT/child"; mkdir -p "$CHILD"
 printf 'PARENT_WS=%s\n.include <mk.workspace.mk>\n' "$PAR" > "$CHILD/makefile"
-( cd "$CHILD" && bmake run PROGRAM=pp 2>&1 ) | grep -q "from the parent workspace"
-( cd "$CHILD" && bmake run PROGRAM=env 2>&1 ) | grep "^PATH=" | grep -q "$PAR/build/$KEY/bin"
+( cd "$CHILD" && run_prog bmake run PROGRAM=pp ) | grep -q "from the parent workspace"
+( cd "$CHILD" && run_prog bmake run PROGRAM=env ) | grep "^PATH=" | grep -q "$PAR/build/$KEY/bin"
 
 # --- not found: an error naming the chain; run does not build ------------------------
 rc=0; bmake run PROGRAM=no-such-program-zzz >nf.log 2>&1 || rc=$?

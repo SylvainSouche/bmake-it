@@ -1,18 +1,19 @@
 #!/bin/sh
 set -eu
+. "$BMK_TESTLIB"
 cd ws
 bmake all
 
 # from the workspace root
-out=$(bmake run PROGRAM=app)
+out=$(run_prog bmake run PROGRAM=app)
 echo "$out" | grep -q "Hello, Bmake It!"
 
 # from a framework directory -- run: must walk up and delegate
-out=$(cd Fw && bmake run PROGRAM=app)
+out=$(cd Fw && run_prog bmake run PROGRAM=app)
 echo "$out" | grep -q "Hello, Bmake It!"
 
 # from a module directory, with ARGS= passthrough as separate words
-out=$(cd Fw/app.m && bmake run PROGRAM=app ARGS="foo bar")
+out=$(cd Fw/app.m && run_prog bmake run PROGRAM=app ARGS="foo bar")
 echo "$out" | grep -q "Hello, Bmake It!"
 echo "$out" | grep -q "^arg: foo$"
 echo "$out" | grep -q "^arg: bar$"

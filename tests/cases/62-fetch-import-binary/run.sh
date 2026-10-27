@@ -29,7 +29,7 @@ const char *binlib_greet(void) {
 EOF
 CC=${CC:-cc}
 "$CC" -c -I"$PREFIX/include" "$ROOT/fake/impl.c" -o "$ROOT/fake/impl.o"
-ar rcs "$PREFIX/lib/libbinlib.a" "$ROOT/fake/impl.o"
+fake_ar "$PREFIX/lib/libbinlib.a" "$ROOT/fake/impl.o"
 
 mkdir -p "$ROOT/fake/dist"
 ( cd "$ROOT/fake/upstream" && tar czf "$ROOT/fake/dist/binlib-2.0.tar.gz" binlib-2.0 )
@@ -51,7 +51,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "hello from prebuilt binlib"
 grep -q "verified binlib-2.0.tar.gz (sha256 ok)" build1.log
 grep -q "IMPORT=fetch-bin:binlib: resolved via fetch-bin:binlib" build1.log

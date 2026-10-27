@@ -30,7 +30,7 @@ echo 'LDFLAGS += -lm' > Fw/app.m/mk/local.mk
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "^2$"
 
 # The echoed link command (mk.prog.mk's recipe now echoes it) must show

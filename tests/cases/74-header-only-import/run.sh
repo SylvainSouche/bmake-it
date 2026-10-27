@@ -47,7 +47,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "^1$"
 
 # IMPORT_LIB=none declared that there is no library: the "no resolved library

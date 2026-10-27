@@ -10,7 +10,8 @@
 set -eu
 cd ws/Fw/libfoo.m
 for t in linux freebsd netbsd macos; do
-    v=$(bmake -V _FETCH_DEPLOY_EXPORT TARGET=$t 2>/dev/null)
+    # (cross queries: a toolchain that cross-compiles, whatever the suite forces)
+    v=$(bmake -V _FETCH_DEPLOY_EXPORT TARGET=$t TOOLCHAIN=llvm ABI= 2>/dev/null)
     [ -n "$v" ] || { echo "no value for TARGET=$t" >&2; exit 1; }
     case "$v" in
         *\;) ;;

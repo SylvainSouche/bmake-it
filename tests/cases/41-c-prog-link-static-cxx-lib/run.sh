@@ -10,12 +10,17 @@ cd ws/Fw/libcxxhelper.m
 bmake copy-up
 cd ../app.m
 
-if bmake all 2>err.log; then
-    echo "app should NOT link against a static C++ lib without LINK_CXX=yes" >&2
-    exit 1
+# Not under MSVC: its objects name their own runtime (/DEFAULTLIB
+# directives), so link.exe pulls the C++ runtime in for any driver and the
+# link without LINK_CXX=yes rightly succeeds.
+if [ "${TOOLCHAIN:-}" != msvc ]; then
+    if bmake all 2>err.log; then
+        echo "app should NOT link against a static C++ lib without LINK_CXX=yes" >&2
+        exit 1
+    fi
+    grep -qi "undefined" err.log
+    bmake clean >/dev/null 2>&1 || true
 fi
-grep -qi "undefined" err.log
-bmake clean >/dev/null 2>&1 || true
 
 { echo "LINK_CXX=yes"; cat makefile; } > makefile.new && mv makefile.new makefile
 bmake all

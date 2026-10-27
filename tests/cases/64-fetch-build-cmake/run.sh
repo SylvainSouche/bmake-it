@@ -79,7 +79,7 @@ grep -q "built via FETCH_BUILD=cmake" build1.log
 
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "hello from original cmake-built foo, patched"
 
 # A second, fully unchanged build must NOT re-run cmake -- _fetch_build:
@@ -93,7 +93,7 @@ if grep -q "FETCH_BUILD=cmake: configure" build2.log; then
     exit 1
 fi
 cd "$ROOT/ws"
-out2=$("$bin")
+out2=$(run_prog "$bin")
 echo "$out2" | grep -q "hello from original cmake-built foo, patched"
 
 echo "fetch-build-cmake OK"

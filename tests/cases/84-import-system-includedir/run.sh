@@ -12,7 +12,7 @@ ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"
 CC=${CC:-cc}
 "$CC" -c "$ROOT/fake/fakesrc/impl.c" -o "$ROOT/fake/fakesrc/impl.o"
-ar rcs "$FAKE/lib/libsys1.a" "$ROOT/fake/fakesrc/impl.o"
+fake_ar "$FAKE/lib/libsys1.a" "$ROOT/fake/fakesrc/impl.o"
 cat > "$FAKE/lib/pkgconfig/sys1.pc" <<PCEOF
 prefix=$FAKE
 includedir=\${prefix}/include
@@ -34,7 +34,7 @@ cd ws
 bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-"$bin" | grep -q "hello from a system-include import"
+run_prog "$bin" | grep -q "hello from a system-include import"
 grep -q "staged header(s) sys1 from $FAKE/include" build1.log
 
 # A genuinely absent header still fails, naming where it looked.

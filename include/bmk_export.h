@@ -22,6 +22,12 @@
  * usual "make this symbol visible" attribute (or nothing, pre-GCC4),
  * since ELF/Mach-O shared libraries export every global symbol by
  * default and have no import/export distinction to make.
+ *
+ * Optional for functions: an unannotated DLL exports every external
+ * symbol its objects define on every Windows toolchain too (with MSVC
+ * through a generated .def, msvc-shared-lib-export-req). A data symbol
+ * used from another module still needs BMK_DLLIMPORT on the consumer's
+ * side under MSVC, which has no auto-import.
  */
 #ifndef BMK_EXPORT_H
 #define BMK_EXPORT_H

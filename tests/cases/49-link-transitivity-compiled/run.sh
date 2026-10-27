@@ -16,7 +16,7 @@ bmake >build.log 2>&1
 
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$("$bin")
+out=$(run_prog "$bin")
 echo "$out" | grep -q "c-value"
 
 # libb's own linkdeps file must record its dependency on libcore.

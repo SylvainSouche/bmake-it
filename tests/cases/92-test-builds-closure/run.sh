@@ -9,12 +9,13 @@ set -eu
 pkg-config --exists atf-c 2>/dev/null || exit 77
 command -v kyua >/dev/null 2>&1 || exit 77
 ROOT=$(pwd)
+. "$BMK_TESTLIB"
 FAKE="$ROOT/fake/fakepkg"
 mkdir -p "$FAKE/include/imp" "$FAKE/lib/pkgconfig" "$ROOT/fake/src"
 printf '#pragma once\nint imp_value(void);\n' > "$FAKE/include/imp/api.h"
 echo 'int imp_value(void) { return 42; }' > "$ROOT/fake/src/impl.c"
 ${CC:-cc} -c "$ROOT/fake/src/impl.c" -o "$ROOT/fake/src/impl.o"
-ar rcs "$FAKE/lib/libimp.a" "$ROOT/fake/src/impl.o"
+fake_ar "$FAKE/lib/libimp.a" "$ROOT/fake/src/impl.o"
 cat > "$FAKE/lib/pkgconfig/imp.pc" <<PCEOF
 prefix=$FAKE
 includedir=\${prefix}/include
