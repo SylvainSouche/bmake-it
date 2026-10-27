@@ -1028,12 +1028,26 @@ _IMPORT_LIB_GLOBS += ${LIB}.lib ${LIB}.dll
 _IMPORT_LIB_NAMES := ${LIB}.lib, ${LIB}.dll, ${_IMPORT_LIB_NAMES}
 _IMPORT_LIB_MSVC_CASE = *.lib|*.dll
 .endif
+# staging-skip-checks-outputs-req: an unchanged fingerprint vouches for the
+# staging's INPUTS only. Each staging also records the files it produced
+# (.stage-out, .stage-fetch-out beside its fingerprint), and is skipped only
+# while every one of them is still there -- the framework's build/<key>/
+# include/ recreated without them (the module's fingerprint surviving)
+# skipped staging and broke every consumer's compile with no word why
+# (libglfw's headers, imgui, 2026-10-27). _STAGE_OUT_CHECK sets _miss to the
+# first missing file, "-" when there is no record yet, empty when all exist.
+# @impl 7854-6ae0-bffd-a6d8
+_STAGE_OUT_CHECK = _miss=""; if [ -f "$$_out" ]; then while IFS= read -r _o; do [ -e "$$_o" ] || [ -L "$$_o" ] || { _miss=$$_o; break; }; done < "$$_out"; else _miss=-; fi
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
 	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
+	_out=${.CURDIR}/${BUILD_ROOT}/.stage-out; \
 	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fp)" = "$$_fp" ]; then \
-		exit 0; \
+		${_STAGE_OUT_CHECK}; \
+		[ -n "$$_miss" ] || exit 0; \
+		[ "$$_miss" = - ] || echo "===> IMPORT=${IMPORT}: staged $$_miss is gone (the import itself is unchanged) -- staging again"; \
 	fi; \
+	: > "$$_out.tmp"; \
 	echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"; \
 	for _h in ${IMPORT_HEADERS}; do \
 		_found=no; \
@@ -1042,6 +1056,7 @@ _stage_import:
 			for _f in "$$_d"/$$_h; do \
 				if [ -e "$$_f" ]; then \
 					cp -a "$$_f" ${_FWDIR}/${BUILD_ROOT}/include/; \
+					echo ${_FWDIR}/${BUILD_ROOT}/include/"$$(basename "$$_f")" >> "$$_out.tmp"; \
 					_matched=yes; \
 				fi; \
 			done; \
@@ -1083,12 +1098,13 @@ _stage_import:
 					_rb=$$(basename "$$_real"); \
 					case " $$_copied " in \
 						*" $$_rb "*) ;; \
-						*) rm -f "${_LIBOUT_DIR}/$$_rb"; cp -p "$$_real" "${_LIBOUT_DIR}/$$_rb"; _copied="$$_copied $$_rb" ;; \
+						*) rm -f "${_LIBOUT_DIR}/$$_rb"; cp -p "$$_real" "${_LIBOUT_DIR}/$$_rb"; _copied="$$_copied $$_rb"; echo "${_LIBOUT_DIR}/$$_rb" >> "$$_out.tmp" ;; \
 					esac; \
-					if [ "$$_base" != "$$_rb" ]; then ln -sf "$$_rb" "${_LIBOUT_DIR}/$$_base"; fi; \
+					if [ "$$_base" != "$$_rb" ]; then ln -sf "$$_rb" "${_LIBOUT_DIR}/$$_base"; echo "${_LIBOUT_DIR}/$$_base" >> "$$_out.tmp"; fi; \
 				fi; \
 			else \
 				cp -a "$$_f" "${_LIBOUT_DIR}/$$_base"; \
+				echo "${_LIBOUT_DIR}/$$_base" >> "$$_out.tmp"; \
 			fi; \
 		done; \
 		if [ "$$_found" = no ]; then \
@@ -1096,6 +1112,7 @@ _stage_import:
 			exit 1; \
 		fi; \
 	fi; \
+	mv "$$_out.tmp" "$$_out"; \
 	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fp; \
 	echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
 
@@ -1408,14 +1425,19 @@ _stage_fetch_headers:
 .if !empty(IMPORT_HEADERS)
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${.CURDIR}/${BUILD_ROOT}; \
 	_fp=$$(printf '%s' "HEADERS=${IMPORT_HEADERS} WRK=${_IMPORT_WRKSRC} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
+	_out=${.CURDIR}/${BUILD_ROOT}/.stage-fetch-out; \
 	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp)" = "$$_fp" ]; then \
-		exit 0; \
+		${_STAGE_OUT_CHECK}; \
+		[ -n "$$_miss" ] || exit 0; \
+		[ "$$_miss" = - ] || echo "===> IMPORT=${IMPORT}: staged $$_miss is gone (the fetched tree is unchanged) -- staging again"; \
 	fi; \
+	: > "$$_out.tmp"; \
 	for _h in ${IMPORT_HEADERS}; do \
 		_found=no; \
 		for _d in ${_IMPORT_WRKSRC} ${_IMPORT_WRKSRC}/include; do \
 			if [ -e "$$_d/$$_h" ]; then \
 				cp -a "$$_d/$$_h" ${_FWDIR}/${BUILD_ROOT}/include/; \
+				echo ${_FWDIR}/${BUILD_ROOT}/include/"$$(basename "$$_h")" >> "$$_out.tmp"; \
 				echo "===> staged header $$_h from $$_d"; \
 				_found=yes; \
 				break; \
@@ -1426,6 +1448,7 @@ _stage_fetch_headers:
 			exit 1; \
 		fi; \
 	done; \
+	mv "$$_out.tmp" "$$_out"; \
 	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp
 .endif
 

@@ -3665,11 +3665,23 @@
     "status": "confirmed",
     "type": "req"
   },
+  "staging-skip-checks-outputs-req": {
+    "active": true,
+    "id": "7854-6ae0-bffd-a6d8",
+    "status": "confirmed",
+    "type": "req"
+  },
   "staging-symlink-chain-real-file-req": {
     "active": true,
     "id": "0f87-6ac0-c26c-adaf",
     "status": "confirmed",
     "type": "req"
+  },
+  "stale-stage-fingerprint-skips-obs": {
+    "active": true,
+    "id": "7854-6ae0-bffd-767e",
+    "status": "recorded",
+    "type": "obs"
   },
   "static-lib-openmp-linkdeps-req": {
     "active": true,
