@@ -1,0 +1,17 @@
+expect:Choose an option
+key:3
+expect:>
+slow:consdev com0
+expect:>
+slow:boot
+expect:login:
+send:root
+expect:#
+send:grep -q '^consdev=com0' /boot.cfg || { echo consdev=com0 | cat - /boot.cfg > /tmp/boot.cfg && mv /tmp/boot.cfg /boot.cfg; }
+send:echo resize_root=YES >> /etc/rc.conf
+send:echo sshd=YES >> /etc/rc.conf
+send:mkdir -p /root/.ssh && chmod 700 /root/.ssh
+send:echo "@PUBKEY@" > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
+send:echo provisioned-$((20+22))
+expect:provisioned-42
+send:reboot

@@ -44,8 +44,14 @@ kind_of() { plat "$1" KIND; }
 native_cell() { # native_cell <cell> <build> <toolchain>
     cell=$1 b=$2 tc=$3; log="$LOGS/$cell.log"
     case "$(kind_of "$b")" in
-        docker) sh "$HARNESS_DIR/build/run-native-docker.sh" "$(plat "$b" IMAGE)" "$(plat "$b" PLATFORM)" "$tc" "$log" >/dev/null 2>&1 ;;
-        vm)     $VM up "$b" >/dev/null 2>&1 || { record "$cell" "-" "fail" "vm.sh up $b failed"; return; }
+        # A host without docker, or one that cannot accelerate a guest that
+        # needs it (an amd64 BSD on Apple silicon), blocks the cell with the
+        # reason; a guest that fails to come up says why (vm.sh's message).
+        docker) command -v docker >/dev/null 2>&1 || { record "$cell" "-" "blocked" "docker is not installed on this host"; return; }
+                sh "$HARNESS_DIR/build/run-native-docker.sh" "$(plat "$b" IMAGE)" "$(plat "$b" PLATFORM)" "$tc" "$log" >/dev/null 2>&1 ;;
+        vm)     why=$($VM status "$b" 2>/dev/null | sed -n 's/.*BLOCKED[^:]*: //p')
+                [ -z "$why" ] || { record "$cell" "-" "blocked" "$why"; return; }
+                $VM up "$b" >"$log.up" 2>&1 || { record "$cell" "-" "fail" "vm.sh up $b: $(tail -1 "$log.up" | cut -c1-120)"; return; }
                 sh "$HARNESS_DIR/build/run-native-vm.sh" "$b" "$(plat "$b" SSH_PORT)" "$tc" "$(plat "$b" BMAKE)" "$log" >/dev/null 2>&1
                 vm_release "$b" ;;
         vm-host) sh "$HARNESS_DIR/build/run-native-macos.sh" "$tc" "$log" >/dev/null 2>&1

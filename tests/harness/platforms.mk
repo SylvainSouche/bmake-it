@@ -51,6 +51,17 @@ TIER_linux_amd64_vm       = 1
 TOOLCHAINS_linux_amd64_vm  = llvm gcc
 IMAGE_URL_linux_amd64_vm   = https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2
 SSH_PORT_linux_amd64_vm    = 2223
+# No serial-console login on a cloud image: cloud-init takes the harness key
+# from user-data vm.sh serves over HTTP (PROVISION cloud-init).
+IMAGE_FILE_linux_amd64_vm  = debian-13-genericcloud-amd64.qcow2
+IMAGE_COMP_linux_amd64_vm  = none
+IMAGE_FMT_linux_amd64_vm   = qcow2
+BOOT_linux_amd64_vm        = bios-amd64
+MEM_linux_amd64_vm         = 3072
+PROVISION_linux_amd64_vm   = cloud-init
+LAYER_SIZE_linux_amd64_vm  = 12G
+PKGSCRIPT_linux_amd64_vm   = debian
+BMAKE_linux_amd64_vm       = bmake
 
 # --- Linux glibc arm64, Docker native arch -------------------------------
 KIND_linux_arm64        = docker
@@ -125,6 +136,12 @@ SSH_PORT_freebsd_arm64      = 2226
 #   PKGSCRIPT   provision/packages-<name>.sh, run in the guest while provisioning:
 #               installs what the suite needs
 #   BLOCKED     if set, the reason vm.sh refuses to boot it
+#   NEEDS_ACCEL if set, the guest needs hardware acceleration (hvf, kvm,
+#               whpx: a host of its own architecture); vm.sh refuses to boot
+#               it under TCG, giving this reason
+#   NIC         the QEMU network device (default virtio-net-pci)
+#   PROVISION   console (default: CONSOLE script over the serial console) |
+#               cloud-init (a cloud image: user-data served over HTTP)
 IMAGE_FILE_freebsd_arm64 = FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.qcow2.xz
 IMAGE_COMP_freebsd_arm64 = xz
 IMAGE_FMT_freebsd_arm64  = qcow2
@@ -146,22 +163,30 @@ IMAGE_FILE_freebsd_amd64 = FreeBSD-15.1-RELEASE-amd64-ufs.qcow2.xz
 IMAGE_COMP_freebsd_amd64 = xz
 IMAGE_FMT_freebsd_amd64  = qcow2
 BOOT_freebsd_amd64       = bios-amd64
-CONSOLE_freebsd_amd64    = freebsd
-BLOCKED_freebsd_amd64    = QEMU/TCG boot stall on an arm64 host (OBS qemu-tcg-x86-64-boot-stall-on-host); runs where amd64 is native
+# (BIOS: the loader's console is the video one, so the kernel would print
+# nowhere the serial script sees -- console-freebsd-bios switches it)
+CONSOLE_freebsd_amd64    = freebsd-bios
+PKGSCRIPT_freebsd_amd64  = freebsd
+NEEDS_ACCEL_freebsd_amd64 = QEMU/TCG stalls at the boot-loader-to-kernel step (OBS qemu-tcg-x86-64-boot-stall-on-host)
 
 IMAGE_FILE_netbsd_amd64  = NetBSD-11.0-amd64-live.img.gz
 IMAGE_COMP_netbsd_amd64  = gz
 IMAGE_FMT_netbsd_amd64   = raw
 BOOT_netbsd_amd64        = bios-amd64
-CONSOLE_netbsd_amd64     = netbsd
-BLOCKED_netbsd_amd64     = QEMU/TCG boot stall on an arm64 host (OBS qemu-tcg-x86-64-boot-stall-on-host); runs where amd64 is native
+CONSOLE_netbsd_amd64     = netbsd-bios
+# (virtio-net dropped long downloads and the ssh session with them under
+# WHPX, 2026-10-27: the emulated Intel NIC, wm0 in the guest)
+NIC_netbsd_amd64         = e1000
+PKGSCRIPT_netbsd_amd64   = netbsd
+LAYER_SIZE_netbsd_amd64  = 12G
+NEEDS_ACCEL_netbsd_amd64 = QEMU/TCG stalls at the boot-loader-to-kernel step (OBS qemu-tcg-x86-64-boot-stall-on-host)
 
 BMAKE_freebsd_arm64 = /usr/bin/make
 BMAKE_netbsd_arm64  = /usr/bin/make
 BMAKE_freebsd_amd64 = /usr/bin/make
 BMAKE_netbsd_amd64  = /usr/bin/make
 
-VM_PLATFORMS = freebsd_arm64 netbsd_arm64 freebsd_amd64 netbsd_amd64
+VM_PLATFORMS = freebsd_arm64 netbsd_arm64 freebsd_amd64 netbsd_amd64 linux_amd64_vm
 
 # --- Windows (the machine running matrix.sh itself, under Cygwin) ---------
 # KIND host: build/run-native-host.sh runs the suite right here; HOSTOS is the

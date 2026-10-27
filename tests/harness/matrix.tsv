@@ -8,6 +8,7 @@
 #  target  <os>-<arch> of the output (cross only)
 #  exec    a platform id to run the result on, or  blocked:<reason>  /  none:<reason>
 #          (cross-test-universal-coverage: an impossible cell is listed with its reason)
+#  toolchain  TOOLCHAIN=; <toolchain>+<abi> also forces ABI= (host cells only: llvm+mingw)
 #
 # cell id                          kind    build             target           toolchain  exec
 native-linux_arm64-llvm	native	linux_arm64	-	llvm	-
@@ -20,14 +21,18 @@ native-freebsd_arm64-llvm	native	freebsd_arm64	-	llvm	-
 native-freebsd_arm64-gcc	native	freebsd_arm64	-	gcc	-
 native-netbsd_arm64-llvm	native	netbsd_arm64	-	llvm	-
 native-netbsd_arm64-gcc	native	netbsd_arm64	-	gcc	-
-native-freebsd_amd64-llvm	native	freebsd_amd64	-	llvm	blocked:amd64 BSD guest needs hardware virtualisation; QEMU/TCG stalls at boot on this arm64 host
-native-netbsd_amd64-llvm	native	netbsd_amd64	-	llvm	blocked:amd64 BSD guest needs hardware virtualisation; QEMU/TCG stalls at boot on this arm64 host
+native-linux_amd64_vm-llvm	native	linux_amd64_vm	-	llvm	-
+native-linux_amd64_vm-gcc	native	linux_amd64_vm	-	gcc	-
+native-freebsd_amd64-llvm	native	freebsd_amd64	-	llvm	-
+native-freebsd_amd64-gcc	native	freebsd_amd64	-	gcc	-
+native-netbsd_amd64-llvm	native	netbsd_amd64	-	llvm	-
+native-netbsd_amd64-gcc	native	netbsd_amd64	-	gcc	-
 native-macos_arm64-llvm	native	macos_arm64	-	llvm	-
 native-macos_arm64-gcc	native	macos_arm64	-	gcc	-
 native-windows_amd64-llvm	native	windows_amd64	-	llvm	-
 native-windows_amd64-gcc	native	windows_amd64	-	gcc	-
 native-windows_amd64-msvc	native	windows_amd64	-	msvc	-
-native-windows_amd64-mingw	native	windows_amd64	-	llvm	blocked:the suite builds its fake libraries with the host cc (Cygwin), so a whole-suite ABI=mingw run would mix runtimes; cases not adapted yet
+native-windows_amd64-mingw	native	windows_amd64	-	llvm+mingw	-
 cross-linux_arm64-linux-amd64	cross	linux_arm64	linux-amd64	llvm	linux_amd64_emu
 cross-linux_amd64_emu-linux-arm64	cross	linux_amd64_emu	linux-arm64	llvm	linux_arm64
 cross-linux_arm64-freebsd-arm64	cross	linux_arm64	freebsd-arm64	llvm	freebsd_arm64

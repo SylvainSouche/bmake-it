@@ -1,0 +1,19 @@
+expect:Autoboot in
+key:3
+expect:OK
+slow:set console=comconsole
+expect:OK
+slow:boot
+expect:login:
+send:root
+expect:#
+send:echo 'console="comconsole"' >> /boot/loader.conf
+send:mkdir -p /root/.ssh && chmod 700 /root/.ssh
+send:echo "@PUBKEY@" > /root/.ssh/authorized_keys && chmod 600 /root/.ssh/authorized_keys
+send:echo "PermitRootLogin prohibit-password" >> /etc/ssh/sshd_config
+send:echo "UseDNS no" >> /etc/ssh/sshd_config
+send:sysrc sshd_enable=YES
+send:service sshd start
+expect:Starting sshd
+send:echo provisioned-$((20+22))
+expect:provisioned-42

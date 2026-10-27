@@ -1,4 +1,10 @@
 {
+  "abi-valid-for-target-req": {
+    "active": true,
+    "id": "7854-6adf-d512-cd2d",
+    "status": "confirmed",
+    "type": "req"
+  },
   "add-prereq-add-parent-convenience-targets": {
     "active": true,
     "id": "6f38-6a8c-bbfe-7516",
@@ -46,6 +52,12 @@
     "id": "0f87-6a97-47f7-9bf9",
     "status": "recorded",
     "type": "obs"
+  },
+  "amd64-guests-uefi-boot-req": {
+    "active": true,
+    "id": "7854-6adf-f814-3a92",
+    "status": "confirmed",
+    "type": "req"
   },
   "app-bundle-deferred": {
     "active": true,
@@ -1025,6 +1037,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "guest-packages-from-cache-req": {
+    "active": true,
+    "id": "7854-6adf-f814-d5f6",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "guest-provisioning-online-fragile-obs": {
+    "active": true,
+    "id": "7854-6adf-f813-ed16",
+    "status": "recorded",
+    "type": "obs"
+  },
   "harness-arm64-bsd-native-dec": {
     "active": true,
     "id": "0f87-6ad7-1929-1631",
@@ -1199,6 +1223,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "harness-vm-windows-host-req": {
+    "active": true,
+    "id": "7854-6adf-ee6a-c06a",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-windows-host-cells-dec": {
     "active": true,
     "id": "7854-6adf-8cd2-c54b",
@@ -1208,6 +1238,12 @@
   "harness-windows-host-cells-req": {
     "active": true,
     "id": "7854-6adf-8cd3-6904",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "harness-windows-runtime-programs-req": {
+    "active": true,
+    "id": "7854-6adf-d513-2eea",
     "status": "confirmed",
     "type": "req"
   },
@@ -1264,6 +1300,12 @@
     "id": "0f87-6ac0-c26d-f0ec",
     "status": "confirmed",
     "type": "req"
+  },
+  "impl-abi-valid-for-target": {
+    "active": true,
+    "id": "7854-6adf-d52d-366a",
+    "status": "asserted",
+    "type": "impl"
   },
   "impl-add-prereq-target": {
     "active": true,
@@ -1499,6 +1541,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-harness-windows-runtime-programs": {
+    "active": true,
+    "id": "7854-6adf-d52e-740f",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-header-dependency-tracking": {
     "active": true,
     "id": "0f87-6ab5-8442-b2dc",
@@ -1545,6 +1593,12 @@
     "active": true,
     "id": "0f87-6ab5-8e46-cfb1",
     "status": "verified",
+    "type": "impl"
+  },
+  "impl-import-probe-prefixes-overridable": {
+    "active": true,
+    "id": "7854-6adf-d52e-121d",
+    "status": "asserted",
     "type": "impl"
   },
   "impl-import-resolution-cache": {
@@ -1709,6 +1763,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-msvc-cc-shell-quoting": {
+    "active": true,
+    "id": "7854-6adf-d52c-bc05",
+    "status": "asserted",
+    "type": "impl"
+  },
   "impl-msvc-ewdk-root": {
     "active": true,
     "id": "7854-6adf-b80a-aecf",
@@ -1761,6 +1821,12 @@
     "active": true,
     "id": "7854-6ad1-10ad-4843",
     "status": "verified",
+    "type": "impl"
+  },
+  "impl-pkg-config-sysroot-only-inside": {
+    "active": true,
+    "id": "7854-6adf-d52d-a222",
+    "status": "asserted",
     "type": "impl"
   },
   "impl-platform-toolchain-constraints": {
@@ -2008,6 +2074,12 @@
     "id": "7854-6ad1-10aa-5568",
     "status": "recorded",
     "type": "dec"
+  },
+  "import-probe-prefixes-overridable-req": {
+    "active": true,
+    "id": "7854-6adf-d512-94f5",
+    "status": "confirmed",
+    "type": "req"
   },
   "import-resolution-cache-dec": {
     "active": true,
@@ -2549,6 +2621,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "mingw-msvc-suite-triage-obs": {
+    "active": true,
+    "id": "7854-6adf-d510-69d6",
+    "status": "recorded",
+    "type": "obs"
+  },
   "mingw-on-cygwin-and-abi-from-compiler-dec": {
     "active": true,
     "id": "7854-6ad0-e96c-a03f",
@@ -2771,11 +2849,29 @@
     "status": "confirmed",
     "type": "req"
   },
+  "msvc-auto-def-export-dec": {
+    "active": true,
+    "id": "7854-6adf-d958-cf6e",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "msvc-cc-shell-quoting-req": {
+    "active": true,
+    "id": "7854-6adf-d511-3ac4",
+    "status": "confirmed",
+    "type": "req"
+  },
   "msvc-dll-needs-explicit-exports": {
     "active": true,
     "id": "0f87-6a9a-b50f-e8d7",
     "status": "recorded",
     "type": "obs"
+  },
+  "msvc-env-exported-not-in-cc-dec": {
+    "active": true,
+    "id": "7854-6adf-e06b-90dd",
+    "status": "recorded",
+    "type": "dec"
   },
   "msvc-ewdk-not-found-obs": {
     "active": true,
@@ -2813,6 +2909,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "msvc-showincludes-deps-dec": {
+    "active": true,
+    "id": "7854-6adf-e06a-7303",
+    "status": "recorded",
+    "type": "dec"
+  },
   "mtime-modifier-missing-on-old-make-obs": {
     "active": true,
     "id": "0f87-6ad7-3ab0-b926",
@@ -2846,6 +2948,12 @@
   "netbsd-11-arm64-hvf-panic-obs": {
     "active": true,
     "id": "0f87-6ad7-2985-7bbd",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "netbsd-amd64-whpx-downloads-drop-obs": {
+    "active": true,
+    "id": "7854-6ae0-14e0-ee77",
     "status": "recorded",
     "type": "obs"
   },
@@ -3080,6 +3188,12 @@
   "pkg-config-matches-output-abi-req": {
     "active": true,
     "id": "7854-6ad1-10ab-8339",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "pkg-config-sysroot-only-inside-req": {
+    "active": true,
+    "id": "7854-6adf-d511-6f36",
     "status": "confirmed",
     "type": "req"
   },
@@ -4145,6 +4259,12 @@
     "status": "superseded",
     "type": "dec"
   },
+  "vm-windows-qemu-whpx-dec": {
+    "active": true,
+    "id": "7854-6adf-ee6b-6bc1",
+    "status": "recorded",
+    "type": "dec"
+  },
   "warn-macro-dec": {
     "active": true,
     "id": "0f87-6ab6-0279-a275",
@@ -4222,6 +4342,12 @@
     "id": "6f38-6a89-b810-3b02",
     "status": "superseded",
     "type": "req"
+  },
+  "windows-runtime-suite-fixes-dec": {
+    "active": true,
+    "id": "7854-6adf-d510-b786",
+    "status": "recorded",
+    "type": "dec"
   },
   "windows-shlib-versioninfo-uniform-naming": {
     "active": true,
