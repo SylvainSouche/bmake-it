@@ -3503,6 +3503,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "run-in-guest-desktop-req": {
+    "active": true,
+    "id": "7854-6ae0-6100-4526",
+    "status": "confirmed",
+    "type": "req"
+  },
   "run-shell-keeps-environment-dec": {
     "active": true,
     "id": "0f87-6ac1-505d-3859",
