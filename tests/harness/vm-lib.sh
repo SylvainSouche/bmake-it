@@ -70,15 +70,24 @@ vm_shutdown() {
     # both BSDs); only falls back to killing the process if ssh is already
     # unreachable, since at that point there's nothing gracefully
     # shuttable anyway.
+    # Returns 1 when QEMU had to be killed: its disk image may then have lost
+    # writes still in QEMU's own metadata cache (a NetBSD layer saved so had
+    # a broken root filesystem, 2026-10-27) -- a caller saving a disk must
+    # not keep it.
     port="${1:?}"; pid="${2:?}"
-    if vm_ssh "$port" 'command -v shutdown >/dev/null 2>&1 && shutdown -p now || poweroff' >/dev/null 2>&1; then
-        :
-    fi
+    # (/sbin explicitly: NetBSD's root has none on PATH over a non-interactive
+    # ssh session -- shutdown was "not found" and every NetBSD guest was
+    # killed instead, 2026-10-27)
+    _sd_out=$(vm_ssh "$port" 'PATH=$PATH:/sbin:/usr/sbin; export PATH; sync; sync; shutdown -p now || poweroff' 2>&1) || true
     n=0
-    while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 60 ]; do
+    while kill -0 "$pid" 2>/dev/null && [ "$n" -lt 120 ]; do
         sleep 2
         n=$((n + 2))
     done
-    if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null || true; fi
+    if kill -0 "$pid" 2>/dev/null; then
+        echo "vm_shutdown: the guest did not power off within 120 s; QEMU killed${_sd_out:+ (the shutdown command over ssh said: $_sd_out)}" >&2
+        kill "$pid" 2>/dev/null || true
+        return 1
+    fi
     return 0
 }

@@ -3,6 +3,8 @@ key:3
 expect:>
 slow:consdev com0
 expect:>
+slow:
+expect:>
 slow:boot
 expect:login:
 send:root

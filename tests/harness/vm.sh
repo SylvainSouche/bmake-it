@@ -56,6 +56,7 @@ load() { # load <id>: the platform's fields into shell variables
     PKGSCRIPT=$(plat "$ID" PKGSCRIPT); LAYER_SIZE=$(plat "$ID" LAYER_SIZE)
     PROVISION=$(plat "$ID" PROVISION); NEEDS_ACCEL=$(plat "$ID" NEEDS_ACCEL)
     NIC=$(plat "$ID" NIC); NIC=${NIC:-virtio-net-pci}
+    PKGCACHE=$(plat "$ID" PKGCACHE)
     MEM=${MEM:-2048}; PROVISION=${PROVISION:-console}; EXTRA_QEMU=""
     BASE="$BMK_DISKS/base/$ID.$FMT"; LAYER="$BMK_DISKS/layers/$ID.qcow2"
     RUNDIR="$BMK_VMS/$ID";     SOCKDIR="$BMK_RUN/$ID"
@@ -138,6 +139,20 @@ boot() { # boot <disk-file> <disk-format>  -- starts qemu in the background
             [ -f "$RUNDIR/vars.fd" ] || dd if=/dev/zero of="$RUNDIR/vars.fd" bs=1048576 count=64 2>/dev/null
             cpu=host; [ "$A" = tcg ] && cpu=max
             set -- qemu-system-aarch64 -M virt,highmem=off -accel "$A" -cpu "$cpu" -smp 2 -m "$MEM" \
+                -drive if=pflash,format=raw,readonly=on,file="$(qpath "$code")" \
+                -drive if=pflash,format=raw,file="$(qpath "$RUNDIR/vars.fd")" ;;
+        uefi-amd64)
+            # amd64-guests-uefi-boot-req: OVMF, as the arm64 guests boot --
+            # the console is the serial port from the firmware on, so no
+            # boot-loader scripting (the BIOS loaders print to VGA).
+            # @impl 7854-6adf-f814-3a92
+            need qemu-system-x86_64
+            code=$(find /opt/local/share /usr/share /usr/local/share /opt/homebrew/share ${QEMU_DIR:+"$QEMU_DIR/share"} -name edk2-x86_64-code.fd 2>/dev/null | head -1)
+            vtpl=$(find /opt/local/share /usr/share /usr/local/share /opt/homebrew/share ${QEMU_DIR:+"$QEMU_DIR/share"} -name edk2-i386-vars.fd 2>/dev/null | head -1)
+            [ -n "$code" ] && [ -n "$vtpl" ] || die "edk2-x86_64-code.fd / edk2-i386-vars.fd not found (install qemu's firmware)"
+            [ -f "$RUNDIR/vars.fd" ] || { cp "$vtpl" "$RUNDIR/vars.fd"; chmod u+w "$RUNDIR/vars.fd"; }
+            case "$A" in tcg) cpu="-cpu qemu64" ;; whpx) cpu="" ;; *) cpu="-cpu host" ;; esac
+            set -- qemu-system-x86_64 -M q35 -accel "$A" $cpu -smp 2 -m "$MEM" \
                 -drive if=pflash,format=raw,readonly=on,file="$(qpath "$code")" \
                 -drive if=pflash,format=raw,file="$(qpath "$RUNDIR/vars.fd")" ;;
         bios-amd64)
@@ -241,24 +256,50 @@ provision() {
         boot "$tmp" qcow2
     done
     fi
-    if [ -n "$PKGSCRIPT" ]; then
-        echo "installing packages (provision/packages-$PKGSCRIPT.sh)..."
-        # The scripts are rerunnable: a dropped ssh session (seen through QEMU's
-        # user networking on a long download) or a failed fetch is tried again.
-        n=1
-        until vm_ssh "$PORT" "sh -s" <"$HARNESS_DIR/provision/packages-$PKGSCRIPT.sh" >>"$SOCKDIR/packages.log" 2>&1; do
-            if [ "$n" -ge 3 ]; then
-                tail -20 "$SOCKDIR/packages.log" >&2; vm_shutdown "$PORT" "$(cat "$PIDFILE")"
-                die "package install failed 3 times (see $SOCKDIR/packages.log)"
-            fi
-            n=$((n + 1)); echo "package install interrupted; trying again ($n/3)..."
-            vm_wait_ssh "$PORT" 60 || true
-        done
-    fi
-    vm_shutdown "$PORT" "$(cat "$PIDFILE")"
+    [ -z "$PKGSCRIPT" ] || install_packages
+    # a layer is kept only after a clean power-off: a killed QEMU may have
+    # lost writes (vm_shutdown)
+    vm_shutdown "$PORT" "$(cat "$PIDFILE")" \
+        || die "$ID did not power off cleanly after provisioning; the new layer is not kept ($tmp) -- see $SOCKDIR/console.log"
     rm -rf "$RUNDIR" "$SOCKDIR"
     mv "$tmp" "$LAYER"; chmod a-w "$LAYER"
     echo "provisioned layer: $LAYER"
+}
+
+# guest-packages-from-cache-req: the guest's packages come from
+# $BMK_CACHE/packages/$PKGCACHE/, like its image. The first provisioning
+# fills it -- downloaded by the guest (packages-<os>.sh fetch), or on the
+# host where the script can (host-fetch: the NetBSD guest's downloads drop
+# under WHPX) -- with a MANIFEST.sha256; every layer build installs from it,
+# copied into the guest, with no network.
+# @impl 7854-6adf-f814-d5f6
+pkgsh() { vm_ssh "$PORT" "sh -s -- $*" <"$HARNESS_DIR/provision/packages-$PKGSCRIPT.sh" >>"$SOCKDIR/packages.log" 2>&1; }
+install_packages() {
+    script="$HARNESS_DIR/provision/packages-$PKGSCRIPT.sh"
+    [ -n "$PKGCACHE" ] || die "$ID has PKGSCRIPT but no PKGCACHE in platforms.mk"
+    pc="$BMK_CACHE/packages/$PKGCACHE"
+    if [ ! -f "$pc/MANIFEST.sha256" ]; then
+        echo "filling the package cache $pc (once; the only step that needs the network)..."
+        rm -rf "$pc.tmp"; mkdir -p "$pc.tmp"
+        if grep -q 'host-fetch)' "$script"; then
+            rel=${PKGCACHE#*-}; rel=${rel%-*}
+            case "$ARCH" in amd64) parch=x86_64 ;; arm64) parch=aarch64 ;; *) parch=$ARCH ;; esac
+            sh "$script" host-fetch "$pc.tmp" "$parch" "$rel" >"$SOCKDIR/packages.log" 2>&1 \
+                || { tail -20 "$SOCKDIR/packages.log" >&2; vm_shutdown "$PORT" "$(cat "$PIDFILE")"; die "package download failed (see $SOCKDIR/packages.log)"; }
+        else
+            pkgsh fetch /var/tmp/bmk-fetch \
+                && vm_ssh "$PORT" "cd /var/tmp/bmk-fetch && tar -cf - ." | tar -C "$pc.tmp" -xf - \
+                || { tail -20 "$SOCKDIR/packages.log" >&2; vm_shutdown "$PORT" "$(cat "$PIDFILE")"; die "package download in the guest failed (see $SOCKDIR/packages.log)"; }
+        fi
+        ( cd "$pc.tmp" && find . -type f ! -name MANIFEST.sha256 | sort | xargs sha256sum > MANIFEST.sha256 2>/dev/null \
+            || find . -type f ! -name MANIFEST.sha256 | sort | xargs shasum -a 256 > MANIFEST.sha256 )
+        rm -rf "$pc"; mv "$pc.tmp" "$pc"
+    fi
+    echo "installing packages from $pc (no network)..."
+    tar -C "$pc" -cf - . | vm_ssh "$PORT" "rm -rf /var/tmp/bmk-pkgs && mkdir -p /var/tmp/bmk-pkgs && tar -C /var/tmp/bmk-pkgs -xf -" \
+        && pkgsh install /var/tmp/bmk-pkgs \
+        && vm_ssh "$PORT" "rm -rf /var/tmp/bmk-pkgs /var/tmp/bmk-fetch" \
+        || { tail -20 "$SOCKDIR/packages.log" >&2; vm_shutdown "$PORT" "$(cat "$PIDFILE")"; die "package install failed (see $SOCKDIR/packages.log)"; }
 }
 
 up() {

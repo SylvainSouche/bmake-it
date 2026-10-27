@@ -56,7 +56,8 @@ SSH_PORT_linux_amd64_vm    = 2223
 IMAGE_FILE_linux_amd64_vm  = debian-13-genericcloud-amd64.qcow2
 IMAGE_COMP_linux_amd64_vm  = none
 IMAGE_FMT_linux_amd64_vm   = qcow2
-BOOT_linux_amd64_vm        = bios-amd64
+BOOT_linux_amd64_vm        = uefi-amd64
+PKGCACHE_linux_amd64_vm    = debian-13-amd64
 MEM_linux_amd64_vm         = 3072
 PROVISION_linux_amd64_vm   = cloud-init
 LAYER_SIZE_linux_amd64_vm  = 12G
@@ -140,6 +141,9 @@ SSH_PORT_freebsd_arm64      = 2226
 #               whpx: a host of its own architecture); vm.sh refuses to boot
 #               it under TCG, giving this reason
 #   NIC         the QEMU network device (default virtio-net-pci)
+#   PKGCACHE    <os>-<version>-<arch>: the guest's packages are kept in
+#               $(BMK_CACHE)/packages/<this>/ and installed from there
+#               (guest-packages-from-cache-req; filled on first provisioning)
 #   PROVISION   console (default: CONSOLE script over the serial console) |
 #               cloud-init (a cloud image: user-data served over HTTP)
 IMAGE_FILE_freebsd_arm64 = FreeBSD-15.1-RELEASE-arm64-aarch64-ufs.qcow2.xz
@@ -149,6 +153,7 @@ BOOT_freebsd_arm64       = uefi-arm64
 MEM_freebsd_arm64        = 2560
 CONSOLE_freebsd_arm64    = freebsd
 PKGSCRIPT_freebsd_arm64   = freebsd
+PKGCACHE_freebsd_arm64    = freebsd-15.1-arm64
 
 IMAGE_FILE_netbsd_arm64  = NetBSD-10.2-arm64.img.gz
 IMAGE_COMP_netbsd_arm64  = gz
@@ -158,26 +163,31 @@ MEM_netbsd_arm64         = 2560
 CONSOLE_netbsd_arm64     = netbsd
 LAYER_SIZE_netbsd_arm64  = 12G
 PKGSCRIPT_netbsd_arm64   = netbsd
+PKGCACHE_netbsd_arm64    = netbsd-10.2-arm64
 
 IMAGE_FILE_freebsd_amd64 = FreeBSD-15.1-RELEASE-amd64-ufs.qcow2.xz
 IMAGE_COMP_freebsd_amd64 = xz
 IMAGE_FMT_freebsd_amd64  = qcow2
-BOOT_freebsd_amd64       = bios-amd64
-# (BIOS: the loader's console is the video one, so the kernel would print
-# nowhere the serial script sees -- console-freebsd-bios switches it)
-CONSOLE_freebsd_amd64    = freebsd-bios
+# UEFI (amd64-guests-uefi-boot-req): the console is serial from the firmware
+# on, as on arm64. (With bios-amd64 the loader's console is VGA: use
+# CONSOLE freebsd-bios, which switches it.)
+BOOT_freebsd_amd64       = uefi-amd64
+CONSOLE_freebsd_amd64    = freebsd
 PKGSCRIPT_freebsd_amd64  = freebsd
+PKGCACHE_freebsd_amd64   = freebsd-15.1-amd64
 NEEDS_ACCEL_freebsd_amd64 = QEMU/TCG stalls at the boot-loader-to-kernel step (OBS qemu-tcg-x86-64-boot-stall-on-host)
 
 IMAGE_FILE_netbsd_amd64  = NetBSD-11.0-amd64-live.img.gz
 IMAGE_COMP_netbsd_amd64  = gz
 IMAGE_FMT_netbsd_amd64   = raw
-BOOT_netbsd_amd64        = bios-amd64
+BOOT_netbsd_amd64        = uefi-amd64
+# NetBSD's amd64 loader, EFI as well as BIOS, gives the kernel the video
+# console: console-netbsd-bios switches it to com0 (and boot.cfg keeps it).
+# Its packages are downloaded on the host (host-fetch): the guest's own
+# downloads dropped under WHPX, with virtio-net and e1000 alike.
 CONSOLE_netbsd_amd64     = netbsd-bios
-# (virtio-net dropped long downloads and the ssh session with them under
-# WHPX, 2026-10-27: the emulated Intel NIC, wm0 in the guest)
-NIC_netbsd_amd64         = e1000
 PKGSCRIPT_netbsd_amd64   = netbsd
+PKGCACHE_netbsd_amd64    = netbsd-11.0-amd64
 LAYER_SIZE_netbsd_amd64  = 12G
 NEEDS_ACCEL_netbsd_amd64 = QEMU/TCG stalls at the boot-loader-to-kernel step (OBS qemu-tcg-x86-64-boot-stall-on-host)
 
