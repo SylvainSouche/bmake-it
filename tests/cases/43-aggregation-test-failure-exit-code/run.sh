@@ -7,9 +7,21 @@
 # module's test is even attempted.
 set -eu
 . "$BMK_TESTLIB"
+# A native Windows runtime (ABI=mingw, TOOLCHAIN=msvc) has no ATF to link
+# its tests with: bmake test must stop up front, before building, saying so.
+if native_win_runtime; then
+    cd ws
+    rc=0; bmake test >native.log 2>&1 || rc=$?
+    [ $rc != 0 ] || { echo "bmake test should fail for a native Windows runtime" >&2; exit 1; }
+    grep -q "bmake test is not available for .* output yet" native.log \
+        || { echo "no explanation for the native Windows runtime:" >&2; cat native.log >&2; exit 1; }
+    ! grep -q "building test" native.log
+    echo "aggregation-test-failure-exit-code OK (native Windows runtime: refused with its reason)"
+    exit 0
+fi
 # bmake test runs through Kyua and the tests are atf-c (as in case 86).
 need_tool kyua "bmake test runs the tests through it"
-pkg-config --exists atf-c 2>/dev/null || { echo "skip: atf-c not installed" >&2; exit 77; }
+atf_pc --exists atf-c 2>/dev/null || { echo "skip: atf-c not installed" >&2; exit 77; }
 cd ws
 bmake >build.log 2>&1
 

@@ -6,6 +6,8 @@
 # (the program cannot start without the shipped copy). Needs kyua and atf-sh
 # (skips, 77, without them).
 set -eu
+. "$BMK_TESTLIB"
+if native_win_runtime; then echo "skip: no bmake test for a native Windows runtime (case 43 checks the refusal)" >&2; exit 77; fi
 command -v kyua >/dev/null 2>&1 || exit 77
 command -v atf-sh >/dev/null 2>&1 || exit 77
 ROOT=$(pwd)

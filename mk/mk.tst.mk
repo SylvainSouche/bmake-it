@@ -90,13 +90,15 @@ _tst_x = ${_TST_TSRCS:M*.${_e}}
 _TST_FLAVOR = cxx
 .    endif
 .  endfor
+# (also in the prefix of the Kyua that runs them: mk.atf.mk)
+.  include "${BMK_MKDIR}/mk.atf.mk"
 .  if ${_TST_FLAVOR} == "cxx"
-_TST_ATF_CFLAGS != pkg-config --cflags atf-c++ 2>/dev/null || echo ""
+_TST_ATF_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c++ 2>/dev/null || echo ""
 _TST_ATF_CFLAGS += -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR
-_TST_ATF_LIBS != pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
+_TST_ATF_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
 .  else
-_TST_ATF_CFLAGS != pkg-config --cflags atf-c 2>/dev/null || echo ""
-_TST_ATF_LIBS != pkg-config --libs atf-c 2>/dev/null || echo -latf-c
+_TST_ATF_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c 2>/dev/null || echo ""
+_TST_ATF_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c 2>/dev/null || echo -latf-c
 .  endif
 .endif
 

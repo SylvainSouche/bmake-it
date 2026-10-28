@@ -6,10 +6,11 @@
 # App only, so imp/api.h was never staged and the test failed to compile
 # ("'imp/api.h' file not found"). Needs atf (skips, 77, without it).
 set -eu
-pkg-config --exists atf-c 2>/dev/null || exit 77
+. "$BMK_TESTLIB"
+if native_win_runtime; then echo "skip: no bmake test for a native Windows runtime (case 43 checks the refusal)" >&2; exit 77; fi
+atf_pc --exists atf-c 2>/dev/null || exit 77
 command -v kyua >/dev/null 2>&1 || exit 77
 ROOT=$(pwd)
-. "$BMK_TESTLIB"
 FAKE="$ROOT/fake/fakepkg"
 mkdir -p "$FAKE/include/imp" "$FAKE/lib/pkgconfig" "$ROOT/fake/src"
 printf '#pragma once\nint imp_value(void);\n' > "$FAKE/include/imp/api.h"

@@ -83,6 +83,18 @@
     "status": "recorded",
     "type": "obs"
   },
+  "atf-from-kyua-prefix-req": {
+    "active": true,
+    "id": "7854-6ae2-336d-ccde",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "atf-kyua-windows-gaps-obs": {
+    "active": true,
+    "id": "7854-6ae2-336c-62e3",
+    "status": "recorded",
+    "type": "obs"
+  },
   "bmake-docs-scoping-fix-req": {
     "active": true,
     "id": "0f87-6abe-3f73-5888",
@@ -3830,6 +3842,12 @@
   "test-single-selection-req": {
     "active": true,
     "id": "0f87-6aaa-6971-23ad",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "test-windows-dll-paths-req": {
+    "active": true,
+    "id": "7854-6ae2-336d-dd77",
     "status": "confirmed",
     "type": "req"
   },

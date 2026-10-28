@@ -48,10 +48,31 @@ _XTEST_LOCAL_ENV =
 .if ${_XTEST_MODE} == "local" && ${_XTEST_FOREIGN} == "yes" && ${TARGET} == "linux" && !empty(BMK_LINUX_SYSROOT)
 _XTEST_LOCAL_ENV = export QEMU_LD_PREFIX="${QEMU_LD_PREFIX:U${BMK_LINUX_SYSROOT}}";
 .endif
+# Windows has no rpath: a test program finds the DLLs it links (the
+# module's own, the LIBS= chain) through PATH, as `bmake run` gives them --
+# else it cannot start (Cygwin, 2026-10-28).
+# @impl 7854-6ae2-336d-dd77
+# (the module's lib/, the LIBS= search chain, the framework's lib/ -- a
+# .tst module without TEST_PROG has no search chain of its own)
+_XTEST_WIN_DLLDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${_LIB_SEARCH_DIRS:U} ${_FWDIR:D${_FWDIR}/${BUILD_ROOT}/lib}
+.if ${_XTEST_MODE} == "local" && ${TARGET} == "win"
+_XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts:}:$$PATH"; export PATH;
+.endif
 
-# The loader's search path variable on the target.
+# A native Windows runtime (ABI=mingw, TOOLCHAIN=msvc) has no ATF to link
+# its test programs with: the ATF that Kyua runs on Windows is a Cygwin
+# library. `bmake test` says so up front instead of failing at the link.
+_XTEST_NATIVE_WIN = no
+.if ${TARGET} == "win" && (${TOOLCHAIN} == "msvc" || ${ABI:U} == "mingw")
+_XTEST_NATIVE_WIN = yes
+.endif
+
+# The loader's search path variable on the target (Windows: PATH -- the
+# shipped DLLs were not found under LD_LIBRARY_PATH, case 99 on Cygwin).
 .if ${TARGET} == "macos"
 _XTEST_LIBVAR = DYLD_LIBRARY_PATH
+.elif ${TARGET} == "win"
+_XTEST_LIBVAR = PATH
 .else
 _XTEST_LIBVAR = LD_LIBRARY_PATH
 .endif
@@ -60,13 +81,21 @@ _XTEST_LIBVAR = LD_LIBRARY_PATH
 # every -Wl,-rpath the link used (the LIBS= chain). They are shipped and named
 # by ${_XTEST_LIBVAR} on the target; the rpath into the build host is not used.
 _XTEST_LIBDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${LDFLAGS:M-Wl,-rpath,*:S/^-Wl,-rpath,//}
+# Windows links have no rpath: the DLL directories instead
+.if ${TARGET} == "win"
+_XTEST_LIBDIRS = ${_XTEST_WIN_DLLDIRS:O:u}
+.endif
 
 _XTEST_SCRIPT = ${BMK_MKDIR}/../scripts/cross-test.sh
 
 # Stops `bmake test` early, naming what to set, for a foreign target without a
 # runner. A prerequisite of `test`, ahead of the build.
 _xtest_check:
-.if ${_XTEST_MODE} == "missing"
+.if ${_XTEST_NATIVE_WIN} == "yes"
+	@echo "error: bmake test is not available for ${TOOLCHAIN:Mmsvc:?TOOLCHAIN=msvc:ABI=mingw} output yet: its test programs would need an ATF (atf-c/atf-c++) built for that Windows runtime, and the ATF Kyua runs with on Windows is a Cygwin one." >&2; \
+	echo "       Build and test with the Cygwin toolchain (no ABI=, TOOLCHAIN=llvm or gcc), or test this code on another target." >&2; \
+	exit 1
+.elif ${_XTEST_MODE} == "missing"
 	@echo "error: bmake test for TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} cannot run its tests on this host (${_HOST_OS_LABEL}-${_HOST_ARCH_LABEL})." >&2; \
 	echo "       Name where to run them: TEST_RUNNER.${_XTEST_KEY}=ssh:[user@]host[:port] | docker:<image>[@<platform>] | cmd:<program>" >&2; \
 	echo "       (or TEST_RUNNER=<spec> for every target), or TEST_RUNNER=local to run them here anyway. See docs/spec/80-unit-testing.md." >&2; \

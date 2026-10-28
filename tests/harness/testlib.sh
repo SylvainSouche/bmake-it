@@ -162,6 +162,25 @@ make_shared_lib() {
     ${CC:-cc} $(shlib_flags "$_dir" "$_name") "$@"
 }
 
+# atf_pc <pkg-config args...>: pkg-config for ATF the way Bmake It looks it
+# up (mk.atf.mk): also in the prefix of the kyua on PATH -- a source build in
+# /usr/local is not on Cygwin's default pkg-config path.
+atf_pc() {
+    _k=$(command -v kyua 2>/dev/null || true)
+    if [ -n "$_k" ]; then
+        PKG_CONFIG_PATH="$(dirname "$(dirname "$_k")")/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" pkg-config "$@"
+    else
+        pkg-config "$@"
+    fi
+}
+
+# native_win_runtime: true when the output is for a native Windows runtime
+# (ABI=mingw, TOOLCHAIN=msvc), where `bmake test` stops with an explanation:
+# the ATF Kyua runs with on Windows is a Cygwin library.
+native_win_runtime() {
+    [ "$BMK_T_OS" = win ] && { [ "${TOOLCHAIN:-}" = msvc ] || [ "${ABI:-}" = mingw ]; }
+}
+
 # need_tool <tool> [why]: skip the case (exit 77, the harness's SKIP) when a
 # tool it needs is not installed (harness-tool-presence-check-or-install-req).
 need_tool() {

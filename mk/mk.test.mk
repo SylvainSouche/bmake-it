@@ -59,15 +59,17 @@ _TEST_SH_SEL  = ${TESTS_SH}
 # atf-c++/atf-c compile+link flags -- via pkg-config, confirmed present on
 # MacPorts (atf-c++.pc/atf-c.pc) and NetBSD/FreeBSD base; -latf-c++/-latf-c
 # fallback kept for hosts without pkg-config for these.
-_ATF_CXX_LIBS != pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
+# (also in the prefix of the Kyua that runs them: mk.atf.mk)
+.include "${BMK_MKDIR}/mk.atf.mk"
+_ATF_CXX_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
 # -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR: MacPorts' atf-c++ 0.21 headers
 # (tests.hpp) still use std::auto_ptr, which libc++ drops under C++17 mode
 # (clang's default since ~16) though libstdc++/gcc keeps it deprecated-but-
 # present. No-op under libstdc++ -- confirmed toolchain gap, harmless fix.
-_ATF_CXX_CFLAGS != pkg-config --cflags atf-c++ 2>/dev/null || echo ""
+_ATF_CXX_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c++ 2>/dev/null || echo ""
 _ATF_CXX_CFLAGS += -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR
-_ATF_C_LIBS != pkg-config --libs atf-c 2>/dev/null || echo -latf-c
-_ATF_C_CFLAGS != pkg-config --cflags atf-c 2>/dev/null || echo ""
+_ATF_C_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c 2>/dev/null || echo -latf-c
+_ATF_C_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c 2>/dev/null || echo ""
 
 # Runtime search path so the test binary can load the module's own
 # just-built shared lib without it being installed anywhere -- same

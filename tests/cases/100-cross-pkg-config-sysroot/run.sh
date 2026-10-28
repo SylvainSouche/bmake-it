@@ -105,7 +105,8 @@ cd "$ROOT/ws/Fw/tool.m"
 env_of() { bmake -V '${_XTEST_LOCAL_ENV}' TOOLCHAIN=llvm TEST_RUNNER=local "$@"; }
 [ "$(env_of TARGET=linux TARGET_ARCH=$FOREIGN BMK_LINUX_SYSROOT=/sr)" = 'export QEMU_LD_PREFIX="/sr";' ] || { echo "FAIL: no QEMU_LD_PREFIX for linux-$FOREIGN" >&2; exit 1; }
 [ "$(env_of TARGET=linux TARGET_ARCH=$FOREIGN BMK_LINUX_SYSROOT=/sr QEMU_LD_PREFIX=/mine)" = 'export QEMU_LD_PREFIX="/mine";' ] || { echo "FAIL: the caller's QEMU_LD_PREFIX was replaced" >&2; exit 1; }
-[ -z "$(env_of)" ] || { echo "FAIL: QEMU_LD_PREFIX for a native build" >&2; exit 1; }
+# (no QEMU_LD_PREFIX; on Windows the test environment does carry the DLL PATH)
+case "$(env_of)" in *QEMU_LD_PREFIX*) echo "FAIL: QEMU_LD_PREFIX for a native build" >&2; exit 1 ;; esac
 [ -z "$(env_of TARGET=freebsd TARGET_ARCH=$FOREIGN BMK_FREEBSD_SYSROOT=/sr)" ] || { echo "FAIL: QEMU_LD_PREFIX for freebsd" >&2; exit 1; }
 
 echo "cross-pkg-config-sysroot OK"

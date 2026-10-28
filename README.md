@@ -49,6 +49,16 @@ modules need `curl`, `wget` or the system's own downloader (`fetch` on FreeBSD, 
 — on Cygwin, `unzip` and `patch` are separate packages in its installer;
 a missing one is reported by name.
 
+`bmake test` needs ATF (`atf-c`, `atf-c++`, `atf-sh`) and Kyua: the base
+system on FreeBSD/NetBSD, the `atf`/`kyua` packages elsewhere. Cygwin
+packages neither: build them with `tests/harness/provision/build-atf-kyua.sh`
+(ATF 0.23, Lutok 0.6.1, Kyua 0.14.1 into `/usr/local`) after installing the
+Cygwin packages `lua` and `liblua-devel` at 5.4.4 (test versions — stable is
+5.3, which Lutok 0.6 does not take), `libsqlite3-devel` and `sqlite3`. Bmake
+It finds ATF beside the Kyua it runs. On Windows `bmake test` is for Cygwin
+output; for `ABI=mingw` and `TOOLCHAIN=msvc` output it stops with the reason
+(the ATF there is a Cygwin library).
+
 ### Toolchain tiers
 
 "Tier 1" means fully supported and searched/preferred first; "tier 2"
