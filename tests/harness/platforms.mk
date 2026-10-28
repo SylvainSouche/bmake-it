@@ -213,6 +213,28 @@ TOOLCHAINS_windows_amd64 = llvm gcc msvc
 # msvc: run-native-host.sh mounts $(BMK_CACHE)/msvc/EWDK_*.iso read-only and
 # passes its drive as BMK_EWDK_ROOT (msvc-ewdk-root-req).
 
+# --- FreeBSD / NetBSD (a BSD machine running matrix.sh itself) -------------
+# KIND host as for Windows (harness-bsd-host-cells-req): the suite runs right
+# here, with the base system's make (BMAKE -- it has no other name) and its
+# mk files; on another host the cells are BLOCKED with the reason. ARCH is
+# whatever the machine is. Packages: tests/README.md (FreeBSD: pkgconf gcc
+# cmake-core doxygen atf -- clang, make and kyua are in the base system).
+KIND_freebsd_host        = host
+HOSTOS_freebsd_host      = FreeBSD
+SYSMK_freebsd_host       = /usr/share/mk
+BMAKE_freebsd_host       = /usr/bin/make
+ARCH_freebsd_host        = host
+TIER_freebsd_host        = 1
+TOOLCHAINS_freebsd_host  = llvm gcc
+
+KIND_netbsd_host         = host
+HOSTOS_netbsd_host       = NetBSD
+SYSMK_netbsd_host        = /usr/share/mk
+BMAKE_netbsd_host        = /usr/bin/make
+ARCH_netbsd_host         = host
+TIER_netbsd_host         = 2
+TOOLCHAINS_netbsd_host   = llvm gcc
+
 # --- Pending, documented only ---------------------------------------------
 # windows: tier 1 native MSVC + Cygwin (gcc/llvm), tier 2 mingw-w64 cross.
 # Cygwin llvm/gcc now run as KIND host above; MSVC and mingw cells are next.

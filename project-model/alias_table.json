@@ -1085,6 +1085,12 @@
     "status": "recorded",
     "type": "dec"
   },
+  "harness-bsd-host-cells-req": {
+    "active": true,
+    "id": "7854-6ae2-470e-ce52",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-cache-location-req": {
     "active": true,
     "id": "0f87-6ad7-1929-89e3",
@@ -2228,6 +2234,12 @@
   "install-distrib-rewriting-deferred-topic": {
     "active": true,
     "id": "0f87-6ab6-08ec-2598",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "install-env-bmake-name-obs": {
+    "active": true,
+    "id": "7854-6ae2-4704-94da",
     "status": "recorded",
     "type": "obs"
   },

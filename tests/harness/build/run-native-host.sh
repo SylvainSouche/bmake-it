@@ -4,7 +4,9 @@
 # A native cell whose platform is THIS machine (KIND_<p> = host): runs the
 # suite (the committed tests/archives) right here, no container or guest.
 # Used for windows_amd64, where the machine running matrix.sh is the
-# Windows host (Cygwin) -- harness-windows-host-cells-req. The platform
+# Windows host (Cygwin) -- harness-windows-host-cells-req -- and for
+# freebsd_host / netbsd_host, a BSD machine running the matrix itself
+# (harness-bsd-host-cells-req, @impl 7854-6ae2-470e-ce52). The platform
 # names the host it needs (HOSTOS_<p>, a `uname -s` glob); on any other
 # machine the cell is BLOCKED with that reason rather than run wrongly.
 # @impl 7854-6adf-8cd3-e408
@@ -27,8 +29,14 @@ case "$(uname -s)" in
        cat "$LOG.status"; exit 0 ;;
 esac
 
-# The system mk directory this host's bmake uses (Cygwin: /usr/share/bmake/mk).
+# The system mk directory this host's bmake uses (Cygwin: /usr/share/bmake/mk),
+# and the make under test when it is not called bmake (FreeBSD/NetBSD:
+# /usr/bin/make). A host without that make is blocked, saying so.
 sysmk=$(plat "$P" SYSMK)
+bmake=$(plat "$P" BMAKE)
+if [ -n "$bmake" ] && ! command -v "$bmake" >/dev/null 2>&1; then
+    echo "BLOCKED $P: its make $bmake is not on this host" >"$LOG.status"; cat "$LOG.status"; exit 0
+fi
 
 # TOOLCHAIN=msvc from the cached EWDK (msvc-ewdk-root-req): mount the ISO in
 # BMK_CACHE/msvc read-only unless it already is, and hand its drive to the
@@ -50,7 +58,7 @@ fi
 set +e
 (
     cd "$HARNESS_DIR" &&
-    env ${sysmk:+BMK_SYS_MK="$sysmk"} ${ewdk:+BMK_EWDK_ROOT="$ewdk"} BMK_MKDIR="$BMK_ROOT/mk" BMK_SCRIPTS="$BMK_ROOT/scripts" \
+    env ${sysmk:+BMK_SYS_MK="$sysmk"} ${bmake:+BMAKE="$bmake"} ${ewdk:+BMK_EWDK_ROOT="$ewdk"} BMK_MKDIR="$BMK_ROOT/mk" BMK_SCRIPTS="$BMK_ROOT/scripts" \
         TOOLCHAIN="$TOOLCHAIN" ${ABI:+ABI="$ABI"} sh ./run-tests.sh
 ) >"$LOG" 2>&1
 status=$?

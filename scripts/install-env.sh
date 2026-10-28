@@ -52,8 +52,20 @@ for arg in "$@"; do
     esac
 done
 
-command -v bmake >/dev/null 2>&1 || {
-    echo "error: bmake not found on PATH -- install it first (see README.md Prerequisites)" >&2
+# The bmake to ask: $BMAKE, else `bmake`, else a `make` that IS bmake -- the
+# base make of FreeBSD and NetBSD has no other name, and asking only for
+# `bmake` refused those hosts, which the README says need nothing installed.
+# Every bmake answers -V .SYSPATH with its system mk path (what is needed
+# below anyway); GNU make has no -V. (Not MAKE_VERSION: NetBSD's own make
+# does not set it -- install-env.sh refused NetBSD 11, 2026-10-28.)
+# @impl 0f87-6aaa-d6a5-b4df
+is_bmake() { _v=$("$1" -f /dev/null -V .SYSPATH 2>/dev/null) && [ -n "$_v" ]; }
+BMAKE_CMD=""
+for _m in ${BMAKE:-} bmake make; do
+    command -v "$_m" >/dev/null 2>&1 && is_bmake "$_m" && { BMAKE_CMD=$_m; break; }
+done
+[ -n "$BMAKE_CMD" ] || {
+    echo "error: no bmake found on PATH -- neither 'bmake' nor a 'make' that is bmake${BMAKE:+ (BMAKE=$BMAKE is not one)}; install it first (see README.md Prerequisites)" >&2
     exit 1
 }
 
@@ -81,8 +93,8 @@ strip_block() {
 }
 
 if [ "$ACTION" = install ]; then
-    DEFAULT_SYSPATH=$(bmake -f /dev/null -V .SYSPATH 2>/dev/null) || {
-        echo "error: 'bmake -f /dev/null -V .SYSPATH' failed -- cannot determine bmake's own default system path" >&2
+    DEFAULT_SYSPATH=$("$BMAKE_CMD" -f /dev/null -V .SYSPATH 2>/dev/null) || {
+        echo "error: '$BMAKE_CMD -f /dev/null -V .SYSPATH' failed -- cannot determine bmake's own default system path" >&2
         exit 1
     }
     MAKESYSPATH_VALUE="$REPO_MK:\${MAKESYSPATH:-$DEFAULT_SYSPATH}"

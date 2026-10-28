@@ -37,6 +37,13 @@ sh matrix.sh report                    # the grid: build and run result per cell
 make fetch provision build test report # all of it
 ```
 
+- **This machine as a cell**: `windows_amd64` (Cygwin), `freebsd_host` and
+  `netbsd_host` are `KIND host` platforms: their native cells run the suite
+  right on the machine running `matrix.sh` (with the base system's
+  `/usr/bin/make` on the BSDs), and are *blocked*, with the reason, on any
+  other host. On a FreeBSD machine: `pkg install pkgconf gcc cmake-core
+  doxygen atf` (clang, make and kyua are in the base system), then
+  `sh matrix.sh run 'native-freebsd_host-*'`.
 - **Cells** are in `matrix.tsv`. A *native* cell runs the whole suite inside the
   platform; a *cross* cell builds Hello for the target and then executes it
   there. A cell that cannot run is listed with its reason (an amd64 BSD guest
