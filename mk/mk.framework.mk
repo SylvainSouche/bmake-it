@@ -125,8 +125,46 @@ SUBDIR_TESTMODS != for _t in *.tst; do [ -f "$$_t/makefile" ] && echo "$$_t"; do
 # FAIL_FAST=yes opts into stop-on-first-failure instead
 # (build-workspace-aggregation-req-v2, report-flag-uniform-trigger-v2).
 # ---------------------------------------------------------------------------
-all: _create_fw_dirs _build_modules _aggregate _check_build_failures
+all: _check_requires _create_fw_dirs _build_modules _aggregate _check_build_failures
 	@echo "===> framework ${.CURDIR:T} complete for ${OS_ARCH}"
+
+# requires-preflight-req: before any module is built, ask every module that
+# can lack something (MODULE_CHECK, from gen-mod-order.sh: a REQUIRES=, an
+# IMPORT= or grammar sources) what it lacks -- the same checks as its own
+# build, in report mode (BMK_REQUIRES_CHECK=yes), for this target -- plus
+# Kyua and ATF when tests follow, and print ONE list, then stop. From the
+# workspace (BMK_REQUIRES_LIST=<file>) the entries are added to the
+# workspace's list instead, which it prints; frameworks it then builds are
+# told BMK_REQUIRES_CHECKED=yes.
+# @impl 7854-6ae3-0b4f-513f
+_check_requires:
+.if ${BMK_REQUIRES_CHECKED:U} != "yes"
+	@if [ -n "${BMK_REQUIRES_LIST:U}" ]; then _list="${BMK_REQUIRES_LIST:U}"; else _list=$$(mktemp); fi; \
+	for _m in ${MODULE_CHECK:U}; do \
+		_err=$$(mktemp); \
+		if _r=$$(${MAKE} -C ${.CURDIR}/$$_m -V '$${_REQUIRES_REPORT}' BMK_REQUIRES_CHECK=yes \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" 2>"$$_err"); then \
+			for _e in $$_r; do echo "${.CURDIR:T}/$$_m $$_e" >> "$$_list"; done; \
+		else \
+			_msg=$$(grep -v '^[[:space:]]' "$$_err" | head -1 | tr ' ' '\037'); \
+			echo "${.CURDIR:T}/$$_m ?%query=$$_msg" >> "$$_list"; \
+		fi; \
+		rm -f "$$_err"; \
+	done; \
+	case " ${BMK_REQUIRES_FOR:U${.TARGETS}} " in *" test "*) \
+		_k=$$(command -v ${KYUA:Ukyua} 2>/dev/null) || echo "* kyua%tool" >> "$$_list"; \
+		if [ -n "$$_k" ]; then \
+			PKG_CONFIG_PATH="$$(dirname "$$(dirname "$$_k")")/lib/pkgconfig$${PKG_CONFIG_PATH:+:$$PKG_CONFIG_PATH}" \
+				pkg-config --exists atf-c 2>/dev/null || echo "* atf-c%pkg" >> "$$_list"; \
+		fi ;; \
+	esac; \
+	if [ -z "${BMK_REQUIRES_LIST:U}" ]; then \
+		_rc=0; sh ${BMK_MKDIR}/../scripts/requires-report.sh "$$_list" || _rc=$$?; rm -f "$$_list"; exit $$_rc; \
+	fi
+.else
+	@:
+.endif
 
 # aggregation-failure-exit-code-req: FAIL_FAST=no already lets every
 # module build regardless of an earlier failure (_build_modules: never
@@ -147,7 +185,12 @@ _check_build_failures:
 	if [ -n "$$_failed" ]; then \
 		echo "===> framework ${.CURDIR:T} BUILD FAILED:$$_failed" >&2; \
 		for _m in $$_failed; do \
-			echo "     $$_m -- see $$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+			_sk="${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped"; \
+			if [ -f "$$_sk" ]; then \
+				echo "     $$_m -- skipped: its prerequisite $$(cat "$$_sk") failed" >&2; \
+			else \
+				echo "     $$_m -- see $$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+			fi; \
 		done; \
 		exit 1; \
 	fi
@@ -161,15 +204,40 @@ _check_build_failures:
 # @impl 0f87-6a98-5e47-0c71
 # @impl 0f87-6aaa-6a6e-00d0
 # @impl 0f87-6aaa-72d2-8ffc
+# The exit status is kept with `&& echo 0 || echo $$?`: a make that runs
+# recipes under sh -e (FreeBSD's) ended the group at a failed module before
+# a following `echo $$?`, leaving it empty ("[: : bad number", 2026-10-29).
+# module-skipped-after-failed-prereq-req: a module whose prerequisite module
+# (LIBS= within this framework, MODULE_DEPS from gen-mod-order.sh) failed or
+# was skipped in this run is skipped, one line saying why -- it would only
+# fail again on that module's missing headers ("'GLFW/glfw3.h' file not
+# found" for imgui after glfw's REQUIRES failed, 2026-10-29).
+# @impl 7854-6ae3-0a48-eaaa
 _build_modules:
 .for _m in ${SUBDIR_MODULES}
-	@echo "===> building module ${_m}"
 	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+	_skip=""; _root=""; \
+	for _d in ${MODULE_DEPS.${_m}:U}; do \
+		if [ -f "${.CURDIR}/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+			_skip=$$_d; _root=$$(cat "${.CURDIR}/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped" 2>/dev/null || true); \
+			[ -n "$$_root" ] || _root=$$_d; break; \
+		fi; \
+	done; \
+	if [ -n "$$_skip" ]; then \
+		_why="prerequisite module $$_skip failed"; [ "$$_root" = "$$_skip" ] || _why="$$_why (root cause: $$_root)"; \
+		echo "===> module ${_m} skipped: $$_why" | tee "$$_rundir/build.log"; \
+		echo "$$_root" > "$$_rundir/build.skipped"; touch "$$_rundir/build.failed"; \
+		rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
+		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
+		exit 0; \
+	fi; \
+	rm -f "$$_rundir/build.skipped"; \
+	echo "===> building module ${_m}"; \
 	_rcfile=$$(mktemp); \
 	{ ${MAKE} -C ${_m} all copy-up \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
-	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+	  && echo 0 > "$$_rcfile" || echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
 		rm -f "$$_rundir/build.failed"; \
@@ -191,8 +259,8 @@ _build_modules:
 	_rcfile=$$(mktemp); \
 	{ ${MAKE} -C ${_m} all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
-	  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
+		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+	  && echo 0 > "$$_rcfile" || echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
 		rm -f "$$_rundir/build.failed"; \
@@ -237,7 +305,7 @@ _fw_test_build:
 _fw_test_build: _fw_build_closure
 .endif
 
-_fw_build_closure: _fw_build_prereqs _create_fw_dirs _build_modules _aggregate _check_build_failures
+_fw_build_closure: _check_requires _fw_build_prereqs _create_fw_dirs _build_modules _aggregate _check_build_failures
 
 _fw_build_prereqs:
 .for _p in ${PREREQS}

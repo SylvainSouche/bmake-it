@@ -132,7 +132,10 @@ the container VM (`colima stop`) while running the BSD and macOS cells.
   when a tool is missing. Cases compile their fake libraries with `"$CC"`,
   which testlib sets to the toolchain under test: the mingw compiler under
   `ABI=mingw`, Bmake It's own `cl.exe` wrapper (environment included, asked
-  from bmake) under `TOOLCHAIN=msvc`. Cases run with `LC_ALL=C`, so tool
+  from bmake) under `TOOLCHAIN=msvc`. `atf_pc` asks pkg-config for ATF the
+  way Bmake It does (also beside the `kyua` on `PATH`), and
+  `native_win_runtime` is true for mingw-w64 and MSVC output, where `bmake
+  test` refuses with its reason. Cases run with `LC_ALL=C`, so tool
   messages can be grepped. Before these, 45 of the 100 cases failed on Cygwin for those
   reasons alone (2026-10-26).
 
@@ -270,6 +273,10 @@ that (how the 2026-10-26 Cygwin changes were repacked).
 | 98 | `IMPORT=fetch:` with a `file://` distfile builds with `curl` and `wget` removed from `PATH` on every host (NetBSD's `ftp` cannot fetch a `file://` URL, so the product copies it), and a missing `file://` distfile fails with "could not fetch any FETCH_URL" |
 | 99 | `bmake test` with `TEST_RUNNER=cmd:<program>` runs a `.tst` workspace's tests through the runner: staged with the module's shared library, the utility on `PATH` and `BMK_SHAREDIR`, with the build host's library directories hidden during the run (not on macOS, where SIP strips `DYLD_*`), reports and exit status back; `TEST_RUNNER.<os>-<arch>` wins over `TEST_RUNNER`; a foreign target with no runner stops before building naming the variables to set |
 | 100 | Cross builds resolve `IMPORT=pkg:` and `REQUIRES=` in the target sysroot (fake sysroots of `.pc` files, nothing compiled): Linux multiarch for the other architecture and riscv64, FreeBSD `usr/local/libdata`, NetBSD `usr/pkg/lib`, the host's own OS on the other architecture; libdir and includedir in the sysroot; a decoy `.pc` on `PKG_CONFIG_PATH` never leaks, and a native build still reads it; a missing `REQUIRES=` names the sysroot; `TEST_RUNNER=local` exports `QEMU_LD_PREFIX` for a foreign Linux target only (skips without pkg-config) |
+
+| 101 | Import staging stages again when what it staged has gone: a `pkg:` header-only import and a `fetch:` import, the framework's `include/` wiped with the modules' fingerprints intact -- the headers come back and the build names the missing file; an unchanged third build stages nothing (fails against the pre-fix code) |
+| 102 | Missing prerequisites stop the build before anything is built, as one list: a `REQUIRES=` package, a `REQUIRES=header:`, an `IMPORT=` that does not resolve, each with how it was looked for -- from the workspace and from a framework; no pkg-config at all is said so, not reported as "not found"; a module whose prerequisite module failed is skipped saying why, and the workspace fails (no `bad number`, no compile cascade) |
+| 103 | `make run` after a failed build: a program built in its framework but never copied up (another module failed) is reported with where it is, the failed modules and the log -- not "build first"; a program built nowhere still says build first; the program starts in the directory `run` was typed in (workspace, framework, module), not the workspace root |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

@@ -699,6 +699,12 @@ _IMPORT_LIBDIR  = ${_p}/lib
 # module's build, loudly and here -- not stop ordering, and so building,
 # every other module and framework of the workspace.
 # @impl 7854-6ad0-c3e9-3ad5
+# requires-preflight-req: in the preflight query, an import that does not
+# resolve is one more entry of the list of what is missing.
+.  if !defined(_IMPORT_SOURCE) && ${BMK_REQUIRES_CHECK:U} == "yes"
+_REQUIRES_MISSING += ${IMPORT}
+_REQUIRES_HOW.${IMPORT} = import
+.  endif
 .  if !defined(_IMPORT_SOURCE) && empty(.MAKEFLAGS:M-V*)
 .    if !empty(_IMPORT_PC_NONE)
 _IMPORT_ERR_PC = pkg-config (none: ${_IMPORT_PC_NONE})

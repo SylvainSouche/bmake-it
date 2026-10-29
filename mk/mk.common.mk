@@ -129,6 +129,12 @@ SHAREDIR_LOCAL = ${BUILD_ROOT}/share
 # lives alongside mk/ in the project root -- put it on every module's
 # include path unconditionally, not just when TARGET=win, since it's a
 # harmless no-op include on every other platform too.
+# FreeBSD's sys.mk sets CXXFLAGS ?= ${CFLAGS:N-std=*:...}, a lazy copy of
+# CFLAGS: everything added to both below reached C++ compiles twice (the
+# -include of a forced header, -std=, every -I -- OpenRider on FreeBSD 15,
+# 2026-10-29). Fixed to its value now, it keeps what the system and the
+# module gave it and gets each addition once.
+CXXFLAGS := ${CXXFLAGS:U}
 CFLAGS   += -I${BMK_MKDIR}/../include
 CXXFLAGS += -I${BMK_MKDIR}/../include
 
@@ -621,6 +627,15 @@ _RUN_LIBSET = eval "_old=\$$${_RUN_LDPATH_VAR}"; BMK_LIBVAL="$$_libs$${_old:+:$$
 # override the entries above.
 # @impl 0f87-6ac1-4ffc-37ef
 # @impl 0f87-6a98-7946-1d85
+# run-keeps-caller-directory-req: the program starts in the directory run
+# was typed in (BMK_RUN_CWD across the re-exec), not the workspace root: a
+# `run PROGRAM=sh` from a framework opened in the root, whose build/<key>/bin
+# lacked the program the user had just seen in the framework's -- it looked
+# deleted (2026-10-29). Relative ARGS= resolve there too.
+# run-not-found-is-explained-req: scripts/run-not-found.sh says whether the
+# program was built somewhere in the workspace and why it is not in its bin.
+# @impl 7854-6ae3-2cb7-83bb
+# @impl 7854-6ae3-2cb6-9d43
 run:
 .if !defined(PROGRAM) || empty(PROGRAM)
 	@echo "usage: make run PROGRAM=<name> [ARGS=<args>]" >&2; exit 1
@@ -636,7 +651,7 @@ run:
 	if [ "$$_d" != "${.CURDIR}" ]; then \
 		exec ${MAKE} -C "$$_d" run PROGRAM=${PROGRAM} ARGS="${ARGS}" \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR}; \
+			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR} BMK_RUN_CWD="${.CURDIR}"; \
 	fi; \
 	_bins="$$_d/${BINDIR_LOCAL}"; _libs="$$_d/${LIBDIR_LOCAL}"; _shares="$$_d/${SHAREDIR_LOCAL}"; \
 	for _p in ${PARENT_WS}; do \
@@ -644,11 +659,13 @@ run:
 	done; \
 	PATH="$$_bins${_RUN_MINGW_PATH}$${PATH:+:$$PATH}"; \
 	if ! command -v "${PROGRAM}" >/dev/null 2>&1; then \
-		echo "error: ${PROGRAM} not found in $$_bins or on PATH -- build first (run does not build)" >&2; exit 1; \
+		exec sh ${BMK_MKDIR}/../scripts/run-not-found.sh "$$_d" "$$_bins" "${PROGRAM}" "${BUILD_ROOT}"; \
 	fi; \
 	${_RUN_LIBSET}; \
 	export PATH BMK_BINDIR="$$_bins" BMK_LIBDIR="$$_libs" BMK_SHAREDIR="$$_shares" BMK_TARGET="${OS_ARCH}" BMK_LIBVAR="${_RUN_LDPATH_VAR}" BMK_LIBVAL; \
-	exec sh ${BMK_MKDIR}/../scripts/run-exec.sh "$$_d/${BUILD_ROOT}/.run-shell" ${PROGRAM} ${ARGS}
+	_rx=$$(cd ${BMK_MKDIR}/../scripts && pwd)/run-exec.sh; \
+	cd "${BMK_RUN_CWD:U${.CURDIR}}"; \
+	exec sh "$$_rx" "$$_d/${BUILD_ROOT}/.run-shell" ${PROGRAM} ${ARGS}
 
 .PHONY: run
 

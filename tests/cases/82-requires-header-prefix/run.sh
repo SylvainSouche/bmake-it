@@ -32,8 +32,17 @@ if bmake >build2.log 2>&1; then
     echo "expected an absent header to fail REQUIRES=header:" >&2
     exit 1
 fi
-grep -q "REQUIRES=header:vendor/absent-3f8a2b.h" build2.log
-grep -q "header vendor/absent-3f8a2b.h not found" build2.log
+# The workspace's preflight lists it (requires-preflight-req)...
+grep -q "missing prerequisites" build2.log
+grep -q "header:vendor/absent-3f8a2b.h -- header not found" build2.log
 grep -q "<prefix>/include for: $PFX" build2.log
+# ...and a build of the module alone stops on it.
+if ( cd Fw/app.m && bmake ) >build3.log 2>&1; then
+    echo "expected the module build to fail REQUIRES=header:" >&2
+    exit 1
+fi
+grep -q "REQUIRES=header:vendor/absent-3f8a2b.h" build3.log
+grep -q "header vendor/absent-3f8a2b.h not found" build3.log
+grep -q "<prefix>/include for: $PFX" build3.log
 
 echo "requires-header-prefix OK"

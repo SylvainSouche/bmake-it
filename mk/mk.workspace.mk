@@ -106,8 +106,7 @@ SUBDIR_FRAMEWORKS += ${_c}
 # ---------------------------------------------------------------------------
 BUILD_REPORT_DIR ?= build-report
 
-all: _build_frameworks _aggregate_ws
-	@echo "===> workspace build complete for ${OS_ARCH}"
+all: _requires_preflight _build_frameworks _aggregate_ws
 .if ${REPORT} == "yes"
 	@_rdir=${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}; mkdir -p "$$_rdir"
 	@echo "<!DOCTYPE html><html><head><title>${.CURDIR:T} build dashboard</title>" > ${.CURDIR}/${BUILD_REPORT_DIR}/${RUN_ID}/${OS_ARCH}/index.html
@@ -162,6 +161,26 @@ all: _build_frameworks _aggregate_ws
 		done; \
 		exit 1; \
 	fi
+	@# (only now: it said "complete" right before "BUILD FAILED")
+	@echo "===> workspace build complete for ${OS_ARCH}"
+
+# requires-preflight-req: every framework's modules are asked what they lack
+# (mk.framework.mk _check_requires) before any framework is built; anything
+# missing is printed as one list and nothing is built.
+# @impl 7854-6ae3-0b4f-513f
+_requires_preflight:
+.if ${BMK_REQUIRES_CHECKED:U} != "yes"
+	@_list=$$(mktemp); \
+	for _f in ${SUBDIR_FRAMEWORKS}; do \
+		${MAKE} -C ${.CURDIR}/$$_f _check_requires BMK_REQUIRES_LIST="$$_list" \
+			BMK_REQUIRES_FOR="${BMK_REQUIRES_FOR:U${.TARGETS}}" \
+			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" || { rm -f "$$_list"; exit 1; }; \
+	done; \
+	_rc=0; sh ${BMK_MKDIR}/../scripts/requires-report.sh "$$_list" || _rc=$$?; rm -f "$$_list"; exit $$_rc
+.else
+	@:
+.endif
 
 .if !defined(SUBDIR_FRAMEWORKS)
 SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
@@ -231,8 +250,9 @@ _build_frameworks:
 		_rcfile=$$(mktemp); \
 		{ ${MAKE} -C ${_f} all copy-up \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" REPORT="${REPORT}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}"; \
-		  echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
+			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" REPORT="${REPORT}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+			BMK_REQUIRES_CHECKED=yes \
+		  && echo 0 > "$$_rcfile" || echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 		_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 		if [ "$$_rc" -eq 0 ]; then \
 			rm -f "$$_rundir/build.failed"; \
@@ -430,7 +450,7 @@ TEST_REPORT_DIR ?= test-report
 # @impl 0f87-6ac1-0a1e-c402
 test: _xtest_check _ws_test_build
 _ws_test_build:
-	@${MAKE} all REPORT=no \
+	@${MAKE} all REPORT=no BMK_REQUIRES_FOR=test \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
 		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
 		|| { echo "===> tests not run: the build failed" >&2; exit 1; }

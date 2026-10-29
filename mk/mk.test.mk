@@ -61,6 +61,23 @@ _TEST_SH_SEL  = ${TESTS_SH}
 # fallback kept for hosts without pkg-config for these.
 # (also in the prefix of the Kyua that runs them: mk.atf.mk)
 .include "${BMK_MKDIR}/mk.atf.mk"
+# The tests' ATF library found, or `bmake test` stops here saying what was
+# looked for (atf-not-found-is-explained-req) -- not a linker's "unable to
+# find library -latf-c++" after everything else is built.
+.if make(test) && ${_XTEST_NATIVE_WIN:Uno} != "yes"
+.  if !empty(_TEST_CXX_SEL)
+_ATF_CXX_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
+.    if ${_ATF_CXX_HOW} == "no"
+.      error "TESTS_CXX=${_TEST_CXX_SEL}: ATF's C++ library atf-c++ ${_ATF_NOT_FOUND}"
+.    endif
+.  endif
+.  if !empty(_TEST_C_SEL)
+_ATF_C_HOW != set -- atf-c '${CC}' c; ${_ATF_FOUND_CMD}
+.    if ${_ATF_C_HOW} == "no"
+.      error "TESTS_C=${_TEST_C_SEL}: ATF's C library atf-c ${_ATF_NOT_FOUND}"
+.    endif
+.  endif
+.endif
 _ATF_CXX_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
 # -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR: MacPorts' atf-c++ 0.21 headers
 # (tests.hpp) still use std::auto_ptr, which libc++ drops under C++17 mode

@@ -39,7 +39,9 @@ all:
 	echo "${_BMK_SKIP_MSG}" > ${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded
 .endif
 
-copy-up test docs add-prereq _fw_build_closure:
+# (_check_requires: an excluded framework has nothing to check -- the
+# workspace's preflight asks every framework, requires-preflight-req)
+copy-up test docs add-prereq _fw_build_closure _check_requires:
 	@:
 
 clean:

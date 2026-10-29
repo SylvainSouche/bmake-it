@@ -92,6 +92,20 @@ _TST_FLAVOR = cxx
 .  endfor
 # (also in the prefix of the Kyua that runs them: mk.atf.mk)
 .  include "${BMK_MKDIR}/mk.atf.mk"
+# A TEST_PROG= links ATF when the module is built (a plain bmake, not only
+# `test`): found, or stop here saying what was looked for
+# (atf-not-found-is-explained-req) -- OpenRider's perf.tst and scale.tst
+# reached the linker with a bare -latf-c++ (FreeBSD, 2026-10-29).
+.  if empty(.MAKEFLAGS:M-V*) && !make(clean) && !make(help) && ${TARGET} != "win"
+.    if ${_TST_FLAVOR} == "cxx"
+_TST_ATF_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
+.    else
+_TST_ATF_HOW != set -- atf-c '${CC}' c; ${_ATF_FOUND_CMD}
+.    endif
+.    if ${_TST_ATF_HOW} == "no"
+.      error "TEST_PROG=${TEST_PROG}: ATF's ${_TST_FLAVOR:S/cxx/C++/:S/c/C/} library ${_TST_FLAVOR:S/cxx/atf-c++/:S/^c$/atf-c/} ${_ATF_NOT_FOUND}"
+.    endif
+.  endif
 .  if ${_TST_FLAVOR} == "cxx"
 _TST_ATF_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c++ 2>/dev/null || echo ""
 _TST_ATF_CFLAGS += -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR
