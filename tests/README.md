@@ -69,6 +69,28 @@ make fetch provision build test report # all of it
   `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
   (and likewise for the other two) instead of rebuilding.
 
+### Results (2026-10-29, Windows 10 amd64 host)
+
+103 cases. Guests are amd64 QEMU VMs under WHPX (UEFI boot, packages from
+the offline cache); the host cells run the suite right on Windows.
+
+| Cell | llvm | gcc |
+|---|---|---|
+| Debian 13 amd64 (QEMU, WHPX) | 99 pass, 4 skip | 102 pass, 1 skip |
+| FreeBSD 15.1 amd64 (QEMU, WHPX) | 102 pass, 1 skip | 99 pass, 4 skip |
+| NetBSD 11.0 amd64 (QEMU, WHPX) | 99 pass, 4 skip | 101 pass, 2 skip |
+| Windows, Cygwin output (host) | 94 pass, 8 skip (102 cases; 103 passes on its own) | |
+
+No failures. Windows cells for gcc, MSVC (EWDK) and mingw (`llvm+mingw`)
+last ran on 2026-10-27, with 100 cases at the time: 87 pass, 13 skip each.
+Most of the Windows skips are cases with no meaning for a native Windows
+runtime (`bmake test` with ATF, POSIX shared-library chains).
+
+The first guest run of the day found a regression that Cygwin and the BSDs
+hid: the prerequisite preflight asked for a downloader even for a `file://`
+fetch. Case 98 hides curl and wget, and Debian has no `fetch` or `ftp` to
+fall back on, so it failed only there (fixed the same day).
+
 ### Results (2026-10-20, Apple-silicon host)
 
 | Cell | llvm | gcc |
