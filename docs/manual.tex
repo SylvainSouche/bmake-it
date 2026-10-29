@@ -32,7 +32,7 @@
 }
 
 \title{\textbf{Bmake It}\\[0.3em]\large A BSD-Make-Based Cross-Platform Build System\\[0.3em]\normalsize Package Documentation}
-\author{Draft v1}
+\author{Draft v2}
 \date{\today}
 
 \newcommand{\reqfoot}[1]{\footnote{\footnotesize\seqsplit{#1}}}
@@ -216,64 +216,237 @@ bundle output, the exact \texttt{win} ABI story (MinGW vs.\ Cygwin vs.\
 MSVC), musl libc — is deliberately deferred, not designed against yet\reqfoot{REQ-userland-only-scope}.
 
 %===============================================================
-\chapter{System Requirements}
+\chapter{Setting Up}
 \label{ch:requirements}
+\label{ch:setup}
 %===============================================================
 
-This chapter states what must already be present on a build host before
-\texttt{Bmake It} can be used. For which hosts and languages are in scope
-at all, see Section~\ref{sec:platform-scope}.
+This chapter gets a host ready: a BSD make, a toolchain, the optional
+tools for testing and documentation, and one line of shell
+configuration. At the end, Section~\ref{sec:setup-verify} checks the
+result by building the bundled example and running the project's own
+test suite. For which hosts and languages are in scope at all, see
+Section~\ref{sec:platform-scope}.
 
-\section{Build System}
+\section{What Every Host Needs}
 
-A real BSD make binary is required. \texttt{Bmake It} is built on top of
-BSD make's own \verb|bsd.*.mk| infrastructure, or reprogrammed equivalents
-where needed; it does not run under GNU
-make\reqfoot{CON-use-bsdmake}.
+\begin{description}[style=nextline]
+\item[A BSD make.] \texttt{Bmake It} is a set of \verb|mk.*.mk| files for
+  BSD make (\texttt{bmake}); it does not run under GNU
+  make\reqfoot{CON-use-bsdmake}. On FreeBSD and NetBSD the base system's
+  \texttt{make} \emph{is} bmake.
+\item[A C/C++ toolchain.] LLVM (\texttt{clang}, \texttt{lld}) is the
+  default, \verb|TOOLCHAIN=gcc| selects GCC, and on Windows
+  \verb|TOOLCHAIN=msvc| selects Microsoft's compiler. The compiler is
+  looked up in the platform's package-manager prefixes (MacPorts,
+  Homebrew, pkgsrc, \verb|/usr/local|), not only on
+  \verb|PATH|\reqfoot{REQ-toolchain-mk-must-set-explicit-cc-paths-req-v5}.
+\item[pkg-config] for libraries imported from the system
+  (\verb|IMPORT=pkg:|, Section~\ref{sec:openrider-imports}).
+\item[Optional:] \texttt{flex}/\texttt{bison} (or \texttt{lex}/\texttt{yacc})
+  for grammar sources; \texttt{curl} or the system's own downloader,
+  \texttt{tar}, \texttt{unzip} and \texttt{patch} for fetched sources;
+  \texttt{doxygen} for \verb|bmake docs|; ATF (\texttt{atf-c},
+  \texttt{atf-c++}, \texttt{atf-sh}) and Kyua for \verb|bmake test|. A
+  missing tool is reported by name when a module needs it, never
+  assumed.
+\end{description}
 
-\textbf{[open]} Which package supplies BSD make on each host, and the
-exact command to install it, is not yet part of the design record. The
-\texttt{*BSD} family ships it as the system default, and macOS reaches it
-via MacPorts\reqfoot{CON-cross-platform-targets}; the situation on Linux
-is not yet documented here.
+\section{Per Host}
 
-\section{Toolchain}
+\subsection*{FreeBSD}
+The base system has \texttt{make} (bmake; FreeBSD 15 also installs it as
+\texttt{bmake}), \texttt{clang}, \texttt{kyua}, \texttt{yacc}/\texttt{lex},
+\texttt{fetch}, \texttt{unzip} and \texttt{patch}. Add the rest from
+packages:
+\begin{lstlisting}[language=bash]
+# pkg install pkgconf gcc cmake-core doxygen atf bash
+\end{lstlisting}
 
-Phase 1 supports two toolchain bundles, selected via
-\verb!TOOLCHAIN=<gcc|llvm>! on the \texttt{make} command line; if
-unspecified, it defaults to \texttt{llvm}\reqfoot{REQ-toolchain-cli-variable-req-v4}.
-At least one of LLVM (Clang) or GCC must be installed and reachable —
-see the Phase 1 target table in Section~\ref{sec:platform-scope} for which
-combinations are currently targeted.
+\subsection*{NetBSD}
+The base system has \texttt{make} (bmake, under that name only),
+\texttt{gcc} and ATF. Add LLVM and the tools from pkgsrc binaries:
+\begin{lstlisting}[language=bash]
+# pkg_add pkgconf cmake doxygen kyua clang lld
+\end{lstlisting}
 
-\textbf{Caveat:} toolchain detection currently locates the compiler via a
-single hardcoded absolute path (\verb|/usr/bin/clang|, \verb|/usr/bin/gcc|)
-rather than a \verb|PATH| search. On a host where the compiler lives
-elsewhere — MacPorts' \verb|/opt/local/bin|, pkgsrc's \verb|/usr/pkg/bin|,
-Homebrew, or similar — \verb|TOOLCHAIN=llvm| silently falls back to
-whatever plain \texttt{cc} happens to resolve to, with no warning that the
-requested toolchain was not actually
-used\reqfoot{OBS-toolchain-detection-hardcoded-path-silently-wrong-compiler}.
+\subsection*{Debian, Ubuntu and other Linux}
+\begin{lstlisting}[language=bash]
+$ sudo apt install bmake clang lld gcc g++ pkgconf curl \
+      bison flex doxygen kyua atf-sh libatf-dev unzip patch
+\end{lstlisting}
+The bmake of Debian/Ubuntu is older than the BSDs' (it lacks the
+\verb|:mtime| modifier); \texttt{Bmake It} does not rely on anything it
+lacks.
 
-\section{Languages}
+\subsection*{macOS}
+Use one package manager for bmake \emph{and} the toolchain --- MacPorts,
+Homebrew or pkgsrc --- not Apple's Command Line Tools, which are only a
+last-resort fallback. With MacPorts, as OpenRider's continuous
+integration does:
+\begin{lstlisting}[language=bash]
+$ sudo port -N install bmake clang-22 atf kyua pkgconfig
+$ sudo port select --set clang mp-clang-22
+\end{lstlisting}
+
+\subsection*{Windows}
+\texttt{Bmake It} runs in a Cygwin shell. In Cygwin's own
+\verb|setup-x86_64.exe| select \texttt{bmake}, \texttt{clang},
+\texttt{gcc-g++}, \texttt{pkgconf}, \texttt{curl}, \texttt{unzip} and
+\texttt{patch}. Three kinds of output are then available
+(Chapter~\ref{ch:cross}):
+\begin{itemize}
+\item Cygwin programs (the default): nothing more to install.
+\item Native Windows programs with mingw-w64 (\verb|ABI=mingw|): add
+  \texttt{mingw64-x86\_64-gcc-core} and \texttt{mingw64-x86\_64-gcc-g++}.
+\item Native Windows programs with MSVC (\verb|TOOLCHAIN=msvc|): either
+  an installed Visual Studio or Build Tools (found with
+  \texttt{vswhere.exe}), or a mounted Enterprise WDK ISO given as
+  \verb|BMK_EWDK_ROOT=F:\| --- no installation needed, its compiler and
+  Windows SDK are used in place.
+\end{itemize}
+Cygwin packages neither ATF nor Kyua. Install Cygwin's \texttt{lua} and
+\texttt{liblua-devel} at 5.4.4 (their \emph{test} versions --- the
+stable 5.3 is too old for Lutok 0.6), \texttt{libsqlite3-devel} and
+\texttt{sqlite3}, then build them into \verb|/usr/local| from their
+checksummed release tarballs:
+\begin{lstlisting}[language=bash]
+$ sh tests/harness/provision/build-atf-kyua.sh
+\end{lstlisting}
+\texttt{Bmake It} finds ATF next to the Kyua it
+runs\reqfoot{REQ-atf-from-kyua-prefix-req}.
+
+\section{Pointing Your Make at Bmake It}
+\label{sec:install-env}
+
+Every role file (\verb|mk.workspace.mk|, \verb|mk.prog.mk|, \ldots) is
+found through bmake's own search path for shared make files,
+\verb|MAKESYSPATH|. Set it once:
+\begin{lstlisting}[language=bash]
+$ sh /path/to/bmake-it/scripts/install-env.sh
+\end{lstlisting}
+The script adds a marked block to your shell's start-up file
+(\verb|~/.profile|, \verb|~/.bashrc|, \verb|~/.zshrc| or fish's
+\verb|config.fish|), shows the change and asks first (\verb|-y| skips
+the question, \verb|--uninstall| removes the block). It uses
+\texttt{bmake}, or a \texttt{make} that is bmake, as on
+NetBSD\reqfoot{REQ-install-env-script-req}. The resulting line, which you
+may also write by hand, looks like:
+\begin{lstlisting}[language=bash]
+export MAKESYSPATH="/path/to/bmake-it/mk:${MAKESYSPATH:-/usr/share/mk}"
+\end{lstlisting}
+A project's top makefile then needs nothing but:
+\begin{lstlisting}[language=bmake]
+PARENT_WS=
+.include "mk.workspace.mk"
+\end{lstlisting}
+
+\section{Checking the Setup}
+\label{sec:setup-verify}
+
+Build and run the bundled example, then run \texttt{Bmake It}'s own
+test suite (about a hundred small workspaces exercising every feature;
+about one to two minutes on a fast host):
+\begin{lstlisting}[language=bash]
+$ cd /path/to/bmake-it/examples/myworkspace
+$ bmake && bmake run PROGRAM=hello
+Hello, Bmake It!
+$ cd /path/to/bmake-it
+$ sh tests/harness/run-tests.sh                 # TOOLCHAIN=llvm
+$ TOOLCHAIN=gcc sh tests/harness/run-tests.sh
+\end{lstlisting}
+On FreeBSD and NetBSD name the make under test, since the runner looks
+for \texttt{bmake} by default: \verb|BMAKE=/usr/bin/make sh tests/harness/run-tests.sh|.
+The summary line reads \verb|pass=N fail=0 skip=M|; a skipped case
+names the tool or capability it lacks (OpenMP, ASan, a macOS-only
+feature), so \verb|fail=0| is what matters.
+
+\section{Languages and Scope}
 
 \texttt{Bmake It} compiles C, C++, and lex/yacc grammar sources (which
 themselves compile down to C/C++); no other language toolchain is
-required\reqfoot{REQ-supported-languages}.
-
-\section{Scope}
-
-\texttt{Bmake It} targets userspace binaries and libraries only — no
-kernel module or driver toolchain is
+required\reqfoot{REQ-supported-languages}. It builds userspace binaries
+and libraries only --- no kernel module or driver toolchain is
 needed\reqfoot{REQ-userland-only-scope}.
 
 %===============================================================
-\chapter{Basic Usage}
+\chapter{Basic Tasks}
 \label{ch:basic-usage}
 %===============================================================
 
-This chapter covers the minimum needed to create a workspace, populate
-it with a framework and a module, and build it.
+This chapter covers what you do every day: build, run, clean, install,
+and lay out a workspace with its frameworks and modules. The examples
+use \verb|examples/myworkspace| from the \texttt{Bmake It} tree: two
+frameworks, \texttt{System} (a library, \texttt{calc}) and
+\texttt{Hello} (a library, \texttt{greet}, and the program
+\texttt{hello}, which links it).
+
+\section{Everyday Commands}
+
+Every command works at any level --- workspace root, framework or module
+--- and acts on what lies beneath:
+\begin{lstlisting}[language=bash]
+$ cd examples/myworkspace
+$ bmake                              # build everything for this host
+$ bmake run PROGRAM=hello            # run a built program, environment set
+Hello, Bmake It!
+$ bmake run PROGRAM=bash             # an interactive shell in that environment
+$ bmake help                         # the targets and variables valid here
+$ bmake clean                        # remove this host's build output
+$ bmake clean TARGET=all             # remove every target's build output
+$ bmake install DESTDIR=/tmp/stage PREFIX=/usr/local
+\end{lstlisting}
+\begin{itemize}
+\item \verb|bmake| builds each module completely, in dependency order,
+  then copies its results up into its framework's \verb|build/<KEY>/|
+  and the workspace's. \verb|<KEY>| is the target key ---
+  \verb|freebsd-amd64|, \verb|macos-arm64|, \verb|linux-amd64-gcc| ---
+  so builds for several targets live side by side
+  (Chapter~\ref{ch:cross}).
+\item \verb|bmake run| does not build; it runs any program with the
+  workspace's (and each parent workspace's) \verb|bin/| first on
+  \verb|PATH| and their \verb|lib/| on the library search path, from any
+  directory of the workspace\reqfoot{REQ-run-build-environment-req}.
+  \verb|ARGS="..."| passes arguments.
+\item \verb|PROGRAM=bash| (or \texttt{sh}, \texttt{zsh}) opens a shell in
+  which you call the programs you just built by name; your shell's
+  start-up files still run, and cannot undo the build
+  environment\reqfoot{REQ-run-shell-keeps-environment-req}.
+\item \verb|install| copies an already-built target's \verb|bin/|,
+  \verb|lib/| and \verb|share/| under \verb|$(DESTDIR)$(PREFIX)|; it
+  refuses to run on a target that has not been built.
+\end{itemize}
+
+\section{What a Build Leaves Behind}
+
+\begin{lstlisting}
+myworkspace/
+  build/<KEY>/bin/hello            consolidated results of the workspace
+  build/<KEY>/lib/libgreet.so.1    (and the .so / .dylib / .dll forms)
+  Hello/build/<KEY>/...            the framework's results
+  Hello/hello.m/build/<KEY>/obj/   objects and dependency files
+  Hello/hello.m/build/<KEY>/runs/<RUN_ID>/build.log
+\end{lstlisting}
+Every module keeps the log of each build under \verb|runs/<RUN_ID>/|
+(\verb|runs/latest| is a copy of the newest), so a failure can be read
+after the fact. When a workspace build fails, its last lines name each
+failed module and the log to read.
+
+\section{Adding a Module}
+
+A module is a directory named \verb|<name>.m| inside a framework, with a
+\verb|makefile| and a \verb|src/| directory; it is found automatically.
+A library and a program that uses it:
+\begin{lstlisting}[language=bmake]
+# Hello/libgreet.m/makefile           # Hello/hello.m/makefile
+LIB=greet                             PROG=hello
+.include "mk.lib.mk"                  LIBS=greet
+                                      .include "mk.prog.mk"
+\end{lstlisting}
+Sources in \verb|src/| are picked up without being listed. \verb|LIBS=|
+names the libraries to link, and orders the build; headers come from
+the include directories described in Section~\ref{sec:headers}.
+The following sections describe each level in detail.
 
 \section{Directory Layout at a Glance}
 
@@ -480,60 +653,161 @@ directories\reqfoot{OBS-validation-destdir-native-prefix-is-not} — the
 destination tree must already exist.
 
 %===============================================================
-\chapter{Advanced Features}
+\chapter{Advanced Tasks}
 \label{ch:advanced}
 %===============================================================
 
-\section{Target Selection and Cross-Compilation}
+This chapter follows a real project, OpenRider (an outdoor-activity
+viewer: C++20, Dear ImGui over GLFW and OpenGL, map tiles over libcurl,
+plugins loaded at run time), through the things a project needs once it
+outgrows the example: third-party code, project-wide rules, platform
+differences, documentation and reports. The remaining sections describe
+individual features.
 
-The full target key has the shape
-\verb|<os>-<arch>[-<toolchain>][-<abi>]|, with each bracketed segment
-omitted whenever it equals that platform's default\reqfoot{REQ-target-key-omit-defaults-req}:
+\section{A Real Workspace: OpenRider}
 
-\begin{center}
-\begin{tabular}{lll}
-\toprule
-Segment & Default (omitted) & Shown when non-default \\
-\midrule
-Toolchain & \verb|llvm| & \verb|gcc| \\
-ABI/libc & \verb|msvc| (win); \verb|glibc| (linux) & \verb|mingw|, \verb|cygwin|; \verb|musl| \\
-\bottomrule
-\end{tabular}
-\end{center}
-
-On the command line:
-\begin{lstlisting}[language=bash]
-$ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
+\begin{lstlisting}
+OpenRider/                       the workspace (PARENT_WS=, mk.workspace.mk)
+  mk/pre.mk                      rules for every framework and module
+  mk/pre.freebsd.mk, pre.win.mk, pre.llvm.mk   per platform / toolchain
+  OpenRiderDependencies/         third-party code only   PREREQS=
+    libglfw.m  libcurl.m  libtiff.m      imported from the system
+    libimgui.m libimplot.m libsqlite3.m  fetched and compiled here
+  OpenRider/                     the project's code      PREREQS=OpenRiderDependencies
+    include/openrider/           the public plugin interface
+    libcore.m  libapp.m  libmaptiles.m   libraries, with ATF tests
+    openrider.m                  the program
+    input_gpx.m  tiles_wmts.m ...        plugins (shared libraries)
+    perf.tst  plugin_check.tst           test modules
 \end{lstlisting}
+Third-party code lives in a framework of its own, so the project's
+framework depends on it through \verb|PREREQS=| and the build order
+follows. The program's makefile is a few lines:
+\begin{lstlisting}[language=bmake]
+# OpenRider/openrider.m/makefile
+PROG=openrider
+LIBS=app core maptiles implot imgui glfw
+.include "mk.prog.mk"
+\end{lstlisting}
+\verb|LIBS=| mixes the project's own libraries and imported ones: an
+imported library is an ordinary module, linked the same
+way\reqfoot{REQ-imported-libraries-are-ordinary-modules-req}.
 
-\verb|TARGET=| and \verb|TARGET_ARCH=| reuse real BSD make's own
-FreeBSD cross-build variable names\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req};
-\verb|TOOLCHAIN=| is new, since BSD make has no native concept of a
-toolchain \emph{bundle} (compiler, linker, and archiver selected
-together)\reqfoot{REQ-toolchain-cli-variable-req}. Setting
-\verb|TOOLCHAIN=| \verb|.include|s a dedicated
-\verb|mk.toolchain.<name>.mk|, which sets \verb|CC|/\verb|CXX|/\verb|LD|/\verb|AR|/\verb|AS|
-as a coherent bundle; these remain individually overridable afterward
-for mixed setups (e.g.\ Clang with GNU \verb|ld|)\reqfoot{REQ-toolchain-triggers-dedicated-mk-file-req}.
+\section{Using a Library From the System}
+\label{sec:openrider-imports}
 
-\textbf{A significant, empirically-confirmed correction}: unlike most
-of the variables reused directly from BSD make,
-\verb|TARGET|/\verb|TARGET_ARCH| do \emph{not} come with working
-cross-compilation ``for free.'' Testing against real FreeBSD
-\verb|share/mk| showed that setting \verb|TARGET_ARCH=arm64| on an
-\texttt{amd64} host still produced a plain \texttt{x86-64} binary —
-these variables are inert without FreeBSD's base-system
-\verb|Makefile.inc1|/\verb|buildworld| machinery, which a standalone
-project does not have\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req}.
-Further investigation across the whole BSD-make family (FreeBSD,
-NetBSD, and generic portable \texttt{pmake}) found the identical
-pattern everywhere: real cross-compilation always happens via an
-\emph{external orchestration layer}, with \verb|TARGET|/\verb|TARGET_ARCH|-style
-variables used only as \emph{data} for architecture-conditional
-branching, never as a trigger that itself selects a compiler binary.
-Consequently, \verb|mk.toolchain.<name>.mk| must itself map
-\verb|(TARGET, TARGET_ARCH, TOOLCHAIN)| combinations to concrete
-compiler paths\reqfoot{REQ-toolchain-mk-must-set-explicit-cc-paths-req, OBS-validation-cross-compile-is-external-orchestration-everywhere}.
+\begin{lstlisting}[language=bmake]
+# OpenRiderDependencies/libglfw.m/makefile
+LIB=glfw
+IMPORT=pkg:glfw3          # resolved with pkg-config
+REQUIRES=glfw3            # a clear error, before building, if it is missing
+IMPORT_HEADERS=GLFW       # staged into the framework's build/<KEY>/include
+.include "mk.lib.mk"
+\end{lstlisting}
+The import stages the library's headers and files into the build tree,
+so the rest of the workspace sees them like those of a compiled
+library. A header-only package says \verb|IMPORT_LIB=none|. Staging is
+skipped while nothing changed --- and done again if a staged file has
+gone missing, naming it\reqfoot{REQ-staging-skip-checks-outputs-req}.
+For a cross build, pkg-config is asked about the target's sysroot,
+never the build host's packages (Chapter~\ref{ch:cross}).
+
+\section{Fetching and Compiling Third-Party Sources}
+
+\begin{lstlisting}[language=bmake]
+# OpenRiderDependencies/libimgui.m/makefile
+LIB=imgui
+IMPORT=fetch:imgui
+FETCH_URL=https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz
+SRCS=imgui.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets.cpp \
+     backends/imgui_impl_glfw.cpp backends/imgui_impl_opengl3.cpp
+IMPORT_HEADERS=imgui.h imconfig.h backends/imgui_impl_glfw.h ...
+LIB_SHARED=NO             # a static archive, linked into its users
+WARN=none                 # their warnings are not ours (Chapter on linting)
+LIBS=glfw                 # the GLFW backend needs GLFW's headers first
+.include "mk.lib.mk"
+\end{lstlisting}
+The archive is downloaded once into the module's \verb|distfiles/|,
+checked against the committed \verb|distinfo|, extracted, patched
+(\verb|FETCH_PATCHES=|) and compiled through the ordinary \verb|SRCS=|
+pipeline; nothing of it is committed. Write \verb|distinfo| when you
+add or update the source:
+\begin{lstlisting}[language=bash]
+$ curl -fLO https://github.com/ocornut/imgui/archive/refs/tags/v1.92.9b.tar.gz
+$ printf 'SHA256 (%s) = %s\n' v1.92.9b.tar.gz \
+      "$(sha256sum v1.92.9b.tar.gz | cut -d' ' -f1)" > libimgui.m/distinfo
+\end{lstlisting}
+A project with its own build system is built with it instead:
+\verb|FETCH_BUILD=cmake| (or \texttt{autotools}, \texttt{meson},
+\texttt{custom} with \verb|FETCH_BUILD_CMD=|), and installed into the
+module's build tree.
+
+\section{Project-Wide Rules: Hook Files}
+\label{sec:hooks}
+
+A level's \verb|mk/| directory --- workspace, framework or module ---
+may hold hook files, read in this order: \verb|pre.mk|, then
+\verb|pre.<toolchain>.mk|, \verb|pre.<os>.mk| and
+\verb|pre.<os>_<arch>.mk|, before the role file's own defaults; the
+same names with \verb|local| instead of \verb|pre| after them. Every
+matching level applies, outer to
+inner\reqfoot{REQ-local-mk-hook-files-and-cascade-order-req}. OpenRider's:
+\begin{lstlisting}[language=bmake]
+# mk/pre.mk -- every module of the workspace
+CXXSTD = c++20
+CXXFLAGS += -fno-exceptions -fno-rtti
+
+# mk/pre.freebsd.mk -- FreeBSD only
+CFLAGS += -idirafter /usr/local/include   # ports' headers, after the staged ones
+CXXFLAGS += -idirafter /usr/local/include
+LDFLAGS += -pthread
+
+# mk/pre.llvm.mk -- clang only
+CXXFLAGS += -include ${.PARSEDIR}/include/openrider_compat.h
+\end{lstlisting}
+Hook files are where a project keeps what differs per platform, so
+that its module makefiles stay free of conditionals. A per-host value
+--- a library's location on one developer's machine --- belongs in a
+\verb|local.mk| that is not committed.
+
+\section{Documentation}
+
+\begin{lstlisting}[language=bmake]
+# OpenRider/makefile (the framework)
+PREREQS=OpenRiderDependencies
+DOCS=yes
+DOC_INPUT_EXTRA=local/include openrider.m/src ...   # beyond include/
+DOC_WARN_IF_UNDOCUMENTED=YES
+.include "mk.framework.mk"
+\end{lstlisting}
+\verb|bmake docs| runs Doxygen over the framework (from a framework) or
+over every framework plus an index page (from the workspace root);
+\verb|DOCS=no| leaves a framework out, as OpenRider does for its
+third-party one.
+
+\section{Workspace Builds, Reports and Continuous Integration}
+
+\begin{lstlisting}[language=bash]
+$ bmake REPORT=yes                 # HTML dashboard of every module's build
+$ bmake test REPORT=yes            # the same for the tests
+$ bmake FAIL_FAST=yes              # stop at the first failing module
+$ bmake RUN_ID=ci-4821             # name the run (logs, reports)
+\end{lstlisting}
+By default a failing module does not stop the others; the exit status
+is non-zero if any failed, and the final lines list each failure with
+its log. A framework whose prerequisite failed is skipped, with one
+line saying why, rather than failing again with a cascade of missing
+headers. OpenRider's continuous integration is three steps after
+installing the packages (Chapter~\ref{ch:setup}):
+\begin{lstlisting}
+env:
+  MAKESYSPATH: ${{ github.workspace }}/.bmake-it/mk:/opt/local/share/mk
+steps:
+  - run: bmake            # build
+  - run: bmake test       # test; JUnit XML under */build/*/runs/*/test-results.xml
+\end{lstlisting}
+\texttt{Bmake It} itself is checked out next to the sources, in a hidden
+directory, so that the workspace does not take it for a framework.
 
 \section{Resource Files}
 \label{sec:resources}
@@ -642,13 +916,33 @@ phase\reqfoot{REQ-make-port-deferred-req}. \textbf{[open]}
 
 \section{Running a Built Program}
 
-\verb|make run PROGRAM=<name> ARGS='<args>'|, run at workspace level,
-sets the platform-appropriate dynamic-library search-path variable
-(\verb|LD_LIBRARY_PATH| on Linux/FreeBSD, \verb|DYLD_LIBRARY_PATH| on
-macOS) to include the workspace's consolidated \verb|build/<KEY>/lib/|,
-then executes \verb|build/<KEY>/bin/<PROGRAM>| with the given
-arguments\reqfoot{REQ-run-target-req} — mirroring real
-\texttt{mkmk}'s own \texttt{mkrun} command, adapted to
+\verb|bmake run PROGRAM=<name> ARGS="<args>"| runs \emph{any} program
+--- one you built, a shell, a debugger, a profiler --- through the
+build environment, from any directory of the workspace (it walks up to
+the root)\reqfoot{REQ-run-build-environment-req}. The environment is
+inherited and prepended to, never replaced:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Variable & Value \\
+\midrule
+\verb|PATH| & workspace \verb|bin|, each \verb|PARENT_WS| \verb|bin|, then yours \\
+library path & workspace \verb|lib|, each \verb|PARENT_WS| \verb|lib|, then yours \\
+\verb|BMK_BINDIR|, \verb|BMK_LIBDIR|, \verb|BMK_SHAREDIR| & the same chains \\
+\verb|BMK_TARGET|, \verb|BMK_LIBVAR| & the target key, the library variable's name \\
+\bottomrule
+\end{tabular}
+\end{center}
+The library path is \verb|LD_LIBRARY_PATH|, \verb|DYLD_LIBRARY_PATH| on
+macOS and \verb|PATH| itself on Windows. A program found nowhere on
+that \verb|PATH| is an error naming the chain; a non-zero exit status
+fails the make. Examples:
+\begin{lstlisting}[language=bash]
+$ bmake run PROGRAM=openrider ARGS="--snapshot out.png"
+$ bmake run PROGRAM=gdb ARGS="--args openrider -v"   # debug with the libraries found
+$ bmake run PROGRAM=bash                             # call programs by name
+\end{lstlisting}
+It mirrors \texttt{mkmk}'s \texttt{mkrun}, adapted to
 \texttt{Bmake It}'s own \verb|build/<KEY>/| layout.
 
 \section{Self-Documentation: \texttt{make help}}
@@ -800,10 +1094,11 @@ project-owned wiring, not reused \verb|bsd.sys.mk| behavior — confirmed
 end-to-end on this MacPorts host: a private header, and a framework-public
 header reached only via \verb|PREREQS=| (not the consuming module's own
 \verb|src/|), each correctly trigger exactly the affected object to
-recompile, and a no-op rebuild recompiles nothing. \verb|TOOLCHAIN=msvc|
-has no equivalent yet — \verb|cl.exe|'s own mechanism, \verb|/showIncludes|,
-writes to stdout rather than a file, and needs wrapper-side parsing not
-built this round.
+recompile, and a no-op rebuild recompiles nothing. Under
+\verb|TOOLCHAIN=msvc| the \verb|cl.exe| wrapper writes the same dependency
+file from \verb|cl.exe|'s own \verb|/showIncludes| notes, leaving out the
+toolset's and the Windows SDK's headers as \verb|-MMD| leaves out system
+headers.
 
 Exact generated filenames, staleness-detection mechanisms, and
 regeneration triggers for the \verb|PARENT_WS|/\verb|PREREQS| cache
@@ -844,6 +1139,430 @@ Per-object \verb|-MD| header dependency tracking via \verb|bsd.sys.mk| & \textbf
 \bottomrule
 \end{longtable}
 \end{center}
+
+%===============================================================
+\chapter{Cross-Platform Compilation and Testing}
+\label{ch:cross}
+%===============================================================
+
+One source tree builds for several targets, each into its own
+\verb|build/<KEY>/|, without a separate checkout or configuration step.
+This chapter shows how to choose the target, cross-compile, build
+Windows programs, and run the tests of a target the build host cannot
+run itself.
+
+\section{The Target Key}
+
+The target key has the shape \verb|<os>-<arch>[-<toolchain>][-<abi>]|,
+each bracketed segment omitted when it is that platform's
+default\reqfoot{REQ-target-key-omit-defaults-req}:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Segment & Default (omitted) & Shown when non-default \\
+\midrule
+Toolchain & \verb|llvm| & \verb|gcc|, \verb|msvc| \\
+ABI & \verb|glibc| (linux); \verb|msvc| (win) & \verb|musl|; \verb|cygwin|, \verb|mingw| \\
+\bottomrule
+\end{tabular}
+\end{center}
+Examples: \verb|freebsd-amd64|, \verb|macos-arm64-gcc|,
+\verb|linux-amd64-musl|, \verb|win-amd64-cygwin|, \verb|win-amd64-gcc-mingw|,
+\verb|win-amd64-msvc|. On Windows the ABI is read from the compiler
+itself (\verb|-dumpmachine|), never assumed.
+
+\section{Choosing the Target}
+
+\begin{lstlisting}[language=bash]
+$ bmake                                         # this host, LLVM
+$ bmake TOOLCHAIN=gcc                           # this host, GCC
+$ bmake TARGET=freebsd TARGET_ARCH=amd64        # another OS and architecture
+$ bmake TARGET=linux TARGET_ARCH=arm64 ABI=musl
+\end{lstlisting}
+\verb|TARGET=| and \verb|TARGET_ARCH=| reuse BSD make's own cross-build
+variable names; \verb|TOOLCHAIN=| and \verb|ABI=| are \texttt{Bmake It}'s.
+In BSD make itself these names are only \emph{data}: testing against
+real FreeBSD \verb|share/mk| showed \verb|TARGET_ARCH=arm64| on an
+\texttt{amd64} host still producing an \texttt{x86-64} binary. So
+\verb|mk.toolchain.<name>.mk| maps each (\verb|TARGET|,
+\verb|TARGET_ARCH|, \verb|TOOLCHAIN|) to concrete compiler flags
+itself\reqfoot{REQ-target-arch-toolchain-selection-is-custom-req, OBS-validation-cross-compile-is-external-orchestration-everywhere}.
+An ABI the target does not have (\verb|ABI=mingw TARGET=linux|) is an
+error, not a strange key.
+
+\section{Cross-Compiling for Linux, FreeBSD, NetBSD and macOS}
+
+Cross-compiling uses LLVM (one compiler for every target; GCC never
+cross-compiles here) and a \emph{sysroot}: the target system's headers
+and libraries, given in a variable per OS:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Target & Variable and content \\
+\midrule
+Linux & \verb|BMK_LINUX_SYSROOT|: \verb|usr/include|, \verb|usr/lib/<multiarch>|, \verb|lib/<multiarch>| \\
+FreeBSD & \verb|BMK_FREEBSD_SYSROOT|: \verb|usr/include|, \verb|usr/lib|, \verb|lib| from \verb|base.txz| \\
+NetBSD & \verb|BMK_NETBSD_SYSROOT|: \verb|usr/include|, \verb|usr/lib|, \verb|libexec/ld.elf_so| \\
+macOS & \verb|BMK_MACOS_SYSROOT|: your own \verb|MacOSX.sdk| (not redistributable) \\
+\bottomrule
+\end{tabular}
+\end{center}
+The scripts under \verb|tests/harness/fetch/| make them as tar files
+from official release artifacts --- \verb|build-sysroot-freebsd.sh|
+(\verb|base.txz|), \verb|build-sysroot-netbsd.sh| (the release sets),
+\verb|build-sysroot-linux.sh| (a container; a project image with its
+\verb|-dev| packages gives their libraries and \verb|.pc| files too) and
+\verb|build-sysroot-macos.sh| (your Xcode's SDK). Extract a Linux
+sysroot on a case-sensitive filesystem: kernel headers differ only by
+case. Then, for example from a Mac:
+\begin{lstlisting}[language=bash]
+$ bmake TARGET=freebsd TARGET_ARCH=amd64 BMK_FREEBSD_SYSROOT=$HOME/sysroots/freebsd-amd64
+$ file build/freebsd-amd64/bin/openrider
+build/freebsd-amd64/bin/openrider: ELF 64-bit LSB executable, x86-64, ... FreeBSD 15.1
+\end{lstlisting}
+Keep the sysroot out of the command line with a hook file
+(Section~\ref{sec:hooks}), here \verb|mk/local.freebsd_amd64.mk|:
+\begin{lstlisting}[language=bmake]
+BMK_FREEBSD_SYSROOT = /home/me/sysroots/freebsd-amd64
+\end{lstlisting}
+Libraries imported with \verb|IMPORT=pkg:| and \verb|REQUIRES=| are
+looked up in the target's sysroot (Linux's multiarch
+\verb|pkgconfig|, FreeBSD's \verb|usr/local/libdata/pkgconfig|,
+NetBSD's \verb|usr/pkg/lib/pkgconfig|), never on the build host; a
+package missing there is an error naming the sysroot.
+
+\section{Windows Programs}
+
+From a Cygwin shell, three kinds of output, each with its own key:
+\begin{lstlisting}[language=bash]
+$ bmake                          # Cygwin programs (cygwin1.dll)  build/win-amd64-cygwin/
+$ bmake ABI=mingw                # native, mingw-w64 (clang)      build/win-amd64-mingw/
+$ bmake TOOLCHAIN=gcc ABI=mingw  # native, mingw-w64 (gcc)        build/win-amd64-gcc-mingw/
+$ bmake TOOLCHAIN=msvc           # native, MSVC                   build/win-amd64-msvc/
+$ bmake TOOLCHAIN=msvc BMK_EWDK_ROOT='F:\'   # MSVC from a mounted EWDK
+\end{lstlisting}
+Module makefiles do not change between them. Under MSVC a shared
+library needs no \verb|__declspec(dllexport)|: its export list is
+generated from its objects, so it gets an import library as on every
+other toolchain\reqfoot{REQ-msvc-shared-lib-export-req}; a \emph{data}
+symbol used from another module still needs \verb|dllimport| on the
+user's side (\verb|include/bmk_export.h|). Header dependencies are
+tracked under MSVC as elsewhere. \verb|bmake run| puts the mingw-w64
+runtime DLLs on \verb|PATH| for mingw programs.
+
+\section{Running and Testing What You Cross-Built}
+
+\verb|bmake test| runs Kyua on the build host. For a target the host
+cannot run, name a \emph{test runner}; \verb|bmake test| then ships the
+test programs, the libraries they load and the \verb|share/| data to it,
+runs them there, and brings the JUnit report back to the usual place.
+The exit status is the tests'\reqfoot{REQ-cross-test-runner-req}.
+\begin{lstlisting}[language=bash]
+# a FreeBSD machine (or VM) over ssh
+$ bmake test TARGET=freebsd TARGET_ARCH=arm64 \
+      TEST_RUNNER.freebsd-arm64=ssh:root@localhost:2226
+# Linux amd64 tests in an emulated container, from an arm64 host; the image
+# must hold kyua and atf (here the one the project's own matrix builds)
+$ bmake test TARGET=linux TARGET_ARCH=amd64 \
+      TEST_RUNNER.linux-amd64=docker:bmk/linux-glibc:amd64@linux/amd64
+# the host runs the foreign binaries itself (qemu-user registered with binfmt)
+$ bmake test TARGET=linux TARGET_ARCH=amd64 TEST_RUNNER=local
+\end{lstlisting}
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Runner & Runs the tests \\
+\midrule
+\verb|ssh:[user@]host[:port]| & on that machine (\verb|BMK_SSH_OPTS| gives ssh its key and options) \\
+\verb|docker:<image>[@<platform>]| & in a throw-away container \\
+\verb|cmd:<program>| & wherever \verb|<program> <staged-dir>| runs them (a board, a custom VM) \\
+\verb|local| & here; for Linux, with \verb|QEMU_LD_PREFIX| set to the sysroot \\
+\bottomrule
+\end{tabular}
+\end{center}
+\verb|TEST_RUNNER| names one runner for every target; the per-target
+\verb|TEST_RUNNER.<os>-<arch>| wins. With no runner for a foreign
+target, \verb|bmake test| stops before building and names the variables
+to set: target binaries are never run on the wrong machine silently.
+OpenRider's 209 tests pass for \verb|linux-amd64| on a
+\verb|linux-arm64| host with \verb|TEST_RUNNER=local|.
+
+\section{Several Targets, One Run}
+
+\begin{lstlisting}[language=bash]
+$ for tc in llvm gcc; do bmake test TOOLCHAIN=$tc RUN_ID=ci-4821 REPORT=yes; done
+$ ls test-report/ci-4821/
+macos-arm64/  macos-arm64-gcc/
+\end{lstlisting}
+Each key keeps its own outputs, logs and dashboard under one
+\verb|RUN_ID|. \verb|bmake clean| removes the current key's output only;
+\verb|bmake clean TARGET=all| removes every key's.
+
+\section{The Project's Own Test Matrix}
+
+\texttt{Bmake It} tests itself on every platform it can reach with
+\verb|tests/harness/matrix.sh|: the suite natively on each platform
+(Linux in containers, FreeBSD and NetBSD in QEMU guests --- accelerated
+with hvf on macOS, KVM on Linux, WHPX on Windows --- macOS in a VM,
+Windows under Cygwin with every toolchain, and the BSD machine running
+the matrix itself), plus cross cells that build on one platform and run
+on another. Images, sysroots, guest packages and results live in
+\verb|BMK_CACHE| (a directory such as \verb|bsk/cache|); guests'
+packages are kept there so that a guest is rebuilt without the
+network\reqfoot{REQ-guest-packages-from-cache-req}. A cell that cannot
+run on the current host is reported \emph{blocked}, with the reason.
+\begin{lstlisting}[language=bash]
+$ cd tests/harness
+$ export BMK_CACHE=/path/to/bsk/cache
+$ sh matrix.sh list
+$ sh matrix.sh run 'native-freebsd_host-*'   # on a FreeBSD machine
+$ sh matrix.sh report
+\end{lstlisting}
+See \verb|tests/README.md| for the cells, the guests and the cache
+layout.
+
+%===============================================================
+\chapter{Testing}
+\label{ch:testing}
+%===============================================================
+
+\verb|bmake test| builds what is needed, runs a module's (or every
+module's) tests through Kyua, writes a JUnit report, and fails if any
+test fails\reqfoot{REQ-unit-test-feature-for-built-software-req}. Tests
+are written with ATF, in C, C++ or shell; Kyua runs them alike.
+
+\section{Unit Tests in a Module}
+
+A module names its tests; their sources are \verb|tests/<name>.c|,
+\verb|tests/<name>.cpp| or \verb|tests/<name>.sh|:
+\begin{lstlisting}[language=bmake]
+# OpenRider/libcore.m/makefile
+LIB=core
+LIBS=openrider_sdk cjson
+TESTS_CXX=types_test library_test log_test plugins_test
+.include "mk.lib.mk"
+\end{lstlisting}
+\begin{lstlisting}[language=C++]
+// OpenRider/libcore.m/tests/types_test.cpp
+#include <atf-c++.hpp>
+#include "core/type_catalog.h"
+
+ATF_TEST_CASE_WITHOUT_HEAD(source_mapping_wins_over_device_type);
+ATF_TEST_CASE_BODY(source_mapping_wins_over_device_type)
+{
+    const core::TypeCatalog c = Catalog();
+    const core::ActivityType t =
+        c.Resolve("garmin_connect", "backcountry_skiing", "running", "trail");
+    ATF_REQUIRE_EQ(t.Key(), "alpine_skiing/backcountry");
+}
+
+ATF_INIT_TEST_CASES(tcs) { ATF_ADD_TEST_CASE(tcs, source_mapping_wins_over_device_type); }
+\end{lstlisting}
+A test of a library links the library; a test of a program links the
+program's objects, without its \verb|main|. \verb|bmake test| builds
+the module first, so a test always runs against the current code.
+
+\section{Running Tests}
+
+\begin{lstlisting}[language=bash]
+$ bmake test                          # this module, framework or workspace
+$ bmake test TEST=types_test          # one test program
+$ bmake test FW=OpenRider             # one framework, from the workspace root
+$ bmake test REPORT=yes               # plus HTML reports and a dashboard
+$ bmake test FAIL_FAST=yes            # stop at the first failing module
+\end{lstlisting}
+\begin{lstlisting}
+types_test:source_mapping_wins_over_device_type  ->  passed  [0.004s]
+...
+===> test results: build/macos-arm64/runs/20261029-101530-4242/test-results.xml
+\end{lstlisting}
+The JUnit file is written whether the tests pass or not (a failure is
+when it matters most); Kyua's own store keeps every run's raw output
+(\verb|kyua report --verbose|).
+
+\section{Test Modules (\texttt{.tst})}
+
+Tests that exercise several libraries together, the installed programs,
+or scripts live in a \verb|<name>.tst| module: built by a plain
+\verb|bmake| (a test's compile error shows at build time) but never
+copied up, installed or packaged.
+\begin{lstlisting}
+plugin_check.tst/
+  makefile        TEST_PROG=... or PROG=<utility>, LIBS=...  .include "mk.tst.mk"
+  src/            compiled sources
+  testcases/*.sh  each script is an atf-sh test, found automatically
+\end{lstlisting}
+\begin{lstlisting}[language=bmake]
+# OpenRider/perf.tst/makefile
+TEST_PROG=perf_test
+LIBS=app core maptiles reproj
+.include "mk.tst.mk"
+\end{lstlisting}
+\verb|TEST_PROG=| builds an ATF test program; \verb|PROG=| builds a
+utility the scripts call (with both, \verb|TEST_SRCS=| says which
+sources are the test's). The scripts see the build results: the
+framework's and workspace's \verb|bin/| on \verb|PATH|, and
+\verb|BMK_SHAREDIR|.
+
+\section{Sanitizers}
+
+\begin{lstlisting}[language=bash]
+$ bmake test SANITIZE=address,undefined
+$ bmake run PROGRAM=openrider SANITIZE=address   # rebuild first: bmake SANITIZE=address
+\end{lstlisting}
+\verb|SANITIZE=| (\texttt{address}, \texttt{undefined}, \texttt{thread},
+\texttt{memory}, \texttt{leak}) instruments compile and link everywhere
+in the workspace; changing it rebuilds what it affects. An undefined
+behaviour aborts at its first occurrence instead of being logged and
+survived. Incompatible pairs (\texttt{address} with \texttt{thread} or
+\texttt{memory}) are an error, and MSVC offers \texttt{address}
+only\reqfoot{REQ-sanitizer-support-req}. The bundled example carries
+deliberate fixtures: \verb|libcalc| writes one element past its buffer,
+which \verb|SANITIZE=address| catches in \verb|calc_test|.
+
+\section{Tests on Other Targets and on Windows}
+
+A foreign target's tests run on a test runner (Chapter~\ref{ch:cross}).
+On Windows \verb|bmake test| runs for Cygwin output: the test programs
+find their DLLs on \verb|PATH|. For mingw-w64 and MSVC output it stops
+before building and says why --- the ATF that Kyua runs with on Windows
+is a Cygwin library, which native programs cannot
+link\reqfoot{REQ-test-windows-dll-paths-req}.
+
+%===============================================================
+\chapter{Linting}
+\label{ch:linting}
+%===============================================================
+
+\texttt{Bmake It} manages compiler warnings itself and leaves static
+analysis to the tools made for it, fed from the same build. This
+chapter shows both.
+
+\section{Warnings}
+
+Every module compiles with \verb|-Wall -Wextra| (\verb|/W4| under
+MSVC)\reqfoot{REQ-warn-macro-req}. Third-party code is kept quiet in two
+ways, so that what remains are the project's own warnings:
+\begin{lstlisting}[language=bmake]
+# a module compiling vendored sources: no warnings from it
+WARN=none
+
+# a third-party framework: its public headers reach its users with
+# -isystem, so they do not warn in the users' compiles either
+PUBLIC_HEADERS_SYSTEM=yes
+\end{lstlisting}
+OpenRider's dependency framework sets \verb|PUBLIC_HEADERS_SYSTEM=yes|
+and its compiled third-party modules \verb|WARN=none|. To make warnings
+errors in the project's own code, add the flag in a hook file
+(Section~\ref{sec:hooks}) of the project's framework, which leaves the
+vendored framework alone:
+\begin{lstlisting}[language=bmake]
+# OpenRider/mk/pre.mk  (the framework's hooks, not the workspace's)
+CFLAGS   += -Werror
+CXXFLAGS += -Werror
+\end{lstlisting}
+Changing flags rebuilds the objects they affect: the build records its
+inputs and recompiles when they change.
+
+\section{Documentation Coverage}
+
+\verb|DOC_WARN_IF_UNDOCUMENTED=YES| in a framework makes
+\verb|bmake docs| report every undocumented entity of its public (and
+\verb|DOC_INPUT_EXTRA|) headers --- a lint for the documented
+interface. OpenRider sets it on its own framework.
+
+\section{Static Analysis: clang-tidy, cppcheck}
+
+\texttt{Bmake It} has no lint target; analysers read a \emph{compilation
+database} (\verb|compile_commands.json|) recording each file's exact
+compile command, which a recording tool writes during an ordinary build.
+With Bear:
+\begin{lstlisting}[language=bash]
+$ bmake clean && bear -- bmake          # writes compile_commands.json
+$ run-clang-tidy -p . OpenRider/        # clang-tidy, with the project's .clang-tidy
+$ cppcheck --project=compile_commands.json --enable=warning,style
+\end{lstlisting}
+OpenRider keeps its naming rules in a \verb|.clang-tidy| at the
+workspace root and ignores \verb|compile_commands.json| in version
+control; its header filter limits the checks to the project's own
+headers, so third-party code is not analysed. Record the database per
+target key: a cross build's commands carry the target's flags and
+sysroot.
+
+\section{Sanitizers as Run-Time Lint}
+
+Sanitizers find what static analysis misses --- out-of-bounds accesses,
+use after free, undefined behaviour, data races --- while the tests run:
+\verb|bmake test SANITIZE=address,undefined| (Chapter~\ref{ch:testing}).
+A periodic sanitizing run can keep its own dashboard with
+\verb|TEST_REPORT_DIR=test-report-sanitized|.
+
+%===============================================================
+\chapter{Profiling}
+\label{ch:profiling}
+%===============================================================
+
+\texttt{Bmake It} has no profiling target of its own. A profiler is
+either a program run around yours --- which \verb|bmake run| does with
+the right libraries found --- or compiler instrumentation, which is
+a matter of flags, best switched on with a variable of the project's
+own in a hook file. Performance can also be held as a test.
+
+\section{Sampling Profilers}
+
+\begin{lstlisting}[language=bash]
+$ bmake run PROGRAM=perf ARGS="record -g openrider --snapshot out.png"   # Linux
+$ bmake run PROGRAM=perf ARGS="report"
+$ bmake run PROGRAM=valgrind ARGS="--tool=callgrind openrider"         # Linux, FreeBSD
+$ bmake run PROGRAM=bash        # then: dtrace, pmcstat, xctrace ... by hand
+\end{lstlisting}
+Build with symbols (\verb|DEBUG_FLAGS=-g|) and optimisations, so the
+profile shows the code you ship with readable names. Keep frame
+pointers for call graphs with \verb|-fno-omit-frame-pointer|.
+
+\section{Instrumented Builds: gprof and Coverage}
+
+Instrumentation changes compile and link flags for every module. Give
+the project a switch in its workspace hook file, so one command line
+turns it on everywhere and another target key's build is not affected
+by mistake:
+\begin{lstlisting}[language=bmake]
+# mk/pre.mk (the workspace's)
+.if ${PROFILE:U} == "gprof"
+CFLAGS   += -pg
+CXXFLAGS += -pg
+LDFLAGS  += -pg
+.elif ${PROFILE:U} == "coverage"
+CFLAGS   += --coverage -O0
+CXXFLAGS += --coverage -O0
+LDFLAGS  += --coverage
+.endif
+\end{lstlisting}
+\begin{lstlisting}[language=bash]
+$ bmake PROFILE=gprof TOOLCHAIN=gcc && bmake run PROGRAM=openrider
+$ gprof build/linux-amd64-gcc/bin/openrider gmon.out | less
+$ bmake test PROFILE=coverage && gcovr -r .         # coverage of the test suite
+\end{lstlisting}
+\verb|PROFILE| is the project's variable, not \texttt{Bmake It}'s; a
+command-line variable reaches every framework and module of the run.
+The build records its flags, so switching \verb|PROFILE| on and off
+rebuilds what it affects. Do not add these flags to \verb|CFLAGS| on
+the command line itself: a command-line \verb|CFLAGS| replaces the
+makefiles' value instead of adding to it.
+
+\section{Performance as a Test}
+
+OpenRider keeps its hot paths --- reprojection, track drawing, tile
+warping --- in a \verb|perf.tst| test module. Each measurement is
+divided by the time of a fixed calibration workload run on the same
+machine, and must stay within a budget of three to ten times the ratio
+measured when it was set, so the budgets hold on any host, emulated or
+not, and only a gross regression fails. Every figure is printed, so
+\verb|kyua report --verbose| shows the trend:
+\begin{lstlisting}[language=bash]
+$ bmake test FW=OpenRider TEST=perf_test
+$ kyua report --verbose | grep -A20 perf_test
+\end{lstlisting}
 
 %===============================================================
 \chapter{Tutorial: Building \texttt{System} and \texttt{Hello} From Scratch}

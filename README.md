@@ -221,10 +221,8 @@ progress messages print only when work happened.
   staging a system library into a packaging tree) is explicitly parked
   until the cross-platform test harness itself is tackled seriously.
 - Header dependency tracking (`-MMD -MP`, a header change rebuilds
-  exactly the affected objects) works for `TOOLCHAIN=gcc`/`llvm`; MSVC
-  has no equivalent yet (`cl.exe`'s own mechanism, `/showIncludes`, is
-  stdout-based rather than a generated file, and needs wrapper-side
-  parsing not built yet).
+  exactly the affected objects) works for every toolchain; under MSVC the
+  `cl.exe` wrapper writes the same dependency file from `/showIncludes`.
 - Imported libraries (`IMPORT=`, see `docs/spec/25-imported-libraries.md`)
   cache their `pkg-config` resolution per module (a second build with
   nothing relevant changed makes no `pkg-config` calls at all). Only a

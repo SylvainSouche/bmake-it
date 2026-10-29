@@ -31,7 +31,7 @@
 # that DID run reported a failure.
 #
 # Sysroots are never bundled or fetched by this script -- see
-# scripts/prep-*-sysroot.sh for how to stage each one. Point this script at
+# tests/harness/fetch/build-sysroot-*.sh for how to stage each one. Point this script at
 # existing staged sysroots via:
 #   BMK_FREEBSD_SYSROOT=/path/to/freebsd-sysroot
 #   BMK_LINUX_SYSROOT=/path/to/linux-sysroot   (used for linux->freebsd's
@@ -214,7 +214,7 @@ job_cross_linux_freebsd() {
         return
     fi
     if [ -z "$BMK_FREEBSD_SYSROOT" ] || [ ! -d "$BMK_FREEBSD_SYSROOT" ]; then
-        record cross-linux-freebsd SKIP "BMK_FREEBSD_SYSROOT not set/found (see scripts/prep-freebsd-sysroot.sh)"
+        record cross-linux-freebsd SKIP "BMK_FREEBSD_SYSROOT not set/found (see tests/harness/fetch/build-sysroot-freebsd.sh)"
         return
     fi
     stage=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")
@@ -246,7 +246,7 @@ job_cross_linux_macos() {
         return
     fi
     if [ -z "$BMK_MACOS_SYSROOT" ] || [ ! -f "$BMK_MACOS_SYSROOT" ] && [ ! -d "$BMK_MACOS_SYSROOT" ]; then
-        record cross-linux-macos SKIP "BMK_MACOS_SYSROOT not set/found (see scripts/prep-macos-sysroot.sh)"
+        record cross-linux-macos SKIP "BMK_MACOS_SYSROOT not set/found (see tests/harness/fetch/build-sysroot-macos.sh)"
         return
     fi
     stage=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")
@@ -298,7 +298,7 @@ job_cross_netbsd_linux() {
         return
     fi
     if ! netbsd_ssh 'test -d /root/linux-sysroot/sysroot' >/dev/null 2>&1; then
-        record cross-netbsd-linux SKIP "no Linux sysroot staged on VM at /root/linux-sysroot/sysroot (see scripts/prep-linux-sysroot.sh)"
+        record cross-netbsd-linux SKIP "no Linux sysroot staged on VM at /root/linux-sysroot/sysroot (see tests/harness/fetch/build-sysroot-linux.sh)"
         return
     fi
     (
@@ -333,7 +333,7 @@ job_cross_linux_arm64_amd64() {
         return
     fi
     if [ -z "$BMK_LINUX_AMD64_SYSROOT" ] || [ ! -f "$BMK_LINUX_AMD64_SYSROOT" ]; then
-        record cross-linux-arm64-amd64 SKIP "BMK_LINUX_AMD64_SYSROOT not set/found -- a .tar of an amd64 Linux sysroot (usr/include, usr/lib/x86_64-linux-gnu, usr/lib/gcc/x86_64-linux-gnu, and a REAL non-symlink /lib64/ld-linux-x86-64.so.2). Kept as a tar and extracted inside the container, same as BMK_MACOS_SYSROOT -- extracting Linux headers directly onto macOS's case-insensitive filesystem corrupts them (see scripts/prep-linux-sysroot.sh)."
+        record cross-linux-arm64-amd64 SKIP "BMK_LINUX_AMD64_SYSROOT not set/found -- a .tar of an amd64 Linux sysroot (usr/include, usr/lib/x86_64-linux-gnu, usr/lib/gcc/x86_64-linux-gnu, and a REAL non-symlink /lib64/ld-linux-x86-64.so.2). Kept as a tar and extracted inside the container, same as BMK_MACOS_SYSROOT -- extracting Linux headers directly onto macOS's case-insensitive filesystem corrupts them (see tests/harness/fetch/build-sysroot-linux.sh)."
         return
     fi
     stage=$(mktemp -d "$HOME/.bmk-stage.XXXXXX")

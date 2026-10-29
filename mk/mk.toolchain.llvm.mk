@@ -67,7 +67,7 @@ RANLIB ?= ranlib
 # fully open and freely redistributable; a Linux sysroot is just files from
 # a real Linux system; the macOS SDK is Apple-licensed for building on/for
 # Apple platforms -- extract your own from a local Xcode install, don't
-# redistribute it). See scripts/prep-*-sysroot.sh.
+# redistribute it). See tests/harness/fetch/build-sysroot-*.sh.
 # ---------------------------------------------------------------------------
 # Skip the sysroot requirement for a bare `-V` query or a `clean` -- neither
 # actually invokes the compiler, so a missing sysroot shouldn't block them
@@ -87,12 +87,12 @@ _CROSS_ARCH = ${TARGET_ARCH}
 #  @impl 0f87-6a98-5de3-61b8
 .  if ${TARGET} == "freebsd"
 .    if !defined(BMK_FREEBSD_SYSROOT) || empty(BMK_FREEBSD_SYSROOT)
-.      error "Cross-compiling TARGET=freebsd requires BMK_FREEBSD_SYSROOT=/path/to/sysroot -- extract usr/include, usr/lib, lib from a FreeBSD release's base.txz (https://download.freebsd.org/ftp/releases/<arch>/<arch>/<version>-RELEASE/base.txz), no FreeBSD host needed. See scripts/prep-freebsd-sysroot.sh."
+.      error "Cross-compiling TARGET=freebsd requires BMK_FREEBSD_SYSROOT=/path/to/sysroot -- extract usr/include, usr/lib, lib from a FreeBSD release's base.txz (https://download.freebsd.org/ftp/releases/<arch>/<arch>/<version>-RELEASE/base.txz), no FreeBSD host needed. tests/harness/fetch/build-sysroot-freebsd.sh in the Bmake It tree makes one, as a tar to extract."
 .    endif
 _CROSS_FLAGS = --target=${_CROSS_ARCH}-unknown-freebsd --sysroot=${BMK_FREEBSD_SYSROOT} -fuse-ld=lld
 .  elif ${TARGET} == "linux"
 .    if !defined(BMK_LINUX_SYSROOT) || empty(BMK_LINUX_SYSROOT)
-.      error "Cross-compiling TARGET=linux requires BMK_LINUX_SYSROOT=/path/to/sysroot -- usr/include, usr/lib/<multiarch>, lib/<multiarch> from a real Linux system (a distro rootfs is fine). See scripts/prep-linux-sysroot.sh. Note: extract it on a case-SENSITIVE filesystem -- Linux kernel headers contain names that collide on case-insensitive ones (e.g. macOS APFS default)."
+.      error "Cross-compiling TARGET=linux requires BMK_LINUX_SYSROOT=/path/to/sysroot -- usr/include, usr/lib/<multiarch>, lib/<multiarch> from a real Linux system (a distro rootfs is fine). tests/harness/fetch/build-sysroot-linux.sh in the Bmake It tree makes one, as a tar to extract. Note: extract it on a case-SENSITIVE filesystem -- Linux kernel headers contain names that collide on case-insensitive ones (e.g. macOS APFS default)."
 .    endif
 # No "unknown" vendor component here (unlike the freebsd/macos triples):
 # clang locates a distro's multiarch headers (.../usr/include/<triple>/bits/...)
@@ -103,7 +103,7 @@ _CROSS_FLAGS = --target=${_CROSS_ARCH}-unknown-freebsd --sysroot=${BMK_FREEBSD_S
 _CROSS_FLAGS = --target=${_CROSS_ARCH}-linux-gnu --sysroot=${BMK_LINUX_SYSROOT} -fuse-ld=lld
 .  elif ${TARGET} == "macos"
 .    if !defined(BMK_MACOS_SYSROOT) || empty(BMK_MACOS_SYSROOT)
-.      error "Cross-compiling TARGET=macos requires BMK_MACOS_SYSROOT=/path/to/MacOSX.sdk -- extract your own from a local Xcode install (xcrun --show-sdk-path on a Mac). Apple's SDK license covers building on/for Apple platforms; use your own extracted copy, don't redistribute it. See scripts/prep-macos-sysroot.sh."
+.      error "Cross-compiling TARGET=macos requires BMK_MACOS_SYSROOT=/path/to/MacOSX.sdk -- extract your own from a local Xcode install (xcrun --show-sdk-path on a Mac). Apple's SDK license covers building on/for Apple platforms; use your own extracted copy, don't redistribute it. tests/harness/fetch/build-sysroot-macos.sh in the Bmake It tree makes one, as a tar to extract."
 .    endif
 # The SDK's own version doubles as the default deployment target unless the
 # caller wants something older (BMK_MACOS_MIN_VERSION=).
@@ -119,7 +119,7 @@ _CROSS_FLAGS = --target=${_CROSS_ARCH}-apple-macos${_MACOS_MIN_VERSION} --sysroo
 #  @impl 0f87-6a98-5de3-a99c
 .  elif ${TARGET} == "netbsd"
 .    if !defined(BMK_NETBSD_SYSROOT) || empty(BMK_NETBSD_SYSROOT)
-.      error "Cross-compiling TARGET=netbsd requires BMK_NETBSD_SYSROOT=/path/to/sysroot -- usr/include, usr/lib, and libexec/ld.elf_so from a real NetBSD system (a provisioned NetBSD VM is fine). See scripts/prep-netbsd-sysroot.sh."
+.      error "Cross-compiling TARGET=netbsd requires BMK_NETBSD_SYSROOT=/path/to/sysroot -- usr/include, usr/lib, and libexec/ld.elf_so from a real NetBSD system (a provisioned NetBSD VM is fine). tests/harness/fetch/build-sysroot-netbsd.sh in the Bmake It tree makes one, as a tar to extract."
 .    endif
 # NetBSD's own dynamic linker is /libexec/ld.elf_so, not /lib/ld-* like
 # glibc/musl Linux -- the sysroot must have that file at that exact path

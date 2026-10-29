@@ -29,9 +29,10 @@ Facts about the current code, so the rest can be read as a delta.
   `BMK_FREEBSD_SYSROOT`, `BMK_NETBSD_SYSROOT`, `BMK_MACOS_SYSROOT` — and
   builds `--target=<arch>-<os> --sysroot=<dir> -fuse-ld=lld`. A missing one is
   an error. gcc never cross-compiles. Nothing provisions or remembers a
-  sysroot: the error message points at `scripts/prep-*-sysroot.sh`, **which do
-  not exist**; the scripts that build sysroots are in `tests/harness/fetch/`
-  and are written for the harness.
+  sysroot: the error message points at the scripts that build one,
+  `tests/harness/fetch/build-sysroot-<os>.sh` (written for the harness: they
+  produce a tar, to extract). Until 2026-10-29 it named
+  `scripts/prep-*-sysroot.sh`, which never existed.
 - **Hooks.** `mk/pre.mk`, `pre.<os>.mk`, `local.mk`, ... in `PARENT_WS`, the
   workspace, the framework and the module, outer to inner. No machine-wide or
   per-user level.
