@@ -45,11 +45,11 @@ rc=0; bmake >build2.log 2>&1 || rc=$?
 [ $rc != 0 ] || { echo "a failing test module must still fail the build" >&2; exit 1; }
 grep -q "framework Fw: only test modules failed (broken.tst) -- its programs and libraries are copied up all the same" build2.log || {
     cat build2.log >&2; exit 1; }
-[ "$(cd Fw && bmake run PROGRAM=hello)" = "hello from hello" ]
+[ "$(cd Fw && bmake run PROGRAM=hello | tr -d '\r')" = "hello from hello" ]
 
 # Once everything builds, the build succeeds.
 rm -rf Fw/broken.tst
 bmake >build3.log 2>&1
-[ "$(cd Fw && bmake run PROGRAM=hello)" = "hello from hello" ]
+[ "$(cd Fw && bmake run PROGRAM=hello | tr -d '\r')" = "hello from hello" ]
 
 echo "run-after-failed-build OK"

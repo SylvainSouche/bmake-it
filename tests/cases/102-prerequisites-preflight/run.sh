@@ -42,13 +42,15 @@ if command -v pkg-config >/dev/null 2>&1; then
     # a PATH with every tool but pkg-config
     for d in $(echo "$PATH" | tr ':' ' '); do
         for f in "$d"/*; do
-            n=${f##*/}; case "$n" in pkg-config|pkgconf|pkg-config.exe|pkgconf.exe) continue ;; esac
+            # (every pkg-config: also x86_64-w64-mingw32-pkg-config, ABI=mingw's)
+            n=${f##*/}; case "$n" in *pkg-config*|*pkgconf*) continue ;; esac
             [ -x "$f" ] && [ ! -e "$nopc/$n" ] && ln -s "$f" "$nopc/$n" 2>/dev/null || true
         done
     done
     rc=0; ( cd Need/liba.m && PATH="$nopc" bmake >../../nopc.log 2>&1 ) || rc=$?
     [ $rc != 0 ] || { echo "the build should fail without pkg-config" >&2; exit 1; }
-    grep -q "pkg-config is not installed" nopc.log || { echo "no pkg-config must be said so:" >&2; cat nopc.log >&2; exit 1; }
+    # (ABI=mingw names the mingw-w64 pkg-config it needs instead)
+    grep -qE "pkg-config is not installed|no pkg-config for .* output: .*pkg-config is not on PATH" nopc.log || { echo "no pkg-config must be said so:" >&2; cat nopc.log >&2; exit 1; }
 fi
 rm -rf Need
 
