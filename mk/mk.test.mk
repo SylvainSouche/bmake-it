@@ -67,13 +67,17 @@ _TEST_SH_SEL  = ${TESTS_SH}
 .if make(test) && ${_XTEST_NATIVE_WIN:Uno} != "yes"
 .  if !empty(_TEST_CXX_SEL)
 _ATF_CXX_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
-.    if ${_ATF_CXX_HOW} == "no"
+.    if !empty(_ATF_CXX_HOW:Mruntime=*)
+.      error "TESTS_CXX=${_TEST_CXX_SEL}: ATF's C++ library atf-c++ ${_ATF_RUNTIME_ONLY:S|@RT@|${_ATF_CXX_HOW:S/^runtime=//}|}"
+.    elif ${_ATF_CXX_HOW} == "no"
 .      error "TESTS_CXX=${_TEST_CXX_SEL}: ATF's C++ library atf-c++ ${_ATF_NOT_FOUND}"
 .    endif
 .  endif
 .  if !empty(_TEST_C_SEL)
 _ATF_C_HOW != set -- atf-c '${CC}' c; ${_ATF_FOUND_CMD}
-.    if ${_ATF_C_HOW} == "no"
+.    if !empty(_ATF_C_HOW:Mruntime=*)
+.      error "TESTS_C=${_TEST_C_SEL}: ATF's C library atf-c ${_ATF_RUNTIME_ONLY:S|@RT@|${_ATF_C_HOW:S/^runtime=//}|}"
+.    elif ${_ATF_C_HOW} == "no"
 .      error "TESTS_C=${_TEST_C_SEL}: ATF's C library atf-c ${_ATF_NOT_FOUND}"
 .    endif
 .  endif

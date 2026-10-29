@@ -140,7 +140,7 @@ all: _check_requires _create_fw_dirs _build_modules _aggregate _check_build_fail
 _check_requires:
 .if ${BMK_REQUIRES_CHECKED:U} != "yes"
 	@if [ -n "${BMK_REQUIRES_LIST:U}" ]; then _list="${BMK_REQUIRES_LIST:U}"; else _list=$$(mktemp); fi; \
-	for _m in ${MODULE_CHECK:U}; do \
+	for _m in ${MODULE_CHECK:U} ${SUBDIR_TESTMODS}; do \
 		_err=$$(mktemp); \
 		if _r=$$(${MAKE} -C ${.CURDIR}/$$_m -V '$${_REQUIRES_REPORT}' BMK_REQUIRES_CHECK=yes \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
@@ -405,12 +405,18 @@ _aggregate:
 
 # Copy framework outputs up to workspace
 # @impl 0f87-6a98-8ee9-ae83
-copy-up: all
-	@_WS=${.CURDIR}/..; \
+# _copy_up: the same copy without building first -- what the workspace asks
+# for when only test modules failed (tst-failure-does-not-block-copy-up-req,
+# mk.workspace.mk).
+_FW_COPY_UP = _WS=${.CURDIR}/..; \
 	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${BINDIR_LOCAL} $$_WS/${BINDIR_LOCAL}; \
 	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${LIBDIR_LOCAL} $$_WS/${LIBDIR_LOCAL}; \
 	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${SHAREDIR_LOCAL} $$_WS/${SHAREDIR_LOCAL}; \
 	echo "===> framework ${.CURDIR:T} copy-up → workspace"
+copy-up: all
+	@${_FW_COPY_UP}
+_copy_up:
+	@${_FW_COPY_UP}
 
 # leftover-module-dir-skipped-and-cleaned-req: a *.m/*.tst with no makefile
 # cannot clean itself -- `make clean` inside it just failed, silently, and

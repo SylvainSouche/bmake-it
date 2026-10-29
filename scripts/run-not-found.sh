@@ -31,7 +31,7 @@ done
     latest="$ws/$fw/$broot/runs/latest"
     if [ -f "$latest/build.failed" ]; then
         mods=$(sed -n "s/^===> framework $fw BUILD FAILED: *//p" "$latest/build.log" 2>/dev/null | tail -1)
-        echo "       framework $fw's last build failed${mods:+ (modules: $mods)}, and a framework is copied up only when all of it builds"
+        echo "       framework $fw's last build failed${mods:+ (modules: $mods)}, so it was not copied up (only a failure of test modules alone still copies it up)"
         echo "       see $fw/$broot/runs/latest/build.log -- fix it, then build again"
     else
         echo "       framework $fw has not been copied up since -- build again from the workspace"

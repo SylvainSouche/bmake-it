@@ -181,4 +181,4 @@ _REQUIRES_HOW.${_t} = tool
 .endif
 
 # one word per missing entry, <entry>%<how>, for the preflight to print
-_REQUIRES_REPORT = ${_REQUIRES_MISSING:@r@${r}%${_REQUIRES_HOW.${r}}@}
+_REQUIRES_REPORT = ${_REQUIRES_MISSING:@r@${r}%${_REQUIRES_HOW.${r}}@} ${_TST_ATF_REPORT:U}

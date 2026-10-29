@@ -41,7 +41,7 @@ all:
 
 # (_check_requires: an excluded framework has nothing to check -- the
 # workspace's preflight asks every framework, requires-preflight-req)
-copy-up test docs add-prereq _fw_build_closure _check_requires:
+copy-up _copy_up test docs add-prereq _fw_build_closure _check_requires:
 	@:
 
 clean:

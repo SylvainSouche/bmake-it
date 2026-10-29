@@ -101,6 +101,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "atf-runtime-only-is-named-req": {
+    "active": true,
+    "id": "7854-6ae3-3af3-93db",
+    "status": "confirmed",
+    "type": "req"
+  },
   "bmake-docs-scoping-fix-req": {
     "active": true,
     "id": "0f87-6abe-3f73-5888",
@@ -4058,6 +4064,12 @@
   "transitive-linkdeps-missing-l-fix-req": {
     "active": true,
     "id": "0f87-6abe-3f27-075c",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "tst-failure-does-not-block-copy-up-req": {
+    "active": true,
+    "id": "7854-6ae3-3af2-b095",
     "status": "confirmed",
     "type": "req"
   },

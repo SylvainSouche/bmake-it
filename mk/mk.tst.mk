@@ -96,14 +96,30 @@ _TST_FLAVOR = cxx
 # `test`): found, or stop here saying what was looked for
 # (atf-not-found-is-explained-req) -- OpenRider's perf.tst and scale.tst
 # reached the linker with a bare -latf-c++ (FreeBSD, 2026-10-29).
-.  if empty(.MAKEFLAGS:M-V*) && !make(clean) && !make(help) && ${TARGET} != "win"
+# requires-preflight-req: the preflight asks .tst modules too
+# (BMK_REQUIRES_CHECK=yes, under -V): a missing ATF is then one more entry
+# in the one list (_REQUIRES_REPORT, mk.requires.mk), before anything is
+# built -- it was found only once the build reached the test modules.
+# Not for a native Windows runtime (MSVC, mingw -- also a cross build to
+# Windows), which has no ATF; Cygwin output has (it was skipped there too).
+_TST_NATIVE_WIN = no
+.  if ${TARGET:U} == "win" && (${TOOLCHAIN:U} == "msvc" || ${ABI:U} == "mingw" || empty(.MAKE.OS:U:tl:Mcygwin*))
+_TST_NATIVE_WIN = yes
+.  endif
+_TST_ATF_REPORT =
+.  if (empty(.MAKEFLAGS:M-V*) || ${BMK_REQUIRES_CHECK:U} == "yes") && !make(clean) && !make(help) && ${_TST_NATIVE_WIN} == "no"
+_TST_ATF_LIB = ${_TST_FLAVOR:S/cxx/atf-c++/:S/^c$/atf-c/}
 .    if ${_TST_FLAVOR} == "cxx"
 _TST_ATF_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
 .    else
 _TST_ATF_HOW != set -- atf-c '${CC}' c; ${_ATF_FOUND_CMD}
 .    endif
-.    if ${_TST_ATF_HOW} == "no"
-.      error "TEST_PROG=${TEST_PROG}: ATF's ${_TST_FLAVOR:S/cxx/C++/:S/c/C/} library ${_TST_FLAVOR:S/cxx/atf-c++/:S/^c$/atf-c/} ${_ATF_NOT_FOUND}"
+.    if ${_TST_ATF_HOW} != "pc" && ${_TST_ATF_HOW} != "lib" && ${BMK_REQUIRES_CHECK:U} == "yes"
+_TST_ATF_REPORT = ${_TST_ATF_LIB}%atf${_TST_ATF_HOW:Mruntime=*:S/^runtime=/rt=/}
+.    elif !empty(_TST_ATF_HOW:Mruntime=*)
+.      error "TEST_PROG=${TEST_PROG}: ATF's ${_TST_FLAVOR:S/cxx/C++/:S/c/C/} library ${_TST_ATF_LIB} ${_ATF_RUNTIME_ONLY:S|@RT@|${_TST_ATF_HOW:S/^runtime=//}|}"
+.    elif ${_TST_ATF_HOW} == "no"
+.      error "TEST_PROG=${TEST_PROG}: ATF's ${_TST_FLAVOR:S/cxx/C++/:S/c/C/} library ${_TST_ATF_LIB} ${_ATF_NOT_FOUND}"
 .    endif
 .  endif
 .  if ${_TST_FLAVOR} == "cxx"

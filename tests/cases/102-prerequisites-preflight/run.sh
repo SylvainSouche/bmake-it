@@ -66,5 +66,32 @@ grep -q "workspace BUILD FAILED: Brk" brk.log
 ! grep -q "workspace build complete" brk.log
 ! grep -qE "bad number|Unknown directive" brk.log
 ! grep -q "main.c" brk.log   # user.m was never compiled
+rm -rf Brk
+
+# --- 4. a .tst module's ATF is in the list too (atf-runtime-only-is-named-req) -------
+# FreeBSD (2026-10-29): FreeBSD-atf (the base system's run-time part) but not
+# the atf package -- reported only once the build reached the test modules,
+# and only as "not found". The probe's answer is forced from the command
+# line, so this runs whether or not ATF is installed here.
+if ! native_win_runtime; then
+    mk Tst/makefile 'PREREQS=\n.include "mk.framework.mk"\n'
+    mk Tst/hello.m/makefile 'PROG=hello\n.include "mk.prog.mk"\n'
+    mk Tst/hello.m/src/main.c 'int main(void){return 0;}\n'
+    mk Tst/t.tst/makefile 'TEST_PROG=t_test\n.include "mk.tst.mk"\n'
+    mk Tst/t.tst/src/t_test.cpp '#include <atf-c++.hpp>\nATF_INIT_TEST_CASES(tcs) {}\n'
+    rc=0; bmake '_ATF_FOUND_CMD=echo runtime=/fake/lib/libatf-c++.so.2' >atfrt.log 2>&1 || rc=$?
+    [ $rc != 0 ] || { echo "a missing ATF must fail the build" >&2; cat atfrt.log >&2; exit 1; }
+    grep -q "missing prerequisites -- nothing was built" atfrt.log || { cat atfrt.log >&2; exit 1; }
+    grep -q "Tst/t.tst: atf-c++ -- ATF library for this test module: only its run-time library is installed (/fake/lib/libatf-c++.so.2)" atfrt.log
+    grep -q "FreeBSD-atf" atfrt.log
+    [ -z "$(find . -name '*.o')" ] || { echo "something was built:" >&2; find . -name '*.o' >&2; exit 1; }
+    rc=0; bmake '_ATF_FOUND_CMD=echo no' >atfno.log 2>&1 || rc=$?
+    [ $rc != 0 ] && grep -q "Tst/t.tst: atf-c++ -- ATF library for this test module: no .pc file" atfno.log || {
+        echo "ATF not found at all must be listed:" >&2; cat atfno.log >&2; exit 1; }
+    # A build of the module alone stops on it, with the same explanation.
+    rc=0; ( cd Tst/t.tst && bmake '_ATF_FOUND_CMD=echo runtime=/fake/lib/libatf-c++.so.2' ) >atfmod.log 2>&1 || rc=$?
+    [ $rc != 0 ] && grep -q "atf-c++ is only installed as a run-time library (/fake/lib/libatf-c++.so.2)" atfmod.log || {
+        echo "the module build must explain a run-time-only ATF:" >&2; cat atfmod.log >&2; exit 1; }
+fi
 
 echo "prerequisites-preflight OK"

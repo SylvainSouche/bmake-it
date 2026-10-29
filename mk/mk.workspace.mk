@@ -212,6 +212,12 @@ SUBDIR_FRAMEWORKS := ${FRAMEWORK_SUBDIR}
 # nothing to do).
 # @impl 0f87-6abf-aeba-66f1
 # @impl 0f87-6abf-aeba-b9eb
+# tst-failure-does-not-block-copy-up-req: a framework whose only failed
+# modules are .tst ones is still copied up (_copy_up, no rebuild), says so,
+# and does not get its dependents skipped (build.testsonly); the build
+# still fails. A test that did not link kept OpenRider's own program out of
+# the workspace, so `run` could not find it (FreeBSD, 2026-10-29).
+# @impl 7854-6ae3-3af2-b095
 _build_frameworks:
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@_rundir=${.CURDIR}/${_f}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
@@ -224,7 +230,7 @@ _build_frameworks:
 	if [ "$$_anyfail" = yes ]; then \
 		for _p in $$(${MAKE} -C ${_f} -V PREREQS 2>/dev/null); do \
 			_pd=${.CURDIR}/$$_p/${BUILD_ROOT}/runs/${RUN_ID}; \
-			if [ -f "$$_pd/build.failed" ]; then \
+			if [ -f "$$_pd/build.failed" ] && [ ! -f "$$_pd/build.testsonly" ]; then \
 				_why=$$_p; \
 				if [ -f "$$_pd/build.skipped" ]; then _root=$$(cat "$$_pd/build.skipped"); else _root=$$_p; fi; \
 				break; \
@@ -257,7 +263,18 @@ _build_frameworks:
 		if [ "$$_rc" -eq 0 ]; then \
 			rm -f "$$_rundir/build.failed"; \
 		else \
-			touch "$$_rundir/build.failed"; \
+			touch "$$_rundir/build.failed"; rm -f "$$_rundir/build.testsonly"; \
+			_tf=""; _mf=""; \
+			for _m in ${.CURDIR}/${_f}/*.m ${.CURDIR}/${_f}/*.tst; do \
+				if [ -f "$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+					case "$$_m" in *.tst) _tf="$$_tf $${_m##*/}" ;; *) _mf="$$_mf $${_m##*/}" ;; esac; \
+				fi; \
+			done; \
+			if [ -n "$$_tf" ] && [ -z "$$_mf" ] && ${MAKE} -C ${_f} _copy_up \
+				TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} BMK_MKDIR=${BMK_MKDIR} >/dev/null; then \
+				touch "$$_rundir/build.testsonly"; \
+				echo "===> framework ${_f}: only test modules failed ($${_tf# }) -- its programs and libraries are copied up all the same" >&2; \
+			fi; \
 			echo "===> framework ${_f} build FAILED -- see ${_f}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
 			if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
 		fi; \

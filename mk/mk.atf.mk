@@ -29,8 +29,21 @@ _ATF_PC_ENV   = env PKG_CONFIG_PATH=${_ATF_PC_DIRS:O:u:ts:}$${PKG_CONFIG_PATH:+:
 # -latf-c++ it cannot resolve ("unable to find library -latf-c++", FreeBSD,
 # 2026-10-29).
 # @impl 7854-6ae3-2698-aa85
+#
+# atf-runtime-only-is-named-req: when neither works but the library's
+# run-time file is there (lib<it>.so.N), the answer is runtime=<file>: only
+# the run-time part is installed, not what building against it needs
+# (headers, .pc, lib<it>.so) -- FreeBSD's base package FreeBSD-atf instead
+# of the atf package, Debian's libatf-c++-2 without libatf-dev (FreeBSD,
+# 2026-10-29: "FreeBSD-atf was installed not atf itself").
+# @impl 7854-6ae3-3af3-93db
 _ATF_FOUND_CMD = { ${_ATF_PC_ENV} pkg-config --exists $$1 2>/dev/null && echo pc; } || \
-	{ _o=$${TMPDIR:-/tmp}/bmk-atf-probe.$$$$; echo 'int main(void){return 0;}' | $$2 -x $$3 - -l$$1 -o "$$_o" >/dev/null 2>&1 && echo lib; rm -f "$$_o" "$$_o.exe"; } | grep . || echo no
-_ATF_NOT_FOUND = not found -- pkg-config finds no .pc for it (searched its default path and ${_ATF_PC_DIRS:O:u}), and -l<it> does not link either. Install ATF (FreeBSD: pkg install atf; NetBSD: pkg_add atf; Debian: apt install libatf-dev; MacPorts: port install atf), or add the directory holding its .pc file to PKG_CONFIG_PATH
+	{ _o=$${TMPDIR:-/tmp}/bmk-atf-probe.$$$$; echo 'int main(void){return 0;}' | $$2 -x $$3 - -l$$1 -o "$$_o" >/dev/null 2>&1 && echo lib; rm -f "$$_o" "$$_o.exe"; } | grep . || \
+	{ _rt=$$(ls /usr/lib/lib$$1.so.* /usr/lib/*/lib$$1.so.* /usr/local/lib/lib$$1.so.* /usr/pkg/lib/lib$$1.so.* 2>/dev/null | head -1); \
+	  if [ -n "$$_rt" ]; then echo "runtime=$$_rt"; else echo no; fi; }
+_ATF_INSTALL = Install ATF (FreeBSD: pkg install atf; NetBSD: pkg_add atf; Debian: apt install libatf-dev; MacPorts: port install atf)
+_ATF_NOT_FOUND = not found -- pkg-config finds no .pc for it (searched its default path and ${_ATF_PC_DIRS:O:u}), and -l<it> does not link either. ${_ATF_INSTALL}, or add the directory holding its .pc file to PKG_CONFIG_PATH
+# (@RT@: the run-time file found; callers substitute it)
+_ATF_RUNTIME_ONLY = is only installed as a run-time library (@RT@), without the headers and .pc file a test program is built with -- on FreeBSD that is the base system's FreeBSD-atf package, not the atf package. ${_ATF_INSTALL}
 
 .endif # _MK_ATF_MK_

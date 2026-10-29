@@ -26,6 +26,8 @@ describe() {  # describe <how>
         path=*)        echo "none of $(echo "${1#path=}" | sed 's/,/, /g') is on PATH" ;;
         path)          echo "not found on PATH" ;;
         import)        echo "the import does not resolve (pkg-config, *_PREFIX, hooks, prefixes)" ;;
+        atf)           echo "ATF library for this test module: no .pc file, and -l<it> does not link (FreeBSD: pkg install atf; NetBSD: pkg_add atf; Debian: apt install libatf-dev)" ;;
+        atfrt=*)       echo "ATF library for this test module: only its run-time library is installed (${1#atfrt=}), not the headers and .pc file -- FreeBSD: that is the base system's FreeBSD-atf, pkg install atf; Debian: apt install libatf-dev" ;;
         tool)          echo "program not found on PATH" ;;
         query=*)       echo "could not be checked: $(printf '%s' "${1#query=}" | tr '\037' ' ')" ;;
         *)             echo "$1" ;;
