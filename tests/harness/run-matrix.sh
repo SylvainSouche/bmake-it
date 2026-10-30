@@ -181,8 +181,8 @@ job_netbsd() {
     sync_err=$(mktemp "${TMPDIR:-/tmp}/Bmake It-sync.XXXXXX")
     if ! (
         export COPYFILE_DISABLE=1
-        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts tests/harness tests/cases 2>/dev/null \
-            || tar -C "$BMK_ROOT" -cf - mk scripts tests/harness tests/cases
+        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts contrib tests/harness tests/cases 2>/dev/null \
+            || tar -C "$BMK_ROOT" -cf - mk scripts contrib tests/harness tests/cases
     ) | netbsd_ssh 'rm -rf /root/impl-matrix && mkdir -p /root/impl-matrix && tar -C /root/impl-matrix -xf -' >"$sync_err" 2>&1; then
         record netbsd SKIP "failed to sync tree to VM: $(tail -3 "$sync_err" | tr '\n' ' ')"
         rm -f "$sync_err"
@@ -303,8 +303,8 @@ job_cross_netbsd_linux() {
     fi
     (
         export COPYFILE_DISABLE=1
-        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts examples 2>/dev/null \
-            || tar -C "$BMK_ROOT" -cf - mk scripts examples
+        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts contrib examples 2>/dev/null \
+            || tar -C "$BMK_ROOT" -cf - mk scripts contrib examples
     ) | netbsd_ssh 'rm -rf /root/impl-matrix-cross && mkdir -p /root/impl-matrix-cross && tar -C /root/impl-matrix-cross -xf -' 2>/dev/null
     out=$(netbsd_ssh '
         cd /root/impl-matrix-cross/examples/myworkspace/Hello

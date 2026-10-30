@@ -18,6 +18,9 @@
 .if !defined(_MK_CROSSTEST_MK_)
 _MK_CROSSTEST_MK_ = 1
 
+# (_ATF_BUNDLED, _ATFB_MODE: the ATF Bmake It carries, mk.atf.mk)
+.include "${BMK_MKDIR}/mk.atf.mk"
+
 TEST_RUNNER ?=
 _XTEST_KEY     = ${TARGET}-${TARGET_ARCH}
 _XTEST_RUNNER  = ${TEST_RUNNER.${_XTEST_KEY}:U${TEST_RUNNER}}
@@ -58,12 +61,19 @@ _XTEST_WIN_DLLDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${_LIB_SEARCH_DIRS:U} ${_FWDIR
 .if ${_XTEST_MODE} == "local" && ${TARGET} == "win"
 _XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts:}:$$PATH"; export PATH;
 .endif
+# A native test program (MSVC, mingw) run by the Cygwin Kyua is handed
+# Cygwin paths (its result file under /tmp/kyua.*): ATFW_CYGROOT lets
+# Bmake It's ATF for Windows make them Windows paths (contrib/atf-bmk/win).
+.if ${_XTEST_MODE} == "local" && ${_ATFB_MODE} == "win"
+_XTEST_LOCAL_ENV += ATFW_CYGROOT="$$(cygpath -m /)"; export ATFW_CYGROOT;
+.endif
 
-# A native Windows runtime (ABI=mingw, TOOLCHAIN=msvc) has no ATF to link
-# its test programs with: the ATF that Kyua runs on Windows is a Cygwin
-# library. `bmake test` says so up front instead of failing at the link.
+# A native Windows runtime (ABI=mingw, TOOLCHAIN=msvc) has no ATF of its
+# own: on a Cygwin host Bmake It builds one (_ATFB_MODE=win, mk.atf.mk); elsewhere
+# (a cross build to Windows) `bmake test` says so up front instead of
+# failing at the link.
 _XTEST_NATIVE_WIN = no
-.if ${TARGET} == "win" && (${TOOLCHAIN} == "msvc" || ${ABI:U} == "mingw")
+.if ${TARGET} == "win" && (${TOOLCHAIN} == "msvc" || ${ABI:U} == "mingw") && "${_ATFB_MODE}" != "win"
 _XTEST_NATIVE_WIN = yes
 .endif
 
@@ -92,8 +102,8 @@ _XTEST_SCRIPT = ${BMK_MKDIR}/../scripts/cross-test.sh
 # runner. A prerequisite of `test`, ahead of the build.
 _xtest_check:
 .if ${_XTEST_NATIVE_WIN} == "yes"
-	@echo "error: bmake test is not available for ${TOOLCHAIN:Mmsvc:?TOOLCHAIN=msvc:ABI=mingw} output yet: its test programs would need an ATF (atf-c/atf-c++) built for that Windows runtime, and the ATF Kyua runs with on Windows is a Cygwin one." >&2; \
-	echo "       Build and test with the Cygwin toolchain (no ABI=, TOOLCHAIN=llvm or gcc), or test this code on another target." >&2; \
+	@echo "error: bmake test for ${TOOLCHAIN:Mmsvc:?TOOLCHAIN=msvc:ABI=mingw} output runs only on a Windows host with Cygwin: Bmake It builds the ATF for that runtime there, and the Cygwin Kyua runs the tests." >&2; \
+	echo "       Run bmake test on the Windows host, or test this code on another target." >&2; \
 	exit 1
 .elif ${_XTEST_MODE} == "missing"
 	@echo "error: bmake test for TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} cannot run its tests on this host (${_HOST_OS_LABEL}-${_HOST_ARCH_LABEL})." >&2; \

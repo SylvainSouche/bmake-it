@@ -69,6 +69,27 @@ make fetch provision build test report # all of it
   `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
   (and likewise for the other two) instead of rebuilding.
 
+### Results (2026-10-30, Windows 10 amd64 host)
+
+104 cases, with the ATF Bmake It carries (case 104, cases 43/86/91/92/99
+now run on MSVC and mingw output too).
+
+| Cell | llvm | gcc |
+|---|---|---|
+| Debian 13 amd64 (QEMU, WHPX) | 100 pass, 4 skip | 103 pass, 1 skip |
+| FreeBSD 15.1 amd64 (QEMU, WHPX) | 103 pass, 1 skip | 100 pass, 4 skip |
+| NetBSD 11.0 amd64 (QEMU, WHPX) | 100 pass, 4 skip | 102 pass, 2 skip |
+| Windows, Cygwin output (host) | 96 pass, 8 skip | 96 pass, 8 skip |
+
+No failures. The MSVC and mingw cells did not complete: the external drive
+holding the cache (and the EWDK image the MSVC cell mounts) failed during
+the run (I/O retries, then it dropped off USB). The ATF cases (43, 86, 91,
+92, 99, 102, 103, 104) passed for both outputs when run on their own the
+same day; the full cells are to be rerun. atf-bmk's own self-test
+(`scripts/atf-selftest.sh`, `docs/spec/81-atf-feature-matrix.md`): posix
+334 results, win (mingw) 194, no regressions; MSVC not run, for the same
+reason.
+
 ### Results (2026-10-29, Windows 10 amd64 host)
 
 103 cases. Guests are amd64 QEMU VMs under WHPX (UEFI boot, packages from
@@ -162,8 +183,8 @@ the container VM (`colima stop`) while running the BSD and macOS cells.
   `ABI=mingw`, Bmake It's own `cl.exe` wrapper (environment included, asked
   from bmake) under `TOOLCHAIN=msvc`. `atf_pc` asks pkg-config for ATF the
   way Bmake It does (also beside the `kyua` on `PATH`), and
-  `native_win_runtime` is true for mingw-w64 and MSVC output, where `bmake
-  test` refuses with its reason. Cases run with `LC_ALL=C`, so tool
+  `native_win_runtime` is true for mingw-w64 and MSVC output, whose ATF
+  Bmake It builds itself (nothing installed to probe for). Cases run with `LC_ALL=C`, so tool
   messages can be grepped. Before these, 45 of the 100 cases failed on Cygwin for those
   reasons alone (2026-10-26).
 
@@ -305,6 +326,7 @@ that (how the 2026-10-26 Cygwin changes were repacked).
 | 101 | Import staging stages again when what it staged has gone: a `pkg:` header-only import and a `fetch:` import, the framework's `include/` wiped with the modules' fingerprints intact -- the headers come back and the build names the missing file; an unchanged third build stages nothing (fails against the pre-fix code) |
 | 102 | Missing prerequisites stop the build before anything is built, as one list: a `REQUIRES=` package, a `REQUIRES=header:`, an `IMPORT=` that does not resolve, each with how it was looked for -- from the workspace and from a framework; no pkg-config at all is said so, not reported as "not found"; a module whose prerequisite module failed is skipped saying why, and the workspace fails (no `bad number`, no compile cascade) |
 | 103 | `make run` after a failed build: a program built in its framework but never copied up (another module failed) is reported with where it is, the failed modules and the log -- not "build first"; a program built nowhere still says build first; the program starts in the directory `run` was typed in (workspace, framework, module), not the workspace root |
+| 104 | The same ATF C and C++ test sources (a library's `TESTS_C=`/`TESTS_CXX=`, a `.tst` `TEST_PROG=`) build and run against the installed ATF and against the one Bmake It carries (`BMK_ATF=bundled`; always for MSVC and mingw output), with the same results: passes, a skip, an expected failure, file and regex helpers on a text-mode file; the carried ATF is built from `contrib/` once per framework build root, by the plain build; `atf_utils_fork` passes, except on MSVC/mingw where it fails its test case saying it is not available; a failing check fails `bmake test` with ATF's message; a misspelt `BMK_ATF=` is an error (kyua; skips without it) |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

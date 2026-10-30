@@ -29,8 +29,8 @@ set +e
     # directly, same style as the Docker cross scripts.
     (
         export COPYFILE_DISABLE=1
-        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts tests/harness tests/archives 2>/dev/null \
-            || tar -C "$BMK_ROOT" -cf - mk scripts tests/harness tests/archives
+        tar --no-xattrs --no-acls --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts contrib tests/harness tests/archives 2>/dev/null \
+            || tar -C "$BMK_ROOT" -cf - mk scripts contrib tests/harness tests/archives
     ) | vm_ssh "$SSH_PORT" "rm -rf '$REMOTE_DIR' && mkdir -p '$REMOTE_DIR' && tar -C '$REMOTE_DIR' -xf -" \
         && vm_ssh "$SSH_PORT" "
             # pkgsrc (NetBSD) and ports (FreeBSD) install outside the default PATH

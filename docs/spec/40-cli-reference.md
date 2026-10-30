@@ -25,7 +25,9 @@ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
   `ld`).
 
 Together these three variables determine the full compound target key
-(`10-directory-layout.md`).
+(`10-directory-layout.md`). Which host can build which target with which
+toolchain, what a cross build needs and how it is tested:
+`29-cross-platform-builds.md`.
 
 ## Sanitizers
 

@@ -75,7 +75,7 @@ rm -rf Brk
 # the atf package -- reported only once the build reached the test modules,
 # and only as "not found". The probe's answer is forced from the command
 # line, so this runs whether or not ATF is installed here.
-if ! native_win_runtime; then
+if ! atf_bundled; then
     mk Tst/makefile 'PREREQS=\n.include "mk.framework.mk"\n'
     mk Tst/hello.m/makefile 'PROG=hello\n.include "mk.prog.mk"\n'
     mk Tst/hello.m/src/main.c 'int main(void){return 0;}\n'

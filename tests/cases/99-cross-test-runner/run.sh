@@ -7,7 +7,6 @@
 # (skips, 77, without them).
 set -eu
 . "$BMK_TESTLIB"
-if native_win_runtime; then echo "skip: no bmake test for a native Windows runtime (case 43 checks the refusal)" >&2; exit 77; fi
 command -v kyua >/dev/null 2>&1 || exit 77
 command -v atf-sh >/dev/null 2>&1 || exit 77
 ROOT=$(pwd)
@@ -83,7 +82,9 @@ grep -q "run.sh:uses_tool_and_its_library  *->  *passed" test4.log
 # --- 4. a foreign target with no runner stops, before building, naming what to set ---
 case "$(uname -s)" in FreeBSD) fo=netbsd; sv=BMK_NETBSD_SYSROOT ;; *) fo=freebsd; sv=BMK_FREEBSD_SYSROOT ;; esac
 mkdir -p "$ROOT/fakesysroot"
-rc=0; env "$sv=$ROOT/fakesysroot" bmake test TARGET=$fo >test5.log 2>&1 || rc=$?
+# (MSVC and mingw are Windows ABIs: the cross target takes the default toolchain)
+xenv=""; if native_win_runtime; then xenv="-u ABI -u TOOLCHAIN"; fi
+rc=0; env $xenv "$sv=$ROOT/fakesysroot" bmake test TARGET=$fo >test5.log 2>&1 || rc=$?
 [ $rc != 0 ] || { echo "a foreign target without a runner must fail" >&2; exit 1; }
 grep -q "TEST_RUNNER\.$fo-" test5.log || { cat test5.log >&2; echo "the error should name TEST_RUNNER.<os>-<arch>" >&2; exit 1; }
 grep -q "TEST_RUNNER=local" test5.log

@@ -7,8 +7,8 @@
 # ("'imp/api.h' file not found"). Needs atf (skips, 77, without it).
 set -eu
 . "$BMK_TESTLIB"
-if native_win_runtime; then echo "skip: no bmake test for a native Windows runtime (case 43 checks the refusal)" >&2; exit 77; fi
-atf_pc --exists atf-c 2>/dev/null || exit 77
+# (the ATF Bmake It carries: built, nothing to probe -- atf_bundled)
+atf_bundled || atf_pc --exists atf-c 2>/dev/null || exit 77
 command -v kyua >/dev/null 2>&1 || exit 77
 ROOT=$(pwd)
 FAKE="$ROOT/fake/fakepkg"

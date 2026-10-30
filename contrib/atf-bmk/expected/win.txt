@@ -1,0 +1,93 @@
+# atf-bmk self-test (scripts/atf-selftest.sh), ATF_BMK_MODE=win (mingw-w64,
+# MSVC): every result of ATF 0.23's own tests that differs from a pass, with
+# the reason. Format: see posix.txt. Anything not listed must pass; a listed
+# line that no longer happens fails the self-test too, so this list is kept
+# exact as the port grows.
+#
+# Four causes, each a feature of a native Windows runtime, not a defect of
+# the port (2026-10-30, mingw-w64 with clang):
+#
+#  [fork]     Starting a process (atf_process_fork: atf_check_*, atf::check,
+#             atf::process, and ATF's own test helpers run_h_tc/build_check,
+#             which run each case in a child) is not available yet: it fails
+#             with "Running a program ... is not available in Bmake It's ATF
+#             for native Windows runtimes yet". A C++ caller throws it; ATF
+#             lets an exception escape a test body, which aborts (exit code 3
+#             here, SIGABRT on POSIX -- upstream does the same).
+#  [signal]   No POSIX signals: kill() fails, abort() ends with exit code 3,
+#             not SIGABRT.
+#  [perms]    No POSIX permission bits or owners.
+#  [posix]    The test itself calls a POSIX-only function (fork, chown,
+#             geteuid, sys/resource.h): not built.
+#
+# ATF's tests of the check macros (macros_test) are [fork]: atf-bmk's own
+# tests (contrib/atf-bmk/tests) cover the macros on Windows instead.
+
+# --- [posix]: not built ----------------------------------------------------------
+atf-c/utils_test not-built # [posix] calls fork() itself
+atf-c++/utils_test not-built # [posix] calls fork() itself
+atf-c/detail/fs_test not-built # [posix] calls chown()
+atf-c/detail/process_test not-built # [posix] sys/resource.h (resource limits)
+atf-c/detail/user_test not-built # [posix] geteuid(): no uids on Windows
+
+# --- [fork] -------------------------------------------------------------------------
+atf-c/atf_c_test:include failed: # [fork] compiles a header through atf_check_build_c_o
+atf-c/check_test:build_c_o failed: # [fork]
+atf-c/check_test:build_cpp failed: # [fork]
+atf-c/check_test:build_cxx_o failed: # [fork]
+atf-c/check_test:exec_array broken: # [fork]
+atf-c/check_test:exec_cleanup broken: # [fork]
+atf-c/check_test:exec_exitstatus broken: # [fork]
+atf-c/check_test:exec_stdout_stderr broken: # [fork]
+atf-c/check_test:exec_unknown broken: # [fork]
+atf-c/detail/sanity_test:inv failed: # [fork] runs the check in a child
+atf-c/detail/sanity_test:post failed: # [fork]
+atf-c/detail/sanity_test:pre failed: # [fork]
+atf-c/detail/sanity_test:unreachable failed: # [fork]
+atf-c/macros_test:check failed: # [fork] run_h_tc runs the case in a child
+atf-c/macros_test:check_eq failed: # [fork]
+atf-c/macros_test:check_errno failed: # [fork]
+atf-c/macros_test:check_match failed: # [fork]
+atf-c/macros_test:check_streq failed: # [fork]
+atf-c/macros_test:detect_unused_tests failed: # [fork] atf_check_build_c_o
+atf-c/macros_test:msg_embedded_fmt failed: # [fork]
+atf-c/macros_test:require failed: # [fork]
+atf-c/macros_test:require_eq failed: # [fork]
+atf-c/macros_test:require_errno failed: # [fork]
+atf-c/macros_test:require_match failed: # [fork]
+atf-c/macros_test:require_streq failed: # [fork]
+atf-c/macros_test:use failed: # [fork] atf_check_build_c_o
+atf-c++/atf_c++_test:include broken: # [fork] atf::check::build_cxx_o
+atf-c++/check_test:build_c_o broken: # [fork]
+atf-c++/check_test:build_cpp broken: # [fork]
+atf-c++/check_test:build_cxx_o broken: # [fork]
+atf-c++/check_test:exec_cleanup broken: # [fork]
+atf-c++/check_test:exec_exitstatus broken: # [fork]
+atf-c++/check_test:exec_stdout_stderr broken: # [fork]
+atf-c++/check_test:exec_unknown broken: # [fork]
+atf-c++/detail/process_test:exec_failure broken: # [fork]
+atf-c++/detail/process_test:exec_success broken: # [fork]
+atf-c++/macros_test:check_errno broken: # [fork] run_h_tc runs the case in a child
+atf-c++/macros_test:detect_unused_tests broken: # [fork]
+atf-c++/macros_test:fail broken: # [fork]
+atf-c++/macros_test:pass broken: # [fork]
+atf-c++/macros_test:require broken: # [fork]
+atf-c++/macros_test:require_eq broken: # [fork]
+atf-c++/macros_test:require_errno broken: # [fork]
+atf-c++/macros_test:require_in broken: # [fork]
+atf-c++/macros_test:require_match broken: # [fork]
+atf-c++/macros_test:require_not_in broken: # [fork]
+atf-c++/macros_test:require_throw broken: # [fork]
+atf-c++/macros_test:require_throw_re broken: # [fork]
+atf-c++/macros_test:skip broken: # [fork]
+atf-c++/macros_test:use broken: # [fork]
+
+# --- [perms] ------------------------------------------------------------------------
+atf-c++/detail/fs_test:file_info_perms failed: # [perms] a chmod'ed file stays readable
+atf-c++/detail/fs_test:is_executable failed: # [perms] no execute bit
+
+# --- [signal] -----------------------------------------------------------------------
+test-programs/expect_test:expect_death failed: # [signal] the helper kills itself
+test-programs/expect_test:expect_signal failed: # [signal] the helper kills itself
+test-programs/result_test:result_exception failed: # [signal] terminate() is exit code 3, not SIGABRT
+test-programs/result_test:result_to_file_fail failed: # [signal] abort() is exit code 3, not SIGABRT (the "Cannot create results file" message is right)

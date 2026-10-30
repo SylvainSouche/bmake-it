@@ -175,10 +175,17 @@ atf_pc() {
 }
 
 # native_win_runtime: true when the output is for a native Windows runtime
-# (ABI=mingw, TOOLCHAIN=msvc), where `bmake test` stops with an explanation:
-# the ATF Kyua runs with on Windows is a Cygwin library.
+# (ABI=mingw, TOOLCHAIN=msvc). Bmake It builds the ATF its test programs
+# link (native-windows-tests-req): there is no installed ATF to probe for.
 native_win_runtime() {
     [ "$BMK_T_OS" = win ] && { [ "${TOOLCHAIN:-}" = msvc ] || [ "${ABI:-}" = mingw ]; }
+}
+
+# atf_bundled: true when the tests link the ATF Bmake It carries
+# (bundled-atf-selectable-req) -- a native Windows runtime, or the suite run
+# with BMK_ATF=bundled: no installed ATF to probe for, only kyua.
+atf_bundled() {
+    native_win_runtime || [ "${BMK_ATF:-}" = bundled ]
 }
 
 # need_tool <tool> [why]: skip the case (exit 77, the harness's SKIP) when a

@@ -64,7 +64,7 @@ _TEST_SH_SEL  = ${TESTS_SH}
 # The tests' ATF library found, or `bmake test` stops here saying what was
 # looked for (atf-not-found-is-explained-req) -- not a linker's "unable to
 # find library -latf-c++" after everything else is built.
-.if make(test) && ${_XTEST_NATIVE_WIN:Uno} != "yes"
+.if make(test) && ${_XTEST_NATIVE_WIN:Uno} != "yes" && ${_ATF_BUNDLED} != "yes"
 .  if !empty(_TEST_CXX_SEL)
 _ATF_CXX_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
 .    if !empty(_ATF_CXX_HOW:Mruntime=*)
@@ -82,6 +82,15 @@ _ATF_C_HOW != set -- atf-c '${CC}' c; ${_ATF_FOUND_CMD}
 .    endif
 .  endif
 .endif
+.if ${_ATF_BUNDLED} == "yes"
+# the ATF Bmake It carries: a native Windows runtime's, or BMK_ATF=bundled
+# (mk.atf.mk, mk.atfbmk.mk)
+_ATF_CXX_LIBS = ${_ATFB_CXX_LIBS}
+_ATF_CXX_CFLAGS = ${_ATFB_CFLAGS}
+_ATF_C_LIBS = ${_ATFB_C_LIBS}
+_ATF_C_CFLAGS = ${_ATFB_CFLAGS}
+.include "${BMK_MKDIR}/mk.atfbmk.mk"
+.else
 _ATF_CXX_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
 # -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR: MacPorts' atf-c++ 0.21 headers
 # (tests.hpp) still use std::auto_ptr, which libc++ drops under C++17 mode
@@ -91,6 +100,7 @@ _ATF_CXX_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c++ 2>/dev/null || ech
 _ATF_CXX_CFLAGS += -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR
 _ATF_C_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c 2>/dev/null || echo -latf-c
 _ATF_C_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c 2>/dev/null || echo ""
+.endif
 
 # Runtime search path so the test binary can load the module's own
 # just-built shared lib without it being installed anywhere -- same
@@ -119,7 +129,7 @@ _TEST_LINK_LIB  =
 _TEST_LINK_OBJS = ${OBJS:N*/main.o}
 .endif
 
-_build_tests:
+_build_tests: ${_ATFB_LIBFILES:U}
 	@mkdir -p ${_TEST_BINDIR}
 .for _t in ${_TEST_CXX_SEL}
 	@echo "===> building test ${_t} (atf-c++)"

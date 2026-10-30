@@ -19,8 +19,10 @@ also uses it for `/usr/tests`) and spans compiled and script tests under
 one model, matching CTest's own agnostic-to-what-produces-pass/fail
 design. Known tradeoff, accepted on a try-first basis: much weaker
 cross-platform packaging outside the BSDs than gtest/Catch2 — MacPorts
-carries it (see below); a Linux/Windows host without a packaged ATF/Kyua
-is a real gap, not yet worked around.
+carries it (see below); a Linux host without a packaged ATF/Kyua is a
+real gap for Kyua; ATF itself Bmake It can build (`BMK_ATF=bundled`, and
+always for a native Windows runtime -- see "The ATF Bmake It carries"
+below).
 
 As with documentation generation, the mechanism is pluggable per
 language: extending Bmake It's language support must be able to bring
@@ -290,6 +292,86 @@ on NetBSD and FreeBSD. A missing `kyua` is reported as such (exit 127).
   libraries for the target in the sysroot, which an OS-only sysroot does not carry
   (`cross-sysroot-os-only-obs`); shell tests and `.tst` utilities have no such need.
 - Windows targets have no runner yet.
+
+## The ATF Bmake It carries (`BMK_ATF=bundled`; MSVC, mingw-w64)
+
+Bmake It carries ATF 0.23's own sources, as released, in
+`contrib/atf-0.23`, with what it adds to build them in `contrib/atf-bmk`.
+That ATF is used
+
+- **always for a native Windows runtime** (`TOOLCHAIN=msvc`, `ABI=mingw`),
+  which has no ATF to install: `bmake test` runs the same
+  `TESTS_C=`/`TESTS_CXX=`/`TEST_PROG=` sources as every other target
+  (`REQ-native-windows-tests-req`, `DEC-atf-for-windows-dec`);
+- **on any other target with `BMK_ATF=bundled`**, instead of the installed
+  ATF (`REQ-bundled-atf-selectable-req`): the same tests, run against that
+  version -- more test surface for it, and a way to test on a host whose
+  ATF is missing or incomplete. `BMK_ATF=installed` (or unset) is the
+  default. Kyua stays the installed one either way.
+
+How it is built:
+
+- With the module's own compilers by `scripts/atf-build.sh`, once per
+  framework build root, into `<framework>/build/<os-arch>/atf/` -- at the
+  first module that needs it, rebuilt when the compilers or
+  `contrib/atf-bmk` change. A compile error is reported with the file, the
+  compiler's messages and the full log.
+- On POSIX targets, from the sources alone: `config.h` comes from the
+  compile probes ATF's configure runs (a `getopt` taking `+`, `optreset`).
+- For a native Windows runtime, with the layer in `contrib/atf-bmk/win`
+  (a few POSIX headers, `std::regex` for ATF's regular expressions, the
+  MSVC C runtime's gaps). The ATF sources are not edited: the layer is
+  force-included, and the few functions it replaces are renamed when their
+  file is compiled.
+
+Feature by feature, against the installed ATF, with what verifies each:
+`81-atf-feature-matrix.md`.
+
+**Its own test suite** (`REQ-atf-bmk-self-test-req`) is separate from
+Bmake It's, which tests only the integration: `scripts/atf-selftest.sh`
+bootstraps it -- builds the library, then ATF 0.23's own tests as released
+and atf-bmk's (`contrib/atf-bmk/tests`) against it -- runs them with Kyua,
+and compares with `contrib/atf-bmk/expected/<mode>.txt`, where each
+difference from a pass is listed with its reason. Anything else fails it,
+and so does a listed difference that no longer happens. `ATF_BMK_MODE=installed`
+runs the same tests against the installed ATF: the baseline that tells a
+host's behaviour from atf-bmk's.
+
+### Native Windows runtimes
+
+- The Cygwin `kyua` runs the native test programs: per-case work
+  directories, timeouts (a hung test program is killed), crashes and exit
+  codes are reported as on any other host. The test program turns the
+  Cygwin paths Kyua hands it into Windows ones (the Cygwin root from
+  `ATFW_CYGROOT`, which `bmake test` sets, else from where `cygwin1.dll` is
+  on `PATH`).
+- A file a test writes in text mode has `\r\n` line ends on Windows:
+  `atf_utils_grep_file`/`grep_string` and `atf_utils_compare_file` take
+  them as the same text (`"^sum=2$"` matches, `"sum=2\n"` compares equal).
+
+**What it does not cover yet** -- the parts of ATF built on `fork(2)`:
+`atf_utils_fork`/`atf_utils_wait` (`atf::utils::fork`/`wait`) fail the test
+case saying they are not available on native Windows runtimes; running a
+program (`atf_check_*`, `atf::check`, `atf::process`, the build helpers)
+fails with "Running a program ... is not available in Bmake It's ATF for
+native Windows runtimes yet". No POSIX signals: a test case cannot signal
+itself, and `abort()` ends with exit code 3, not `SIGABRT`. `atf-sh` script tests
+run under Cygwin's `atf-sh` (Kyua starts them), so they can call the
+native programs under test. Keep the POSIX-only test cases out of a
+Windows test program, or in a test program for POSIX targets.
+
+This needs a Cygwin host (Kyua and the MSVC/mingw toolchains live there);
+`bmake test` for a cross build to Windows stops saying so.
+
+**Rule**: a test that builds and passes against the ATF Bmake It carries
+builds and passes unchanged against the installed ATF and Kyua, and the
+other way round -- the test matrix runs the same sources both ways on the
+BSD, Linux and Cygwin cells (case 104).
+
+**Limit**: in a cross build (a target the build host cannot run), the
+POSIX build's `getopt` probe cannot run its program; the bundled ATF is
+then built without `HAVE_GNU_GETOPT`, which is right for the BSDs and
+macOS, not for glibc.
 
 ## Toolchain notes
 

@@ -77,11 +77,35 @@
     "status": "confirmed",
     "type": "req"
   },
+  "atf-bmk-build-dec": {
+    "active": true,
+    "id": "7854-6ae4-bbb1-ef99",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "atf-bmk-self-test-req": {
+    "active": true,
+    "id": "7854-6ae4-cee4-3405",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "atf-bundled-bugreport-wrong-obs": {
+    "active": true,
+    "id": "7854-6ae4-de04-b951",
+    "status": "recorded",
+    "type": "obs"
+  },
   "atf-cxx-libcxx-autoptr-gap-obs": {
     "active": true,
     "id": "0f87-6aa9-4495-2e81",
     "status": "recorded",
     "type": "obs"
+  },
+  "atf-for-windows-dec": {
+    "active": true,
+    "id": "7854-6ae4-9b77-a3bc",
+    "status": "recorded",
+    "type": "dec"
   },
   "atf-from-kyua-prefix-req": {
     "active": true,
@@ -194,6 +218,12 @@
   "build-workspace-aggregation-req-v2": {
     "active": true,
     "id": "0f87-6aaa-6a5e-378f",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "bundled-atf-selectable-req": {
+    "active": true,
+    "id": "7854-6ae4-bac8-49b6",
     "status": "confirmed",
     "type": "req"
   },
@@ -1011,6 +1041,12 @@
     "active": true,
     "id": "0f87-6ad7-1f32-e9ec",
     "status": "confirmed",
+    "type": "req"
+  },
+  "gcc-cross-toolchain-req": {
+    "active": true,
+    "id": "7854-6ae4-bf2c-6424",
+    "status": "deferred",
     "type": "req"
   },
   "gen-mod-order-cd-into-module-dec": {
@@ -2633,6 +2669,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "mingw-clang-cygwin-include-leak-obs": {
+    "active": true,
+    "id": "7854-6ae4-de03-5831",
+    "status": "recorded",
+    "type": "obs"
+  },
   "mingw-clang-emulated-tls-dec": {
     "active": true,
     "id": "7854-6ad1-4113-0ae8",
@@ -2980,6 +3022,12 @@
     "id": "0f87-6ad7-3ab0-b926",
     "status": "recorded",
     "type": "obs"
+  },
+  "native-windows-tests-req": {
+    "active": true,
+    "id": "7854-6ae4-9b5d-8fc8",
+    "status": "confirmed",
+    "type": "req"
   },
   "nested-bmake-discovery-self-reentrancy-risk": {
     "active": true,

@@ -1,0 +1,14 @@
+# atf-bmk self-test (scripts/atf-selftest.sh), ATF_BMK_MODE=posix: every
+# result of ATF 0.23's own tests that differs from a pass, with the reason.
+# "<program>:<case> <result prefix> # reason", "<dir>/<program> not-built #
+# reason"; "[<host>] " first: that host only (uname -s). Anything not listed
+# must pass; a listed line that no longer happens fails the self-test too.
+#
+# POSIX mode builds ATF's sources alone: nothing differs from upstream.
+# What is listed is the host's behaviour -- upstream ATF fails it the same
+# way there (ATF_BMK_MODE=installed, the baseline).
+
+# Cygwin: Windows grants an administrator access to a mode-000 file or
+# directory, so the "permission denied" these expect does not come.
+[cygwin] atf-c/detail/fs_test:exists failed: # Cygwin: an administrator is not denied a mode-000 directory (upstream ATF fails it too, 2026-10-30)
+[cygwin] atf-c/detail/fs_test:rmdir_eperm failed: # Cygwin: likewise (upstream ATF fails it too, 2026-10-30)

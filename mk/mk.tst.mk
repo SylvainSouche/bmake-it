@@ -101,13 +101,15 @@ _TST_FLAVOR = cxx
 # in the one list (_REQUIRES_REPORT, mk.requires.mk), before anything is
 # built -- it was found only once the build reached the test modules.
 # Not for a native Windows runtime (MSVC, mingw -- also a cross build to
-# Windows), which has no ATF; Cygwin output has (it was skipped there too).
+# Windows) nor BMK_ATF=bundled: Bmake It builds that ATF (_ATF_BUNDLED,
+# mk.atf.mk) -- there is nothing to find. Cygwin output is asked (it was
+# skipped there too).
 _TST_NATIVE_WIN = no
 .  if ${TARGET:U} == "win" && (${TOOLCHAIN:U} == "msvc" || ${ABI:U} == "mingw" || empty(.MAKE.OS:U:tl:Mcygwin*))
 _TST_NATIVE_WIN = yes
 .  endif
 _TST_ATF_REPORT =
-.  if (empty(.MAKEFLAGS:M-V*) || ${BMK_REQUIRES_CHECK:U} == "yes") && !make(clean) && !make(help) && ${_TST_NATIVE_WIN} == "no"
+.  if (empty(.MAKEFLAGS:M-V*) || ${BMK_REQUIRES_CHECK:U} == "yes") && !make(clean) && !make(help) && ${_TST_NATIVE_WIN} == "no" && ${_ATF_BUNDLED} == "no"
 _TST_ATF_LIB = ${_TST_FLAVOR:S/cxx/atf-c++/:S/^c$/atf-c/}
 .    if ${_TST_FLAVOR} == "cxx"
 _TST_ATF_HOW != set -- atf-c++ '${CXX}' c++; ${_ATF_FOUND_CMD}
@@ -122,7 +124,16 @@ _TST_ATF_REPORT = ${_TST_ATF_LIB}%atf${_TST_ATF_HOW:Mruntime=*:S/^runtime=/rt=/}
 .      error "TEST_PROG=${TEST_PROG}: ATF's ${_TST_FLAVOR:S/cxx/C++/:S/c/C/} library ${_TST_ATF_LIB} ${_ATF_NOT_FOUND}"
 .    endif
 .  endif
-.  if ${_TST_FLAVOR} == "cxx"
+.  if ${_ATF_BUNDLED} == "yes"
+# the ATF Bmake It carries: a native Windows runtime's, or BMK_ATF=bundled
+# (mk.atf.mk, mk.atfbmk.mk)
+_TST_ATF_CFLAGS = ${_ATFB_CFLAGS}
+.    if ${_TST_FLAVOR} == "cxx"
+_TST_ATF_LIBS = ${_ATFB_CXX_LIBS}
+.    else
+_TST_ATF_LIBS = ${_ATFB_C_LIBS}
+.    endif
+.  elif ${_TST_FLAVOR} == "cxx"
 _TST_ATF_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c++ 2>/dev/null || echo ""
 _TST_ATF_CFLAGS += -D_LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR
 _TST_ATF_LIBS != ${_ATF_PC_ENV} pkg-config --libs atf-c++ 2>/dev/null || echo -latf-c++
@@ -192,12 +203,23 @@ _TST_STAGE_DEPS = all
 _TST_STAGE_DEPS =
 .  endif
 
+# The ATF Bmake It carries (mk.atf.mk) is built first: its headers are
+# staged with it, so the objects wait for it too, not just the link (they
+# compiled against nothing -- or, on Cygwin, silently against an installed
+# ATF's headers in /usr/local/include).
+.  if ${_TST_HAS_TEST} == "yes" && ${_ATF_BUNDLED} == "yes"
+.    include "${BMK_MKDIR}/mk.atfbmk.mk"
+.    if ${_TST_HAS_PROG} == "no"
+${_BINOUT} ${OBJS}: ${_ATFB_LIBFILES}
+.    endif
+.  endif
+
 # With PROG= and TEST_PROG= both set, the test program is compiled from
 # TEST_SRCS= as part of `all` (a test's compile error surfaces at build
 # time), into the module's own bin/ -- never copied up.
 .  if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
 _TST_TESTBIN = ${.CURDIR}/${BUILD_ROOT}/bin/${TEST_PROG}
-${_TST_TESTBIN}: ${TEST_SRCS:S|^|${.CURDIR}/src/|} ${_LIBS_FILES}
+${_TST_TESTBIN}: ${TEST_SRCS:S|^|${.CURDIR}/src/|} ${_LIBS_FILES} ${_ATFB_LIBFILES:U}
 	@mkdir -p ${.TARGET:H}
 .    if ${_TST_FLAVOR} == "cxx"
 	${CXX} ${CXXFLAGS} ${_TST_ATF_CFLAGS} -I${.CURDIR}/include \
@@ -210,15 +232,23 @@ ${_TST_TESTBIN}: ${TEST_SRCS:S|^|${.CURDIR}/src/|} ${_LIBS_FILES}
 all: ${_TST_TESTBIN}
 .  endif
 
+# Staged under their own file names: on Windows with the .exe -- only
+# Cygwin finds a program without it, and a native test program starting
+# its utility (system(), CreateProcess) does not (case 91, mingw/MSVC,
+# 2026-10-30). Kyua and the scripts still name them without it.
+_TST_EXE =
+.  if ${TARGET} == "win"
+_TST_EXE = .exe
+.  endif
 _tst_stage: ${_TST_STAGE_DEPS}
 	@rm -rf ${_TST_BINDIR}; mkdir -p ${_TST_BINDIR}
 .  if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
-	cp ${_TST_TESTBIN} ${_TST_BINDIR}/${TEST_PROG}
-	cp ${_BINOUT} ${_TST_BINDIR}/${PROG}
+	cp ${_TST_TESTBIN} ${_TST_BINDIR}/${TEST_PROG}${_TST_EXE}
+	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
 .  elif ${_TST_HAS_TEST} == "yes"
-	cp ${_BINOUT} ${_TST_BINDIR}/${TEST_PROG}
+	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
 .  elif ${_TST_HAS_PROG} == "yes"
-	cp ${_BINOUT} ${_TST_BINDIR}/${PROG}
+	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
 .  endif
 .  for _s in ${_TST_SCRIPTS}
 	cp ${.CURDIR}/testcases/${_s} ${_TST_BINDIR}/${_s}

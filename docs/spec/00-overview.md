@@ -62,7 +62,8 @@ than left open:
   requirement (`REQ-windows-hosts-cygwin-wsl`). WSL is really just Linux;
   `win`-target output is reachable via cross-compilation (mingw-w64-class
   toolchain) from any capable host, not exclusively from Cygwin
-  (`REQ-win-target-via-cross-toolchain-req`).
+  (`REQ-win-target-via-cross-toolchain-req`). Host × target and toolchain ×
+  ABI matrices, with what is verified: `29-cross-platform-builds.md`.
 - **Default toolchain**: LLVM/clang; legacy OS-native gcc is the
   alternative (`REQ-default-toolchain-llvm`). Default build target is the
   host's own OS/arch (`REQ-default-build-host-os-arch`). See the

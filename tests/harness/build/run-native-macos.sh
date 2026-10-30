@@ -35,7 +35,7 @@ n=0; until ssh $SSH_OPTS "admin@$IP" true >/dev/null 2>&1 || [ "$n" -ge 120 ]; d
 mkdir -p "$(dirname "$LOG")"
 set +e
 {
-    COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts tests/harness tests/archives examples \
+    COPYFILE_DISABLE=1 tar --no-xattrs --no-mac-metadata -C "$BMK_ROOT" -cf - mk scripts contrib tests/harness tests/archives examples \
         | ssh $SSH_OPTS "admin@$IP" "rm -rf $REMOTE_DIR && mkdir -p $REMOTE_DIR && tar -C $REMOTE_DIR -xf -" \
         && ssh $SSH_OPTS "admin@$IP" "
             cd $REMOTE_DIR/tests/harness

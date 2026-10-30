@@ -1,0 +1,16 @@
+# atf-bmk self-test (scripts/atf-selftest.sh), ATF_BMK_MODE=installed: the
+# same tests against the INSTALLED ATF -- the baseline that tells a host's
+# own behaviour (listed in posix.txt too when atf-bmk shows it) from an
+# atf-bmk difference (only in posix.txt or win.txt). Format: see posix.txt.
+
+# Cygwin: Windows grants an administrator access to a mode-000 file or
+# directory, so the "permission denied" these expect does not come.
+[cygwin] atf-c/detail/fs_test:exists failed: # Cygwin: an administrator is not denied a mode-000 directory
+[cygwin] atf-c/detail/fs_test:rmdir_eperm failed: # Cygwin: likewise
+
+# The installed ATF compiles at run time with the CFLAGS it was configured
+# with (ATF_BUILD_CFLAGS); Cygwin's, built by
+# tests/harness/provision/build-atf-kyua.sh, does not turn an unused test
+# case into an error.
+[cygwin] atf-c/macros_test:detect_unused_tests failed: # Cygwin: the installed ATF's configure-time ATF_BUILD_CFLAGS
+[cygwin] atf-c++/macros_test:detect_unused_tests failed: # Cygwin: likewise
