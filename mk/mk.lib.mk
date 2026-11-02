@@ -1051,6 +1051,36 @@ _IMPORT_LIB_MSVC_CASE = *.lib|*.dll
 # first missing file, "-" when there is no record yet, empty when all exist.
 # @impl 7854-6ae0-bffd-a6d8
 _STAGE_OUT_CHECK = _miss=""; if [ -f "$$_out" ]; then while IFS= read -r _o; do [ -e "$$_o" ] || [ -L "$$_o" ] || { _miss=$$_o; break; }; done < "$$_out"; else _miss=-; fi
+# import-dll-staged-req: on Windows the import library matches the names above,
+# and its DLL often does not: CMake on Cygwin writes cygfoo.dll beside libfoo.dll.a,
+# a mingw-w64 package keeps libfoo-1.dll in bin/. The program then linked and could
+# not start (cases 64, 69, CI, 2026-11-02). The import library names its DLL: it is
+# staged too, and if it is in neither directory the build says so. _WIN_DLL_OF sets
+# _n to the DLL $$_f imports from, empty for a static library.
+# @impl 7854-6ae9-07c4-5af8
+.if ${_BMK_MSVC_ABI} == "yes"
+_WIN_DLL_OF = _n=$$(PATH="${BMK_MSVC_BIN:U}:$$PATH" dumpbin.exe /nologo /headers "$$(cygpath -w "$$_f")" 2>/dev/null | tr -d '\r' | sed -n 's/^ *DLL name *: *//p' | head -1)
+.else
+_WIN_DLL_OF = _n=""; for _t in ${_MINGW_TRIPLE:U}-dlltool dlltool llvm-dlltool; do if command -v "$$_t" >/dev/null 2>&1; then _n=$$("$$_t" -I "$$_f" 2>/dev/null | head -1); break; fi; done
+.endif
+_IMPORT_STAGE_DLL =
+.if ${TARGET} == "win"
+_IMPORT_STAGE_DLL = for _f in "${_IMPORT_LIBDIR}/lib${LIB}.dll.a" "${_IMPORT_LIBDIR}/${LIB}.lib" "${_IMPORT_LIBDIR}/lib${LIB}.a"; do \
+			[ -f "$$_f" ] || continue; \
+			${_WIN_DLL_OF}; \
+			[ -n "$$_n" ] || continue; \
+			_dll=""; \
+			for _d in "${_IMPORT_LIBDIR}" "${_IMPORT_LIBDIR}/../bin"; do \
+				if [ -f "$$_d/$$_n" ]; then _dll=$$_d/$$_n; break; fi; \
+			done; \
+			if [ -n "$$_dll" ]; then \
+				cp -p "$$_dll" "${_LIBOUT_DIR}/$$_n"; echo "${_LIBOUT_DIR}/$$_n" >> "$$_out.tmp"; \
+			else \
+				echo "note: IMPORT=${IMPORT}: $$(basename "$$_f") needs $$_n, which is neither in ${_IMPORT_LIBDIR} nor in ../bin: a program linking ${LIB} needs it on PATH to start"; \
+			fi; \
+			break; \
+		done;
+.endif
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
 	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
@@ -1124,6 +1154,7 @@ _stage_import:
 			echo "error: IMPORT=${IMPORT}: no library file for ${LIB} (${_IMPORT_LIB_NAMES}) in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
 			exit 1; \
 		fi; \
+		${_IMPORT_STAGE_DLL} \
 	fi; \
 	mv "$$_out.tmp" "$$_out"; \
 	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fp; \

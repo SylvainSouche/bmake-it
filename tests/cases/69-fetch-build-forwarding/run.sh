@@ -103,9 +103,9 @@ EOF
 
 cd ws
 bmake >build1.log 2>&1
-bin=$(find . -type f -name "$(prog_name app)" | head -1)
+bin=$(find Fw/build -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$(run_prog "$bin")
+out=$(with_libdir "$(prog_libdir "$bin")" "$bin")
 echo "$out" | grep -q "^43$"
 
 # find_package(aaa) succeeded -- proof the cross-fetch-dependency prefix

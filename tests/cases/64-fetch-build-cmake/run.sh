@@ -77,9 +77,9 @@ grep -q "verified foo-1.0.tar.gz (sha256 ok)" build1.log
 grep -q "FETCH_BUILD=cmake: configure && build && install" build1.log
 grep -q "built via FETCH_BUILD=cmake" build1.log
 
-bin=$(find . -type f -name "$(prog_name app)" | head -1)
+bin=$(find Fw/build -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
-out=$(run_prog "$bin")
+out=$(with_libdir "$(prog_libdir "$bin")" "$bin")
 echo "$out" | grep -q "hello from original cmake-built foo, patched"
 
 # A second, fully unchanged build must NOT re-run cmake -- _fetch_build:
@@ -93,7 +93,7 @@ if grep -q "FETCH_BUILD=cmake: configure" build2.log; then
     exit 1
 fi
 cd "$ROOT/ws"
-out2=$(run_prog "$bin")
+out2=$(with_libdir "$(prog_libdir "$bin")" "$bin")
 echo "$out2" | grep -q "hello from original cmake-built foo, patched"
 
 echo "fetch-build-cmake OK"

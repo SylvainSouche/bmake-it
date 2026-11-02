@@ -109,6 +109,10 @@ What differs between them, for a project's makefiles:
   no packages, and Cygwin's describe other libraries: only `PKG_CONFIG_PATH`
   or `PKG_CONFIG=` is asked, and the host's prefixes are not probed
   (`msvc-pkg-config-skips-host-packages-req`).
+- **An imported DLL** is staged with its import library, whatever its name: the
+  import library names it, and it is looked for beside that and in `../bin`. If
+  it is in neither, the build says which DLL a program will need on `PATH`
+  (`import-dll-staged-req`).
 
 From any other host, Windows output is mingw-w64 only
 (`win-target-via-cross-toolchain-req`, `win-target-tiered-toolchain-req`):
