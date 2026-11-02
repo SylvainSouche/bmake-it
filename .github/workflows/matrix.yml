@@ -98,9 +98,13 @@ jobs:
       - name: Check out
         run: |
           export PATH=/usr/bin:$PATH
-          git init -q .
-          git fetch -q --depth 1 "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_SHA"
-          git checkout -q FETCH_HEAD
+          # (the workspace belongs to another Windows user, for Cygwin's git)
+          g() { git -c safe.directory='*' "$@"; }
+          { g init -q . &&
+            g fetch -q --depth 1 "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_SHA" &&
+            g checkout -q FETCH_HEAD; } >"$RUNNER_TEMP/co.log" 2>&1 || {
+              echo "::error title=check out::$(sed 's/%/%25/g' "$RUNNER_TEMP/co.log" | awk '{ printf "%s%%0A", $0 }')"
+              exit 1; }
       - name: Restore ATF and Kyua
         id: kyua
         uses: actions/cache@v6
@@ -121,7 +125,7 @@ jobs:
           sh matrix.sh run '${{ matrix.cell }}'
           sh matrix.sh check '${{ matrix.cell }}'
       - name: Say why it failed
-        if: failure()
+        if: failure() && hashFiles('tests/harness/ci-report.sh') != ''
         run: |
           export PATH=/usr/local/bin:/usr/bin:$PATH
           export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
