@@ -79,6 +79,8 @@ jobs:
     defaults:
       run:
         shell: C:\cygwin\bin\bash.exe --noprofile --norc -e -o pipefail -o igncr '{0}'
+    # Each step's PATH is what a Cygwin host has, not the runner's: its Strawberry
+    # Perl brings a native gmake, which cmake finds and which cannot see /tmp.
     steps:
       - uses: cygwin/cygwin-install-action@v7
         with:
@@ -119,14 +121,14 @@ jobs:
       - name: Build ATF and Kyua
         if: steps.kyua.outputs.cache-hit != 'true'
         run: |
-          export PATH=/usr/local/bin:/usr/bin:$PATH
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
           export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
           sh tests/harness/provision/build-atf-kyua.sh >"$RUNNER_TEMP/kyua.log" 2>&1 || {
               echo "::error title=ATF and Kyua::$(tail -n 45 "$RUNNER_TEMP/kyua.log" | cut -c1-300 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
               exit 1; }
       - name: Run the cell
         run: |
-          export PATH=/usr/local/bin:/usr/bin:$PATH
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
           export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
           cd tests/harness
           sh matrix.sh run '${{ matrix.cell }}'
@@ -134,7 +136,7 @@ jobs:
       - name: Say why it failed
         if: failure() && hashFiles('tests/harness/ci-report.sh') != ''
         run: |
-          export PATH=/usr/local/bin:/usr/bin:$PATH
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
           export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
           sh tests/harness/ci-report.sh '${{ matrix.cell }}'
       - name: Keep the logs
