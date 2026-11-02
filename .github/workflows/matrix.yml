@@ -80,18 +80,23 @@ jobs:
       run:
         shell: C:\cygwin\bin\bash.exe --noprofile --norc -e -o pipefail -o igncr '{0}'
     steps:
-      # allow-test-packages: Lutok, which Kyua needs, takes Lua 5.4, a test
-      # version on Cygwin (tests/README.md).
       - uses: cygwin/cygwin-install-action@v7
         with:
           install-dir: C:\cygwin
-          allow-test-packages: true
           packages: >-
             git bmake clang lld gcc-core gcc-g++
             mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++
             make pkgconf pkg-config bison flex doxygen cmake
             curl wget file tar gzip unzip zip patch
-            lua liblua-devel libsqlite3-devel sqlite3
+            libsqlite3-devel sqlite3
+      # Lutok, which Kyua needs, takes Lua 5.4, a test version on Cygwin
+      # (tests/README.md). In a step of its own: allow-test-packages applies to
+      # every package named, and the test gcc does not build Kyua 0.14.1.
+      - uses: cygwin/cygwin-install-action@v7
+        with:
+          install-dir: C:\cygwin
+          allow-test-packages: true
+          packages: lua liblua-devel
       # Cygwin's git, not actions/checkout: native Git for Windows refuses the
       # repository, whose project-model/con/ has a name Windows reserves ("invalid
       # path"). Cygwin's also keeps the LF line endings its sh needs.
