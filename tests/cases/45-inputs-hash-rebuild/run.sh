@@ -29,9 +29,15 @@ bmake >build1.log 2>&1
 bin=$(find . -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ]
 
-# Plain build: the bug is real but silent without instrumentation.
-"$bin" >run1.log 2>&1
-grep -q "no crash" run1.log
+# Plain build: the bug is real but silent without instrumentation -- except
+# that musl's free() can catch the damage and end the program with a signal
+# (exit 139, CI, 2026-11-02), which is the C library's doing, not this test's.
+rc=0; "$bin" >run1.log 2>&1 || rc=$?
+if [ "$rc" -eq 0 ]; then
+    grep -q "no crash" run1.log
+elif [ "$rc" -le 128 ]; then
+    echo "the plain build should run, or die of a signal; exit $rc" >&2; cat run1.log >&2; exit 1
+fi
 
 # SANITIZE=address: objects must actually recompile with the flag, not
 # just relink stale ones.
