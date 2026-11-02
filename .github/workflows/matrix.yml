@@ -116,7 +116,9 @@ jobs:
         run: |
           export PATH=/usr/local/bin:/usr/bin:$PATH
           export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
-          sh tests/harness/provision/build-atf-kyua.sh
+          sh tests/harness/provision/build-atf-kyua.sh >"$RUNNER_TEMP/kyua.log" 2>&1 || {
+              echo "::error title=ATF and Kyua::$(tail -n 45 "$RUNNER_TEMP/kyua.log" | cut -c1-300 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              exit 1; }
       - name: Run the cell
         run: |
           export PATH=/usr/local/bin:/usr/bin:$PATH
