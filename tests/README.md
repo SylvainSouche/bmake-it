@@ -33,9 +33,15 @@ sh vm.sh status                        # what exists for each VM platform
 sh matrix.sh list                      # every cell: build host x target x toolchain
 sh matrix.sh run 'native-freebsd_arm64-*'
 sh matrix.sh run cross-linux_arm64-freebsd-arm64   # build on Linux, RUN on FreeBSD
+sh matrix.sh progress                  # the case each running cell is on, and when it started
 sh matrix.sh report                    # the grid: build and run result per cell
 make fetch provision build test report # all of it
 ```
+
+Each line of a cell's log gives a case's position, start time, result and
+duration: `11/110 16:43:21 101-restage-missing-staged-outputs PASS 42s`. Cases
+run in name order, so `101-` comes before `11-`. A cell a stopped run left
+behind also shows in `progress`, until it is run again.
 
 - **This machine as a cell**: `windows_amd64` (Cygwin), `freebsd_host` and
   `netbsd_host` are `KIND host` platforms: their native cells run the suite

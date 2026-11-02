@@ -1211,6 +1211,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "harness-case-progress-req": {
+    "active": true,
+    "id": "7854-6ae8-b000-14cb",
+    "status": "confirmed",
+    "type": "req"
+  },
   "harness-cases-target-neutral-dec": {
     "active": true,
     "id": "7854-6adf-8c27-aba1",

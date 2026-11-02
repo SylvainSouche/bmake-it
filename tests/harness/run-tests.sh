@@ -97,16 +97,31 @@ echo "work:     $WORKDIR_BASE"
 [ -n "$ABI" ] && echo "ABI=$ABI (forced for whole suite)"
 echo
 
+# harness-case-progress-req: each case's position and start time are written
+# before it runs, so its log tells a slow case from a stuck one while it runs.
+# @impl 7854-6ae8-b000-14cb
+total=0
+for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
+    [ -f "$archive" ] || continue
+    if [ -n "$FILTER" ]; then
+        case "$(basename "$archive")" in *"$FILTER"*) ;; *) continue ;; esac
+    fi
+    total=$((total + 1))
+done
+position=0
+
 for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
     [ -f "$archive" ] || continue
     name=$(basename "$archive" | sed 's/\.tar\.gz$//;s/\.tgz$//')
     if [ -n "$FILTER" ]; then
-        case "$name" in *"$FILTER"*) ;; *) continue ;; esac
+        case "$(basename "$archive")" in *"$FILTER"*) ;; *) continue ;; esac
     fi
 
     wdir="$WORKDIR_BASE/$name"
     mkdir -p "$wdir"
-    printf '%-40s ' "$name"
+    position=$((position + 1))
+    started=$(date +%s)
+    printf '%3d/%d %s %-40s ' "$position" "$total" "$(date +%H:%M:%S)" "$name"
 
     if ! tar -xzf "$archive" -C "$wdir" 2>/dev/null; then
         echo "ERROR (extract)"
@@ -163,16 +178,17 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
         break
     done
 
+    took="$(($(date +%s) - started))s"
     if [ "$status" -eq 0 ]; then
-        if [ "$attempt" -eq 2 ]; then echo "PASS (flaky: passed on retry)"; flaky=$((flaky + 1)); else echo "PASS"; fi
+        if [ "$attempt" -eq 2 ]; then echo "PASS (flaky: passed on retry) $took"; flaky=$((flaky + 1)); else echo "PASS $took"; fi
         pass=$((pass + 1))
         rm -rf "$wdir" "$log"
     elif [ "$status" -eq 77 ]; then
-        echo "SKIP"
+        echo "SKIP $took"
         skip=$((skip + 1))
         rm -rf "$wdir" "$log"
     else
-        echo "FAIL (exit $status)"
+        echo "FAIL (exit $status) $took"
         fail=$((fail + 1))
         echo "---- log: $name ----" >&2
         tail -n 50 "$log" >&2 || true

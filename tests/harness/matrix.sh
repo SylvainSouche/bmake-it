@@ -1,5 +1,5 @@
 #!/bin/sh
-# matrix.sh list | run [cell-glob ...] | report
+# matrix.sh list | run [cell-glob ...] | progress | report
 #
 # The host x target x toolchain matrix of matrix.tsv, one cell at a time:
 #   native cells run the unit suite inside the build platform;
@@ -43,6 +43,9 @@ kind_of() { plat "$1" KIND; }
 
 native_cell() { # native_cell <cell> <build> <toolchain>
     cell=$1 b=$2 tc=$3; log="$LOGS/$cell.log"
+    # A log with no .status is a cell with no result yet (matrix.sh progress),
+    # and the previous run's must not pass for this one's.
+    rm -f "$log" "$log.status"
     case "$(kind_of "$b")" in
         # A host without docker, or one that cannot accelerate a guest that
         # needs it (an amd64 BSD on Apple silicon), blocks the cell with the
@@ -139,6 +142,15 @@ case "$cmd" in
                ok=no; if [ $# -eq 0 ]; then ok=yes; else for g in "$@"; do case "$c" in $g) ok=yes ;; esac; done; fi
                [ "$ok" = yes ] && run_cell "$c" "$k" "$b" "$t" "$tc" "$e" </dev/null
            done ;;
+    # harness-case-progress-req. A run that was stopped leaves its cell here too.
+    # @impl 7854-6ae8-b000-14cb
+    progress) date '+now %H:%M:%S'
+           cells | while IFS='	' read -r c k b t tc e; do
+               log="$LOGS/$c.log"
+               [ "$k" = native ] && [ -f "$log" ] && [ ! -f "$log.status" ] || continue
+               last=$(grep -E '^ *[0-9]+/[0-9]+ ' "$log" | tail -1)
+               printf '%-34s %s\n' "$c" "${last:-no case started yet}"
+           done | grep . || echo "no native cell is waiting for a result" ;;
     report) printf '%-34s %-8s %-8s %s\n' cell build run detail
            cells | while IFS='	' read -r c k b t tc e; do
                r=$(grep "^$c	" "$RESULTS" | head -1)
