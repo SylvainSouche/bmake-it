@@ -22,6 +22,11 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch replaces the run in progress.
+concurrency:
+  group: matrix-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   linux:
     name: ${{ matrix.cell }}
