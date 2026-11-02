@@ -76,6 +76,17 @@ else
 fi
 dobjects=""         # the objects again, as dumpbin.exe (native) reads them
 
+# addflag <arg>: one argument to the compiler, whole. $cflags is read back by
+# eval: unquoted, -DNAME="text" reached it as -DNAME=text, which cl.exe took
+# for code (OpenRider, 2026-11-02), and a space made two arguments.
+# @impl 7854-6ae8-7be4-821a
+addflag() {
+    case "$1" in
+        *[!A-Za-z0-9_=./:,+-]*) cflags="$cflags '$(printf '%s' "$1" | sed "s/'/'\\\\''/g")'" ;;
+        *) cflags="$cflags $1" ;;
+    esac
+}
+
 while [ $# -gt 0 ]; do
     arg=$1
     case "$arg" in
@@ -134,7 +145,7 @@ while [ $# -gt 0 ]; do
             ;;
         -D*)
             # -D<name>[=<val>] has no path component -- forward verbatim.
-            cflags="$cflags /${arg#-}"
+            addflag "/${arg#-}"
             ;;
         -g)
             cflags="$cflags /Zi /FS"
@@ -234,7 +245,7 @@ while [ $# -gt 0 ]; do
             ;;
         *)
             # Unrecognized flag: forward as-is rather than silently drop it.
-            cflags="$cflags $arg"
+            addflag "$arg"
             ;;
     esac
     shift
@@ -328,22 +339,27 @@ else
             done
             sources="$objects $libinputs"
         fi
+        # msvc-explicit-export-limits-exports-req: objects with an explicit
+        # __declspec(dllexport) (an /EXPORT: directive) export only that, as
+        # GNU ld and lld do for mingw-w64: the list below also exported the
+        # rest, so a missing export went unnoticed on MSVC alone (OpenRider,
+        # 2026-11-02).
+        # @impl 7854-6ae8-7e85-a56b
+        explicit=""
         if [ "$own_def" = no ] && [ -n "$objects" ]; then
+            explicit=$(eval "dumpbin.exe /nologo /directives $dobjects" | tr -d '\r' | tr ' ' '\n' | sed -n '/^\/EXPORT:/p') || explicit=""
+        fi
+        if [ "$own_def" = no ] && [ -n "$objects" ] && [ -z "$explicit" ]; then
             # beside the objects, not in the DLL's lib/ (copy-up's input)
             def="$objdir/$(basename "${out%.*}").def"
             syms=$(eval "dumpbin.exe /nologo /symbols $dobjects") || {
                 echo "msvc-cc-wrapper: cannot list the symbols of $out's objects for its export list (dumpbin.exe /symbols failed, above) -- the DLL would have no import library" >&2
                 tool_failed=yes; exit 1
             }
-            # symbols already exported by __declspec(dllexport) (an /EXPORT:
-            # directive in the object) stay out: listed twice, link.exe
-            # warns LNK4197
-            dirs=$(eval "dumpbin.exe /nologo /directives $dobjects" | tr -d '\r' | tr ' ' '\n' | sed -n 's|^/EXPORT:\([^,]*\).*|\1|p') || dirs=""
             {
                 echo "LIBRARY \"$(basename "$out")\""
                 echo "EXPORTS"
-                { printf '%s\n' "$dirs" | sed 's/^/DIRECTIVE /'; printf '%s\n' "$syms"; } | tr -d '\r' | awk '
-                    $1 == "DIRECTIVE" { seen[$2] = 1; next }
+                printf '%s\n' "$syms" | tr -d '\r' | awk '
                     / External / && $3 ~ /^SECT/ {
                         i = index($0, "| "); if (i == 0) next
                         n = substr($0, i + 2); sub(/ .*/, "", n)

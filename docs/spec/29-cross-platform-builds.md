@@ -96,6 +96,20 @@ A Windows host is a Cygwin host. From it, `TARGET=win` has three runtimes:
 | MSVC (native) | `TOOLCHAIN=msvc`: `cl.exe`/`link.exe`, found through Visual Studio or a mounted EWDK (`BMK_EWDK_ROOT=`, `msvc-ewdk-root-req`) | `win-amd64-msvc` |
 | MSVC (native), by clang | `TOOLCHAIN=llvm ABI=msvc`: `clang-cl`/`lld-link` with the same MSVC headers and libraries (`clang-msvc-toolchain-req`) | `win-amd64` |
 
+What differs between them, for a project's makefiles:
+
+- **A path compiled into a native program**: `${.CURDIR}` is a Cygwin path
+  there, which the program cannot open. `NATIVE_CURDIR` is the same directory
+  in a form it can (`C:/...`); on every other output it is `${.CURDIR}`
+  (`native-curdir-req`): `CFLAGS += -DDATA='"${NATIVE_CURDIR}/data"'`.
+- **What a DLL exports**: everything its objects define, unless one of them has
+  an explicit `dllexport`; then only those, on all three runtimes
+  (`msvc-explicit-export-limits-exports-req`).
+- **pkg-config**: mingw-w64 output reads the mingw packages. MSVC output has
+  no packages, and Cygwin's describe other libraries: only `PKG_CONFIG_PATH`
+  or `PKG_CONFIG=` is asked, and the host's prefixes are not probed
+  (`msvc-pkg-config-skips-host-packages-req`).
+
 From any other host, Windows output is mingw-w64 only
 (`win-target-via-cross-toolchain-req`, `win-target-tiered-toolchain-req`):
 clang with `--target=<arch>-w64-mingw32`, using an installed

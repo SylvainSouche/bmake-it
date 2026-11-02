@@ -50,6 +50,12 @@ normal build, excluding the entry-point object (conventionally
 `ATF_INIT_TEST_CASES`/`ATF_TP_ADD_TCS` rather than colliding with the
 module's own entry point.
 
+A library whose tests reach internals it does not export (a plugin DLL
+exporting only its entry, a shared object built with hidden visibility) sets
+`TEST_LINK=objects`: its tests then link the module's objects as a program's
+do, and still run on the `all` build. The default is `TEST_LINK=library`; any
+other value is an error (`test-link-objects-req`).
+
 All three kinds are registered in a generated `Kyuafile` and run via
 `kyua test`, agnostic to which kind produced the pass/fail
 (`REQ-unit-test-feature-for-built-software-req`).

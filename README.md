@@ -1,5 +1,11 @@
 # Bmake It
 
+[![License: BSD-3-Clause](https://img.shields.io/github/license/SylvainSouche/bmake-it)](LICENSE)
+[![Latest tag](https://img.shields.io/github/v/tag/SylvainSouche/bmake-it?sort=semver)](https://github.com/SylvainSouche/bmake-it/tags)
+[![Last commit](https://img.shields.io/github/last-commit/SylvainSouche/bmake-it)](https://github.com/SylvainSouche/bmake-it/commits/main)
+[![Open issues](https://img.shields.io/github/issues/SylvainSouche/bmake-it)](https://github.com/SylvainSouche/bmake-it/issues)
+[![Stars](https://img.shields.io/github/stars/SylvainSouche/bmake-it)](https://github.com/SylvainSouche/bmake-it/stargazers)
+
 A BSD-make-based, cross-platform build system for C/C++ (and lex/yacc),
 inspired by Dassault Systèmes RADE/`mkmk` concepts (workspaces, frameworks,
 modules, prerequisites) while staying idiomatic to BSD make. Shorthand: `bmk`.

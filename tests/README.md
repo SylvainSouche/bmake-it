@@ -69,6 +69,24 @@ make fetch provision build test report # all of it
   `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
   (and likewise for the other two) instead of rebuilding.
 
+### Results (2026-11-02, Windows 10 amd64 host, 110 cases)
+
+110 cases, with cases 105-110 from OpenRider's reports, the host cells only:
+the guest cells were not rerun, for the reason given in the next section.
+
+| Cell | Result |
+|---|---|
+| Windows, Cygwin output, llvm | 100 pass, 10 skip |
+| Windows, Cygwin output, gcc | 100 pass, 10 skip |
+| Windows, MSVC (`cl.exe`, EWDK) | 101 pass, 9 skip |
+| Windows, MSVC (clang-cl and lld-link, `ABI=msvc`, EWDK) | 101 pass, 9 skip |
+| Windows, mingw-w64, llvm | 101 pass, 9 skip |
+
+No failures. The same 8 cases as before skip everywhere. Case 107 needs an MSVC
+output and case 108 a mingw-w64 output, so each skips on the other cells.
+Several of these changes reach every platform (`TEST_LINK`, `NATIVE_CURDIR`,
+the hooks of a scripts-only `mk.tst.mk`), and they have not run on a guest yet.
+
 ### Results (2026-11-02, Windows 10 amd64 host)
 
 104 cases, the host cells only, with the new clang/MSVC cell and a local
@@ -346,6 +364,12 @@ that (how the 2026-10-26 Cygwin changes were repacked).
 | 102 | Missing prerequisites stop the build before anything is built, as one list: a `REQUIRES=` package, a `REQUIRES=header:`, an `IMPORT=` that does not resolve, each with how it was looked for -- from the workspace and from a framework; no pkg-config at all is said so, not reported as "not found"; a module whose prerequisite module failed is skipped saying why, and the workspace fails (no `bad number`, no compile cascade) |
 | 103 | `make run` after a failed build: a program built in its framework but never copied up (another module failed) is reported with where it is, the failed modules and the log -- not "build first"; a program built nowhere still says build first; the program starts in the directory `run` was typed in (workspace, framework, module), not the workspace root |
 | 104 | The same ATF C and C++ test sources (a library's `TESTS_C=`/`TESTS_CXX=`, a `.tst` `TEST_PROG=`) build and run against the installed ATF and against the one Bmake It carries (`BMK_ATF=bundled`; always for MSVC and mingw output), with the same results: passes, a skip, an expected failure, file and regex helpers on a text-mode file; the carried ATF is built from `contrib/` once per framework build root, by the plain build; `atf_utils_fork` passes, except on MSVC/mingw where it fails its test case saying it is not available; a failing check fails `bmake test` with ATF's message; a misspelt `BMK_ATF=` is an error (kyua; skips without it) |
+| 105 | A string `-D` means the same on every toolchain, in C and C++: quotes, a space, a backslash and a dollar sign reach the compiler (the MSVC wrapper dropped them) |
+| 106 | A scripts-only `.tst` module reads the `mk/` hooks, `pre` and `local`, the same cascade as any module, conditional names included |
+| 107 | MSVC-runtime output does not read the build host's packages: `IMPORT=pkg:` and `REQUIRES=` on a package only the host's pkg-config has stop before building saying why; a Cygwin header does not satisfy a probe (MSVC runtime only) |
+| 108 | `bmake test` of mingw-w64 output has the sysroot's `bin/` on `PATH` with none on the caller's and no hook (`ABI=mingw` on a Windows host only; kyua and atf-sh) |
+| 109 | `TEST_LINK=objects`: a library's test reaches an internal the shared library does not export, and the same test does not link with `TEST_LINK=library`; a bad value is an error. On Windows, on every runtime, a DLL with an explicit `dllexport` exports only that, and one with none exports all it defines (kyua and ATF; skips without them) |
+| 110 | `NATIVE_CURDIR`: a C and a C++ program open a file through a path compiled in with it, started from another directory; it is drive-letter form for native Windows output, `.CURDIR` otherwise |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

@@ -477,9 +477,10 @@ _IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV}
 # here; only the cross-compiling branch above sets it. The caller's own
 # inherited PKG_CONFIG_PATH (if any) is kept and extended, not discarded
 # -- converted to a bmake word list and back so the join is correct
-# whether or not either half is empty.
+# whether or not either half is empty. (_BMK_PKG_CONFIG_ENV: empty, except
+# for MSVC-runtime output, which reads no default directory -- mk.common.mk.)
 _IMPORT_PC_PATH = ${_PKG_CONFIG_EXTRA_DIRS} ${PKG_CONFIG_PATH:S/:/ /g}
-_IMPORT_PC_ENV  = env PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
+_IMPORT_PC_ENV  = env ${_BMK_PKG_CONFIG_ENV} PKG_CONFIG_PATH="${_IMPORT_PC_PATH:ts:}"
 .    endif
 # @impl 0f87-6ab6-0d63-eb19
 # import-resolution-cache-req: "does a second build re-resolve" is a
@@ -668,6 +669,10 @@ _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 # @impl 7854-6adf-d52e-121d
 .  if ${_BMK_WIN_MINGW:Uno} == "yes"
 _IMPORT_PROBE_PREFIXES ?= ${BMK_MINGW_SYSROOT:U/usr/${_MINGW_TRIPLE}/sys-root/mingw /usr/${_MINGW_TRIPLE}}
+# MSVC-runtime output has no prefix of its own: the host's holds Cygwin's.
+# @impl 7854-6ae8-7be5-7dc2
+.  elif ${_BMK_MSVC_ABI:Uno} == "yes"
+_IMPORT_PROBE_PREFIXES ?=
 .  else
 _IMPORT_PROBE_PREFIXES ?= ${_TOOL_PREFIXES:H:O:u}
 .  endif
@@ -715,6 +720,8 @@ _IMPORT_ERR_PC = ${_BMK_PKG_CONFIG}
 .    endif
 .    if ${_BMK_WIN_MINGW:Uno} == "yes"
 _IMPORT_ERR_HOW = install it as a mingw-w64 package (on Cygwin: mingw64-${_MINGW_TRIPLE:C/-.*//}-<name>)
+.    elif ${_BMK_MSVC_ABI:Uno} == "yes"
+_IMPORT_ERR_HOW = it must be built for the MSVC runtime: Cygwin's packages are not read for this output -- build it (IMPORT=fetch:), or give its .pc on PKG_CONFIG_PATH
 .    else
 _IMPORT_ERR_HOW = install the library via your host's package manager
 .    endif

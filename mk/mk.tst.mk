@@ -157,8 +157,17 @@ _TST_TESTNAMES = ${TEST_PROG} ${_TST_SCRIPTS}
 .if ${_TST_HAS_PROG} == "yes" || ${_TST_HAS_TEST} == "yes"
 .  include "${BMK_MKDIR}/mk.prog.mk"
 .else
-# Scripts-only: nothing to compile. Still honours PLATFORMS=/TOOLCHAINS=.
+# Scripts-only: nothing to compile. Still honours PLATFORMS=/TOOLCHAINS=, and
+# reads the mk/ hooks like any module (mk.prog.mk does it for the others).
+# @impl 7854-6ae8-7be6-c5b1
 .  include "${BMK_MKDIR}/mk.common.mk"
+_LOCAL_MK_DIRS =
+.  for _p in ${PARENT_WS}
+_LOCAL_MK_DIRS += ${_p}/mk
+.  endfor
+_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+_LOCAL_MK_PHASE = pre
+.  include "${BMK_MKDIR}/mk.local.mk"
 .  include "${BMK_MKDIR}/mk.constraints.mk"
 .  if ${_BMK_BUILD} == "yes"
 _FWDIR = ${.CURDIR}/..
@@ -298,6 +307,11 @@ test: _xtest_check _tst_stage
 .  endif
 
 .PHONY: test _tst_stage
+
+.  if ${_TST_HAS_PROG} == "no" && ${_TST_HAS_TEST} == "no"
+_LOCAL_MK_PHASE = local
+.    include "${BMK_MKDIR}/mk.local.mk"
+.  endif
 .endif
 
 .endif # _MK_TST_MK_

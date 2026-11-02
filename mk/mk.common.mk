@@ -283,6 +283,18 @@ _TARGET_KEY := ${_TARGET_KEY}-${_KEY_ABI}
 .endif
 OS_ARCH := ${_TARGET_KEY}
 
+# native-curdir-req: the module's directory as a program built for the target
+# can open it, for a path compiled into it: -DDATA='"${NATIVE_CURDIR}/data"'.
+# A native Windows program cannot open /cygdrive/c/... (OpenRider, 2026-11-02).
+# Forward slashes: C:/... needs no escaping in a C string. Set before the role
+# file is included, the reference stays until here (bmake's := keeps a
+# reference to an undefined variable).
+# @impl 7854-6ae8-7e86-7959
+NATIVE_CURDIR := ${.CURDIR}
+.if (${_BMK_MSVC_ABI} == "yes" || ${_BMK_WIN_MINGW:Uno} == "yes") && !empty(.MAKE.OS:U:tl:Mcygwin*)
+NATIVE_CURDIR != cygpath -m '${.CURDIR}'
+.endif
+
 # pkg-config-matches-output-abi-req: the pkg-config IMPORT=pkg: and REQUIRES=
 # ask must describe the libraries of the output being built. On a Cygwin
 # host, plain pkg-config describes Cygwin's libraries -- with ABI=mingw it
@@ -315,6 +327,15 @@ _BMK_PKG_CONFIG_ENV = PKG_CONFIG_LIBDIR=${BMK_MINGW_SYSROOT}/lib/pkgconfig
 .  else
 _BMK_PKG_CONFIG != command -v ${_MINGW_TRIPLE}-pkg-config 2>/dev/null || true
 .  endif
+# MSVC-runtime output: no package manager provides .pc files for it, and the
+# ones pkg-config finds by default are Cygwin's -- IMPORT=pkg:curl resolved to
+# them and only failed at the link (OpenRider, 2026-11-02). An empty
+# PKG_CONFIG_LIBDIR removes the default directories; PKG_CONFIG_PATH, a library
+# really built for MSVC, still answers.
+# @impl 7854-6ae8-7be5-7dc2
+.elif ${_BMK_MSVC_ABI} == "yes"
+_BMK_PKG_CONFIG = pkg-config
+_BMK_PKG_CONFIG_ENV = PKG_CONFIG_LIBDIR=
 .elif ${BMK_IS_NATIVE_BUILD} == "no"
 _BMK_PKG_CONFIG = pkg-config
 _BMK_PKG_CONFIG_SYSROOT = ${BMK_${TARGET:tu}_SYSROOT:U}
@@ -607,12 +628,15 @@ _RUN_LDPATH_VAR = LD_LIBRARY_PATH
 # on PATH OpenRider's run failed loading libstdc++-6.dll (2026-10-15).
 # BMK_MINGW_SYSROOT/bin when given, else the installed mingw-w64 gcc's
 # <sysroot>/mingw/bin (Cygwin, Fedora) and /usr/<triple>/bin, whichever
-# exist. Computed only for `run`, so ordinary builds pay no subprocess.
-# Placed after the workspace's own lib and bin chains (lib, bin, then this,
-# then the caller's PATH): a project DLL or program of the same name wins.
+# exist. Computed only for `run` and `test`, so ordinary builds pay no
+# subprocess. Placed after the workspace's own lib and bin chains (lib, bin,
+# then this, then the caller's PATH): a project DLL or program of the same
+# name wins. `test` uses it too (mk.crosstest.mk): OpenRider's tests could not
+# find the curl and tiff DLLs without a hook of its own (2026-11-02).
 # @impl 7854-6ad1-437f-70a7
+# @impl 7854-6ae8-7be4-0b3e
 _RUN_MINGW_BIN =
-.if make(run) && ${_BMK_WIN_MINGW} == "yes"
+.if (make(run) || make(test)) && ${_BMK_WIN_MINGW} == "yes"
 .  if !empty(BMK_MINGW_SYSROOT)
 _RUN_MINGW_CAND = ${BMK_MINGW_SYSROOT}/bin
 .  else

@@ -53,13 +53,15 @@ _XTEST_LOCAL_ENV = export QEMU_LD_PREFIX="${QEMU_LD_PREFIX:U${BMK_LINUX_SYSROOT}
 .endif
 # Windows has no rpath: a test program finds the DLLs it links (the
 # module's own, the LIBS= chain) through PATH, as `bmake run` gives them --
-# else it cannot start (Cygwin, 2026-10-28).
+# else it cannot start (Cygwin, 2026-10-28). mingw-w64 output: then the mingw
+# sysroot's bin/, for the mingw packages' DLLs (_RUN_MINGW_PATH, mk.common.mk).
 # @impl 7854-6ae2-336d-dd77
+# @impl 7854-6ae8-7be4-0b3e
 # (the module's lib/, the LIBS= search chain, the framework's lib/ -- a
 # .tst module without TEST_PROG has no search chain of its own)
 _XTEST_WIN_DLLDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${_LIB_SEARCH_DIRS:U} ${_FWDIR:D${_FWDIR}/${BUILD_ROOT}/lib}
 .if ${_XTEST_MODE} == "local" && ${TARGET} == "win"
-_XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts:}:$$PATH"; export PATH;
+_XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts:}${_RUN_MINGW_PATH:U}:$$PATH"; export PATH;
 .endif
 # A native test program (MSVC, mingw) run by the Cygwin Kyua is handed
 # Cygwin paths (its result file under /tmp/kyua.*): ATFW_CYGROOT lets

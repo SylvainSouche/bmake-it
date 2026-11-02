@@ -121,7 +121,15 @@ _TEST_RPATH = -Wl,-rpath,${.CURDIR}/${BUILD_ROOT}/lib
 # rather than colliding with the module's entry point. This was never
 # exercised until a PROG module first declared TESTS_CXX=/TESTS_C=.
 # @impl 0f87-6aa9-0267-4adc
-.if defined(LIB) && !empty(LIB)
+# test-link-objects-req: TEST_LINK=objects does the same for a library, for
+# tests that reach internals its DLL or shared object does not export (a
+# plugin exporting only its entry: OpenRider, 2026-11-02).
+# @impl 7854-6ae8-7e85-ac29
+TEST_LINK ?= library
+.if ${TEST_LINK} != "library" && ${TEST_LINK} != "objects"
+.  error "TEST_LINK=${TEST_LINK}: expected library (the default: tests link the built library) or objects (tests link the module's objects, for internals the library does not export)"
+.endif
+.if defined(LIB) && !empty(LIB) && ${TEST_LINK} == "library"
 _TEST_LINK_LIB  = -l${LIB}
 _TEST_LINK_OBJS =
 .else
