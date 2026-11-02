@@ -110,6 +110,68 @@ What differs between them, for a project's makefiles:
   or `PKG_CONFIG=` is asked, and the host's prefixes are not probed
   (`msvc-pkg-config-skips-host-packages-req`).
 
+### Delay loading
+
+A delay-loaded DLL is loaded at the first call into it, not when the program
+starts, so a program can start without it. The library declares the default,
+and a module linking it can override that for itself
+(`delay-load-default-by-library-req`):
+
+```make
+# libfoo.m/makefile
+LIB=foo
+DELAYLOAD=yes        # default: no
+
+# app.m/makefile
+PROG=app
+LIBS=foo bar
+DELAYLOAD.foo=no     # not for this program
+DELAYLOAD.bar=yes    # bar's own default is no
+```
+
+| Output | How | Without it |
+|---|---|---|
+| MSVC, `cl.exe` or clang | `/DELAYLOAD:<dll>` and `delayimp.lib` | |
+| mingw-w64, `ld.lld` | `--delayload=<dll>` | |
+| mingw-w64, GNU ld | a delay-import library (`dlltool -y`) from the DLL's `.def` | an imported DLL is refused: there is no `.def` |
+| Cygwin, Linux, BSD, macOS | none | a library's default does nothing; a consumer's `yes` prints a note and links normally |
+
+ELF and Mach-O have no such thing, and the nearest equivalents make a different
+promise. On Cygwin output it does not work reliably
+(`delay-load-windows-toolchains-obs`). Elsewhere:
+
+- **It covers the direct link only.** A library's own dependencies follow their
+  own settings, and a static library links nothing, so `DELAYLOAD.<lib>` on one
+  is an error: set it on the program or shared library that links it.
+- **A DLL that exports data cannot be delay-loaded.** The build refuses it where
+  it knows the exports, on the library or the consumer. GNU ld would otherwise
+  link it and read garbage (`delay-load-data-export-obs`). For an imported DLL
+  the exports are unknown: `ld.lld` and the MSVC linker refuse a data import
+  themselves.
+- **A `DELAYLOAD.<lib>` naming nothing in `LIBS=`** is an error when set in the
+  module's own makefile. bmake cannot list variables, so one set in a hook or on
+  the command line is not checked.
+- **A missing DLL ends the program at the first call**, with exit code 127 and no
+  message. Bmake It links none of its own code into what it builds
+  (`no-bmake-it-runtime-code-dec`). For a message, define the toolchain's failure
+  hook in the program (`const` under MSVC, not under mingw-w64):
+
+  ```c
+  #include <windows.h>
+  #include <delayimp.h>
+  #include <stdio.h>
+  #include <stdlib.h>
+  static FARPROC WINAPI on_failure(unsigned reason, PDelayLoadInfo info) {
+      (void)reason;
+      fprintf(stderr, "cannot load %s\n", info->szDll);
+      exit(1);
+  }
+  #ifdef _MSC_VER
+  const
+  #endif
+  PfnDliHook __pfnDliFailureHook2 = on_failure;
+  ```
+
 From any other host, Windows output is mingw-w64 only
 (`win-target-via-cross-toolchain-req`, `win-target-tiered-toolchain-req`):
 clang with `--target=<arch>-w64-mingw32`, using an installed

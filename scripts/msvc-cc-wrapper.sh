@@ -204,6 +204,13 @@ while [ $# -gt 0 ]; do
             implib=${arg#-Wl,--out-implib,}
             linkflags="$linkflags /IMPLIB:\"$(winpath "$implib")\""
             ;;
+        -Wl,--delayload=*)
+            # delay-load-default-by-library-req: mk.delayload.mk asks for it as
+            # for ld.lld; the helper's library comes once, with the first.
+            # @impl 7854-6ae5-cb17-4ec0
+            case "$linkflags" in *delayimp.lib*) ;; *) linkflags="$linkflags delayimp.lib" ;; esac
+            linkflags="$linkflags /DELAYLOAD:${arg#-Wl,--delayload=}"
+            ;;
         -L)
             shift
             linkflags="$linkflags /LIBPATH:\"$(winpath "$1")\""

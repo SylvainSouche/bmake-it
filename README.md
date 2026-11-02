@@ -23,6 +23,7 @@ mk/                      # role makefiles
 ├── mk.framework.mk       # framework role (PREREQS=, module discovery+order)
 ├── mk.prog.mk            # executable module (PROG=, LIBS=)
 ├── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
+├── mk.delayload.mk       # DELAYLOAD=, DELAYLOAD.<lib>= (Windows linkers)
 ├── mk.docs.mk            # `bmake docs` — Doxygen generation + tag-file cross-linking
 ├── mk.test.mk            # `bmake test` (REPORT=yes for HTML) — ATF/Kyua unit tests
 └── mk.local.mk           # per-level mk/ hook-file cascade (pre.mk/local.mk)

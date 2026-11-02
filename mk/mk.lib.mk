@@ -208,8 +208,9 @@ LDFLAGS += -Wl,-rpath,${_d}
 # hand. No found-guard against the same name resolving in more than one
 # _LIB_SEARCH_DIRS entry -- duplicate -l/-L flags are harmless.
 # @impl 0f87-6ab5-8e46-cfb1
+.include "${BMK_MKDIR}/mk.delayload.mk"
 .for _l in ${LIBS}
-LDFLAGS += -l${_l}
+LDFLAGS += -l${_DELAY_LIB.${_l}:U${_l}}
 .  for _d in ${_LIB_SEARCH_DIRS}
 .    if exists(${_d}/lib${_l}.linkdeps)
 _LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
@@ -801,6 +802,12 @@ _SHLIB_LDFLAGS = -dynamiclib -install_name @rpath/${SHLIB_NAME} -compatibility_v
 SHLIB_NAME     = ${LIB}.dll
 SHLIB_LINK     = ${LIB}.dll
 _SHLIB_LDFLAGS = -shared -Wl,--out-implib,${_LIBOUT_DIR}/${LIB}.lib
+# delay-load-default-by-library-req: the export list, for DATA marks and for
+# GNU ld's delay-import library. Under MSVC, msvc-cc-wrapper.sh writes the same
+# file when it generates the export list.
+.  if ${_DELAYLOAD_KIND} == "lld" || ${_DELAYLOAD_KIND} == "gnu"
+_SHLIB_LDFLAGS += -Wl,--output-def,${_OBJDIR}/${LIB}.def
+.  endif
 .else
 SHLIB_NAME     = lib${LIB}.so.${SHLIB_MAJOR}
 SHLIB_LINK     = lib${LIB}.so
@@ -971,6 +978,56 @@ _write_linkdeps:
 		exit 0; \
 	fi; \
 	echo "$$_new" > ${_LIBOUT_DIR}/lib${LIB}.linkdeps
+
+# delay-load-default-by-library-req: what a module linking this library reads
+# (mk.delayload.mk). Written after the DLL exists, and rewritten only on a
+# change: a consumer relinks when it does. An imported DLL is found under the
+# names _stage_import stages, with nothing known about its data exports.
+# @impl 7854-6ae5-cb17-4ec0
+.if ${DELAYLOAD} == "yes" && empty(IMPORT) && ${LIB_SHARED:Uno} != "YES"
+.  error "DELAYLOAD=yes on the static library ${LIB}: only a shared library can be delay-loaded -- set LIB_SHARED=YES, or remove DELAYLOAD"
+.endif
+.if ${_DELAYLOAD_KIND} != "none"
+_write_linkdeps: _write_delayload
+.  if !empty(IMPORT) && ${_IMPORT_KIND:Uno} != "source"
+_write_delayload: _stage_import
+.  elif ${LIB_SHARED:Uno} == "YES"
+_write_delayload: ${_LIBOUT_DIR}/${SHLIB_NAME}
+.  endif
+# An import library names its DLL, which a package often keeps in bin/, where
+# nothing stages it. _n: that name for $$_f, empty for a static library.
+.  if ${_DELAYLOAD_KIND} == "msvc"
+_DELAYLOAD_IDENTIFY = _n=$$(PATH="${BMK_MSVC_BIN:U}:$$PATH" dumpbin.exe /nologo /headers "$$(cygpath -w "$$_f")" 2>/dev/null | tr -d '\r' | sed -n 's/^ *DLL name *: *//p' | head -1)
+.  else
+_DELAYLOAD_IDENTIFY = _n=$$(${_MINGW_TRIPLE}-dlltool -I "$$_f" 2>/dev/null | head -1)
+.  endif
+_write_delayload:
+	@_dll=-; _data=?; _def=${_OBJDIR}/${LIB}.def; \
+	for _f in ${_LIBOUT_DIR}/${LIB}.dll ${_LIBOUT_DIR}/lib${LIB}*.dll; do \
+		if [ -f "$$_f" ]; then _dll=$$(basename "$$_f"); break; fi; \
+	done; \
+	if [ "$$_dll" = - ]; then \
+		for _f in ${_LIBOUT_DIR}/lib${LIB}.dll.a ${_LIBOUT_DIR}/${LIB}.lib ${_LIBOUT_DIR}/lib${LIB}.a; do \
+			[ -f "$$_f" ] || continue; \
+			${_DELAYLOAD_IDENTIFY}; \
+			[ -n "$$_n" ] && { _dll=$$_n; break; }; \
+		done; \
+	fi; \
+	if [ -f "$$_def" ]; then \
+		_data=0; \
+		if grep -Eq '[[:space:]]DATA([[:space:]]|$$)' "$$_def"; then _data=1; fi; \
+	fi; \
+	if [ "${DELAYLOAD}" = yes ]; then \
+		if [ "$$_dll" = - ]; then echo "error: DELAYLOAD=yes on ${LIB}: it has no DLL in ${_LIBOUT_DIR}, and only a DLL can be delay-loaded" >&2; exit 1; fi; \
+		if [ "$$_data" = 1 ]; then echo "error: DELAYLOAD=yes on ${LIB}: $$_dll exports data, and a DLL that exports data cannot be delay-loaded -- exports marked DATA in $$_def" >&2; exit 1; fi; \
+	fi; \
+	_new="${DELAYLOAD} $$_dll $$_data"; \
+	if [ -f ${_LIBOUT_DIR}/lib${LIB}.delayload ] && [ "$$(cat ${_LIBOUT_DIR}/lib${LIB}.delayload)" = "$$_new" ]; then \
+		exit 0; \
+	fi; \
+	echo "$$_new" > ${_LIBOUT_DIR}/lib${LIB}.delayload
+.PHONY: _write_delayload
+.endif
 
 # import-staging-req: only IMPORT_HEADERS= is staged (never the whole
 # resolved include dir -- that would leak every unrelated package under
@@ -1467,7 +1524,14 @@ _stage_fetch_headers:
 
 # @impl 0f87-6a98-8b7f-9215
 # @impl 7854-6ad0-fb85-c2c6 (any of _LIB_FILE_FORMS, lib<n>.dll.a included)
-${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
+${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
+	@${_DELAYLOAD_NAMED}
+.for _l in ${_DELAYLOAD_ERRORS}
+	@echo "error: cannot delay-load ${_l} into lib${LIB}: "${_DELAY_ERR.${_l}:Q} >&2; exit 1
+.endfor
+.for _l in ${_DELAYLOAD_NOTES}
+	@echo "note: DELAYLOAD.${_l}=yes has no effect on ${BMK_TARGET_KEY:U${TARGET}}: delay loading exists only for MSVC and mingw-w64 output, so ${_l} loads when lib${LIB} loads"
+.endfor
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \
@@ -1507,6 +1571,11 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES}
 	done; \
 	echo ${_CCLINK:Q} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags; \
 	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags
+.if ${_DELAYLOAD_KIND} == "gnu"
+	@if command -v ${_MINGW_TRIPLE}-dlltool >/dev/null 2>&1; then \
+		${_MINGW_TRIPLE}-dlltool -d ${_OBJDIR}/${LIB}.def -D ${SHLIB_NAME} -y ${_LIBOUT_DIR}/lib${LIB}.delay.a; \
+	fi
+.endif
 	@echo "===> built shared ${SHLIB_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
 .if ${TARGET} != "win"
 	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR}/${SHLIB_LINK}

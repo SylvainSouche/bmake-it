@@ -169,8 +169,9 @@ LDFLAGS += -Wl,-rpath,${_d}
 # PROG has no lib${LIB}.linkdeps of its own to write (nothing links
 # against a PROG), only the consumer-side read.
 # @impl 0f87-6ab5-8e46-cfb1
+.include "${BMK_MKDIR}/mk.delayload.mk"
 .for _l in ${LIBS}
-LDFLAGS += -l${_l}
+LDFLAGS += -l${_DELAY_LIB.${_l}:U${_l}}
 .  for _d in ${_LIB_SEARCH_DIRS}
 .    if exists(${_d}/lib${_l}.linkdeps)
 _LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
@@ -256,7 +257,14 @@ all: _check_inputs_hash _create_dirs ${_BINOUT}
 
 # @impl 0f87-6a98-8b7f-9215
 # @impl 7854-6ad0-fb85-c2c6 (any of _LIB_FILE_FORMS, lib<n>.dll.a included)
-${_BINOUT}: ${OBJS} ${_LIBS_FILES}
+${_BINOUT}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
+	@${_DELAYLOAD_NAMED}
+.for _l in ${_DELAYLOAD_ERRORS}
+	@echo "error: cannot delay-load ${_l} into ${PROG}: "${_DELAY_ERR.${_l}:Q} >&2; exit 1
+.endfor
+.for _l in ${_DELAYLOAD_NOTES}
+	@echo "note: DELAYLOAD.${_l}=yes has no effect on ${BMK_TARGET_KEY:U${TARGET}}: delay loading exists only for MSVC and mingw-w64 output, so ${_l} loads when ${PROG} starts"
+.endfor
 .for _l in ${LIBS}
 	@_found=no; \
 	for _d in ${_LIB_SEARCH_DIRS}; do \

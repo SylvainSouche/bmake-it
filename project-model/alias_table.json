@@ -638,7 +638,7 @@
   "delay-load-mechanism-cand": {
     "active": true,
     "id": "7854-6ae5-cb28-c565",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
   },
   "delay-load-msvc-obs": {
@@ -646,6 +646,12 @@
     "id": "7854-6ae5-d759-ff9c",
     "status": "recorded",
     "type": "obs"
+  },
+  "delay-load-syntax-dec": {
+    "active": true,
+    "id": "7854-6ae8-c8f4-fe97",
+    "status": "recorded",
+    "type": "dec"
   },
   "delay-load-windows-toolchains-obs": {
     "active": true,
@@ -1234,6 +1240,12 @@
     "id": "7854-6adf-8c26-e698",
     "status": "recorded",
     "type": "obs"
+  },
+  "harness-ci-workflow-req": {
+    "active": true,
+    "id": "7854-6ae8-d1e7-04b9",
+    "status": "confirmed",
+    "type": "req"
   },
   "harness-comprehensive-feature-coverage": {
     "active": true,
