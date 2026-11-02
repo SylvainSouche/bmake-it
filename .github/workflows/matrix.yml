@@ -1,0 +1,117 @@
+# matrix.yml -- matrix cells of tests/harness/matrix.tsv on GitHub's runners,
+# one job per cell, through matrix.sh as on a developer's machine.
+# harness-ci-workflow-req. Each job installs what tests/README.md lists for
+# that platform; `matrix.sh check` fails the job when its cell did not pass.
+# @impl 7854-6ae8-d1e7-04b9
+#
+# Not here yet:
+#   MSVC       cl.exe and clang-cl need run-native-host.sh to accept Visual
+#              Studio: it asks for an EWDK ISO in BMK_CACHE, too large to fetch
+#              per run, while the runner has Visual Studio installed.
+#   macOS      a native runner, without the Tart guest the macos_arm64 cell
+#              boots: it needs a KIND host platform like freebsd_host.
+#   BSD guests vm.sh's images and QEMU, with KVM on a Linux runner; untried.
+#   cross      a cell builds its sysroot and runs on a second platform.
+name: Matrix
+
+on:
+  push:
+    branches: [main, 'ci/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: ${{ matrix.cell }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { cell: native-linux_amd64_emu-llvm, runner: ubuntu-24.04, image: linux-glibc-amd64 }
+          - { cell: native-linux_amd64_emu-gcc, runner: ubuntu-24.04, image: linux-glibc-amd64 }
+          - { cell: native-linux_arm64-llvm, runner: ubuntu-24.04-arm, image: linux-glibc-arm64 }
+          - { cell: native-linux_arm64-gcc, runner: ubuntu-24.04-arm, image: linux-glibc-arm64 }
+          - { cell: native-linux_amd64_musl-llvm, runner: ubuntu-24.04, image: linux-musl-amd64 }
+          - { cell: native-linux_amd64_musl-gcc, runner: ubuntu-24.04, image: linux-musl-amd64 }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Choose the cache
+        run: echo "BMK_CACHE=$RUNNER_TEMP/bmk-cache" >> "$GITHUB_ENV"
+      - name: Build the cell's image
+        run: make -C tests/harness "$BMK_CACHE/images/.${{ matrix.image }}.provisioned"
+      - name: Run the cell
+        working-directory: tests/harness
+        run: sh matrix.sh run '${{ matrix.cell }}'
+      - name: Check the cell
+        working-directory: tests/harness
+        run: sh matrix.sh check '${{ matrix.cell }}'
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.cell }}
+          path: ${{ runner.temp }}/bmk-cache/logs/
+          if-no-files-found: warn
+
+  windows:
+    name: ${{ matrix.cell }}
+    runs-on: windows-2022
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        cell:
+          - native-windows_amd64-llvm
+          - native-windows_amd64-gcc
+          - native-windows_amd64-mingw
+    defaults:
+      run:
+        shell: C:\cygwin\bin\bash.exe --noprofile --norc -e -o pipefail -o igncr '{0}'
+    steps:
+      # The sources must keep LF: the harness runs them with Cygwin's sh.
+      - name: Keep line endings
+        shell: pwsh
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@v7
+      # allow-test-packages: Lutok, which Kyua needs, takes Lua 5.4, a test
+      # version on Cygwin (tests/README.md).
+      - uses: cygwin/cygwin-install-action@v7
+        with:
+          install-dir: C:\cygwin
+          allow-test-packages: true
+          packages: >-
+            bmake clang lld gcc-core gcc-g++
+            mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++
+            make pkgconf pkg-config bison flex doxygen cmake
+            curl wget file tar gzip unzip zip patch
+            lua liblua-devel libsqlite3-devel sqlite3
+      - name: Restore ATF and Kyua
+        id: kyua
+        uses: actions/cache@v6
+        with:
+          path: C:\cygwin\usr\local
+          key: atf-kyua-cygwin-${{ hashFiles('tests/harness/provision/build-atf-kyua.sh') }}
+      - name: Build ATF and Kyua
+        if: steps.kyua.outputs.cache-hit != 'true'
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:$PATH
+          export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
+          sh tests/harness/provision/build-atf-kyua.sh
+      - name: Run the cell
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:$PATH
+          export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
+          cd tests/harness
+          sh matrix.sh run '${{ matrix.cell }}'
+          sh matrix.sh check '${{ matrix.cell }}'
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.cell }}
+          path: ${{ runner.temp }}/bmk-cache/logs/
+          if-no-files-found: warn

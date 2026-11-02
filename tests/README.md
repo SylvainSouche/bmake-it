@@ -43,6 +43,15 @@ duration: `11/110 16:43:21 101-restage-missing-staged-outputs PASS 42s`. Cases
 run in name order, so `101-` comes before `11-`. A cell a stopped run left
 behind also shows in `progress`, until it is run again.
 
+`sh matrix.sh check <cell-glob ...>` exits non-zero unless every named cell
+passed (`run` exits 0 either way, so that the other cells run).
+
+**On GitHub Actions** (`.github/workflows/matrix.yml`, on a push to `main` or a
+`ci/*` branch, or on request): the Linux cells (glibc amd64 and arm64, musl
+amd64, with llvm and gcc) and the Windows cells with Cygwin and mingw-w64 output,
+one job per cell, each cell's log kept with the run. Not covered: MSVC, macOS,
+the BSD guests and the cross cells; the workflow's header says what each needs.
+
 - **This machine as a cell**: `windows_amd64` (Cygwin), `freebsd_host` and
   `netbsd_host` are `KIND host` platforms: their native cells run the suite
   right on the machine running `matrix.sh` (with the base system's

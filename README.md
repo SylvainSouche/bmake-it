@@ -1,5 +1,6 @@
 # Bmake It
 
+[![Matrix](https://github.com/SylvainSouche/bmake-it/actions/workflows/matrix.yml/badge.svg?branch=main)](https://github.com/SylvainSouche/bmake-it/actions/workflows/matrix.yml)
 [![License: BSD-3-Clause](https://img.shields.io/github/license/SylvainSouche/bmake-it)](LICENSE)
 [![Latest tag](https://img.shields.io/github/v/tag/SylvainSouche/bmake-it?sort=semver)](https://github.com/SylvainSouche/bmake-it/tags)
 [![Last commit](https://img.shields.io/github/last-commit/SylvainSouche/bmake-it)](https://github.com/SylvainSouche/bmake-it/commits/main)
