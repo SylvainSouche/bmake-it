@@ -140,7 +140,7 @@ case "$cmd" in
            cells | awk -F'\t' '{printf "%-34s %-7s %-17s %-14s %-6s %s\n",$1,$2,$3,$4,$5,$6}' ;;
     run)   cells | while IFS='	' read -r c k b t tc e; do
                ok=no; if [ $# -eq 0 ]; then ok=yes; else for g in "$@"; do case "$c" in $g) ok=yes ;; esac; done; fi
-               [ "$ok" = yes ] && run_cell "$c" "$k" "$b" "$t" "$tc" "$e" </dev/null
+               if [ "$ok" = yes ]; then run_cell "$c" "$k" "$b" "$t" "$tc" "$e" </dev/null; fi
            done ;;
     # harness-case-progress-req. A run that was stopped leaves its cell here too.
     # @impl 7854-6ae8-b000-14cb
