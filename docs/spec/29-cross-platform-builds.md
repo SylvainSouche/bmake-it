@@ -49,7 +49,7 @@ Which toolchains build a target OS's output on a host OS.
 | **Linux** | ✗ llvm + SDK: compiles, does not link (Debian 13's lld and the SDK stubs) | ✔ llvm, gcc; ✔ llvm to the other architecture | ✔ llvm + sysroot (arm64; amd64 builds, no guest to run on an arm64 host) | ✔ llvm + sysroot (arm64; amd64 likewise) | ○ llvm, gcc: mingw-w64 |
 | **FreeBSD** | ○ llvm + SDK | ○ llvm + sysroot | ✔ llvm, gcc | ○ llvm + sysroot | ○ llvm, gcc: mingw-w64 |
 | **NetBSD** | ○ llvm + SDK | ○ llvm + sysroot | ○ llvm + sysroot | ✔ llvm, gcc | ○ llvm, gcc: mingw-w64 |
-| **Windows (Cygwin)** | ○ llvm + SDK | ○ llvm + sysroot | ○ llvm + sysroot | ○ llvm + sysroot | ✔ llvm, gcc (Cygwin and mingw-w64), msvc |
+| **Windows (Cygwin)** | ○ llvm + SDK | ○ llvm + sysroot | ○ llvm + sysroot | ○ llvm + sysroot | ✔ llvm, gcc (Cygwin and mingw-w64), llvm (MSVC runtime), msvc |
 
 "+ sysroot"/"+ SDK": `BMK_<OS>_SYSROOT` (below). Every ○ goes through the
 same clang `--target`/`--sysroot` path as the ✔ cells; it is ○ because no
@@ -62,7 +62,7 @@ Per output runtime, natively (on that OS) and as a cross build.
 
 | Toolchain ↓ / ABI → | Linux glibc | Linux musl | macOS | FreeBSD | NetBSD | Windows Cygwin | Windows mingw-w64 | Windows MSVC |
 |---|---|---|---|---|---|---|---|---|
-| **llvm** | native ✔, cross ✔ | native ✔, cross ✗ | native ✔, cross ✗ from Linux (does not link), ○ elsewhere | native ✔, cross ✔ | native ✔, cross ✔ | native ✔ | on Cygwin ✔ (`ABI=mingw`), cross ○ | ✗ — by hand ○, toolchain planned |
+| **llvm** | native ✔, cross ✔ | native ✔, cross ✗ | native ✔, cross ✗ from Linux (does not link), ○ elsewhere | native ✔, cross ✔ | native ✔, cross ✔ | native ✔ | on Cygwin ✔ (`ABI=mingw`), cross ○ | on Cygwin ✔ (`ABI=msvc`), cross ✗ |
 | **gcc** | native ✔, cross ✗ (planned) | native ✔, cross ✗ (planned) | native ✔, cross ✗ (not possible) | native ✔, cross ✗ (planned) | native ✔, cross ✗ (planned) | native ✔ | on Cygwin ✔ (`ABI=mingw`), cross ○ (`<triple>-gcc`) | ✗ |
 | **msvc** | – | – | – | – | – | – | – | native ✔ (Cygwin host; EWDK or Visual Studio) |
 
@@ -75,7 +75,7 @@ it needs Cygwin's own compilers.
 
 | Toolchain | Native | Cross |
 |---|---|---|
-| `llvm` | every host | any host to `linux`, `freebsd`, `netbsd`, `macos` with that target's sysroot; to `win` as mingw-w64 output |
+| `llvm` | every host; on a Windows (Cygwin) host also MSVC output (`ABI=msvc`) | any host to `linux`, `freebsd`, `netbsd`, `macos` with that target's sysroot; to `win` as mingw-w64 output |
 | `gcc` | every host | today only to `win`, as mingw-w64 output, with `<triple>-gcc`; other targets planned (`gcc-cross-toolchain-req`) |
 | `msvc` | Windows (Cygwin host), `win` of the host's architecture | none: MSVC only targets Windows from Windows; asking is an error naming `TOOLCHAIN=llvm` as the cross path |
 
@@ -93,7 +93,8 @@ A Windows host is a Cygwin host. From it, `TARGET=win` has three runtimes:
 |---|---|---|
 | Cygwin (POSIX, `cygwin1.dll`) | `TOOLCHAIN=llvm` or `gcc` | `win-amd64-cygwin`, `-gcc-cygwin` |
 | mingw-w64 (native, no Cygwin) | `ABI=mingw` with `llvm` or `gcc` (`mingw-on-cygwin-req`) | `win-amd64-mingw`, `-gcc-mingw` |
-| MSVC (native) | `TOOLCHAIN=msvc`: `cl.exe`/`link.exe`, found through Visual Studio or a mounted EWDK (`BMK_EWDK_ROOT=`, `msvc-ewdk-root-req`) | `win-amd64` |
+| MSVC (native) | `TOOLCHAIN=msvc`: `cl.exe`/`link.exe`, found through Visual Studio or a mounted EWDK (`BMK_EWDK_ROOT=`, `msvc-ewdk-root-req`) | `win-amd64-msvc` |
+| MSVC (native), by clang | `TOOLCHAIN=llvm ABI=msvc`: `clang-cl`/`lld-link` with the same MSVC headers and libraries (`clang-msvc-toolchain-req`) | `win-amd64` |
 
 From any other host, Windows output is mingw-w64 only
 (`win-target-via-cross-toolchain-req`, `win-target-tiered-toolchain-req`):
@@ -177,7 +178,8 @@ Bmake It's own matrix (`tests/README.md`, `tests/harness`):
 
 - **Native suites** on macOS, Linux (glibc and musl, amd64 and arm64, in
   containers and guests), FreeBSD and NetBSD (QEMU guests and real hosts),
-  and on a Windows host for Cygwin, mingw-w64 and MSVC output.
+  and on a Windows host for Cygwin, mingw-w64 and MSVC output (`cl.exe` and
+  clang).
 - **Cross cells**: Hello is built on one platform and **run on the target**:
   Linux arm64 ↔ Linux amd64, Linux → FreeBSD arm64, Linux → NetBSD arm64
   (`harness-tests-full-cross-build-matrix-req`). FreeBSD and NetBSD amd64 build
@@ -206,10 +208,10 @@ Not supported today; each is a decision to make, not a silent behaviour:
   lld cannot read the SDK's stubs).
 - **Windows from a non-Windows host** is mingw-w64 only and not in the
   matrix: there is no Windows guest, and no Windows sysroot recipe.
-- **clang for MSVC output** (`--target=<arch>-pc-windows-msvc` with
-  `lld-link` and MSVC's headers and libraries) works by hand on the Windows
-  host; it is not a toolchain yet. The ABI detection already labels such a
-  compiler's output `msvc`.
+- **clang for MSVC output from another host**: `TOOLCHAIN=llvm ABI=msvc`
+  builds only on a Windows (Cygwin) host, where Visual Studio or an EWDK
+  provides MSVC's headers and libraries; elsewhere it is an error naming
+  mingw-w64 as the cross path.
 - **Sysroot provisioning** for projects (fetch, build, keep, share) is
   specified in `05-setup-and-administration.md`, not implemented; the harness
   scripts make sysroots for Bmake It's own tests.

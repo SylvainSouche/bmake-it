@@ -82,9 +82,10 @@ grep -q "run.sh:uses_tool_and_its_library  *->  *passed" test4.log
 # --- 4. a foreign target with no runner stops, before building, naming what to set ---
 case "$(uname -s)" in FreeBSD) fo=netbsd; sv=BMK_NETBSD_SYSROOT ;; *) fo=freebsd; sv=BMK_FREEBSD_SYSROOT ;; esac
 mkdir -p "$ROOT/fakesysroot"
-# (MSVC and mingw are Windows ABIs: the cross target takes the default toolchain)
-xenv=""; if native_win_runtime; then xenv="-u ABI -u TOOLCHAIN"; fi
-rc=0; env $xenv "$sv=$ROOT/fakesysroot" bmake test TARGET=$fo >test5.log 2>&1 || rc=$?
+# (MSVC and mingw are Windows ABIs: the cross target takes llvm and no ABI --
+# on the command line, where the test harness forces them for the whole suite)
+xargs=""; if native_win_runtime; then xargs="ABI= TOOLCHAIN=llvm"; fi
+rc=0; env "$sv=$ROOT/fakesysroot" bmake test TARGET=$fo $xargs >test5.log 2>&1 || rc=$?
 [ $rc != 0 ] || { echo "a foreign target without a runner must fail" >&2; exit 1; }
 grep -q "TEST_RUNNER\.$fo-" test5.log || { cat test5.log >&2; echo "the error should name TEST_RUNNER.<os>-<arch>" >&2; exit 1; }
 grep -q "TEST_RUNNER=local" test5.log

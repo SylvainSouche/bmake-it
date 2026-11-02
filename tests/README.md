@@ -69,6 +69,25 @@ make fetch provision build test report # all of it
   `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
   (and likewise for the other two) instead of rebuilding.
 
+### Results (2026-11-02, Windows 10 amd64 host)
+
+104 cases, the host cells only, with the new clang/MSVC cell and a local
+cache: the external drive holding the guest images was not trusted after its
+failure of 2026-10-30, so the guest cells were not rerun.
+
+| Cell | Result |
+|---|---|
+| Windows, Cygwin output, llvm | 96 pass, 8 skip |
+| Windows, Cygwin output, gcc | 96 pass, 8 skip |
+| Windows, MSVC (`cl.exe`, EWDK) | 96 pass, 8 skip |
+| Windows, MSVC (clang-cl and lld-link, `ABI=msvc`, EWDK) | 96 pass, 8 skip |
+| Windows, mingw-w64, llvm | 96 pass, 8 skip |
+
+No failures. Afterwards a header fix in the ATF Bmake It carries, with case
+104 rerun on the three native runtimes. atf-bmk's own self-test
+(`scripts/atf-selftest.sh`): mingw-w64 and clang/MSVC 200 results, `cl.exe`
+183 for the first time, no regressions; posix not rerun.
+
 ### Results (2026-10-30, Windows 10 amd64 host)
 
 104 cases, with the ATF Bmake It carries (case 104, cases 43/86/91/92/99

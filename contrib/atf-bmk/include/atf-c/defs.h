@@ -3,6 +3,11 @@
 #if !defined(ATF_C_DEFS_H)
 #define ATF_C_DEFS_H
 
+/* atf-c/macros.h's ATF_*_INTEQ use intmax_t and include nothing that declares
+ * it: POSIX systems get it through <sys/types.h>, these runtimes do not, and a
+ * test including only <atf-c.h> did not compile. */
+#include <stdint.h>
+
 #if defined(__GNUC__)
 #define ATF_DEFS_ATTRIBUTE_FORMAT_PRINTF(a, b) __attribute__((__format__(__printf__, a, b)))
 #define ATF_DEFS_ATTRIBUTE_NONNULL __attribute__((__nonnull__))

@@ -87,11 +87,25 @@ _LIB_FILE_FORMS = lib@.a lib@.dll.a lib@.so lib@.dylib @.lib
 # before the toolchain file, which picks the compiler and flags from it.
 # @impl 7854-6ad0-e970-479a
 _BMK_WIN_MINGW = no
-.if ${TARGET} == "win" && ${TOOLCHAIN} != "msvc"
+.if ${TARGET} == "win" && ${TOOLCHAIN} != "msvc" && ${ABI:U} != "msvc"
 .  if ${BMK_IS_NATIVE_BUILD} == "no" || ${ABI:U} == "mingw"
 _BMK_WIN_MINGW = yes
 .  endif
 .endif
+# clang-msvc-toolchain-req: does this build produce MSVC-runtime output?
+# TOOLCHAIN=msvc (cl.exe), or TOOLCHAIN=llvm ABI=msvc (clang-cl and lld-link
+# against the same MSVC headers and libraries, mk.toolchain.msvc.mk). Every
+# branch about the MSVC runtime -- library names, imports, the ATF built for
+# it, its sanitizer and OpenMP limits -- tests this, not TOOLCHAIN.
+# @impl 7854-6ae5-dc2f-8e71
+_BMK_MSVC_ABI = no
+.if ${TARGET} == "win" && (${TOOLCHAIN} == "msvc" || (${TOOLCHAIN} == "llvm" && ${ABI:U} == "msvc"))
+_BMK_MSVC_ABI = yes
+.endif
+.if ${TARGET} == "win" && ${ABI:U} == "msvc" && ${TOOLCHAIN} == "gcc" && empty(.MAKEFLAGS:M-V*)
+.  error "ABI=msvc with TOOLCHAIN=gcc: gcc does not build for the MSVC runtime -- use TOOLCHAIN=msvc (cl.exe) or TOOLCHAIN=llvm ABI=msvc (clang); gcc gives Cygwin output, or mingw-w64 with ABI=mingw"
+.endif
+
 .if ${TARGET_ARCH} == "amd64"
 _MINGW_TRIPLE = x86_64-w64-mingw32
 .elif ${TARGET_ARCH} == "arm64"
@@ -201,7 +215,8 @@ _TARGET_KEY := ${_TARGET_KEY}-${TOOLCHAIN}
 # makes of one build ask once, not once per parse (forks are slow on Cygwin).
 # @impl 7854-6ad0-e1c5-0fcc
 .if ${TARGET} == "win"
-.  if ${TOOLCHAIN} == "msvc"
+# (clang-cl, like cl.exe, has no -dumpmachine: _BMK_MSVC_ABI says it)
+.  if ${_BMK_MSVC_ABI} == "yes"
 _WIN_ABI = msvc
 .  else
 .    if "${_BMK_WIN_CC_FOR:U}" == "${CC}"
@@ -509,7 +524,7 @@ _SANITIZE_WORDS = ${SANITIZE:S/,/ /g}
 .    error "SANITIZE=${SANITIZE}: thread and memory sanitizers are mutually exclusive"
 .  endif
 
-.  if ${TOOLCHAIN} == "msvc"
+.  if ${_BMK_MSVC_ABI} == "yes"
 .    for _s in ${_SANITIZE_WORDS}
 .      if ${_s} != "address"
 .        error "SANITIZE=${_s}: MSVC only supports AddressSanitizer (SANITIZE=address) -- see docs/spec/40-cli-reference.md for toolchain limits"
@@ -520,7 +535,7 @@ _SANITIZE_WORDS = ${SANITIZE:S/,/ /g}
 CFLAGS   += -fsanitize=${SANITIZE}
 CXXFLAGS += -fsanitize=${SANITIZE}
 LDFLAGS  += -fsanitize=${SANITIZE}
-.  if ${TOOLCHAIN} != "msvc"
+.  if ${_BMK_MSVC_ABI} != "yes"
 # Preserve frame pointers for readable sanitizer stack traces -- standard
 # companion flag, no-op cost-wise compared to what instrumentation already
 # costs. Not applicable to the MSVC line (cl.exe has no equivalent switch
@@ -537,7 +552,7 @@ CXXFLAGS += -fno-omit-frame-pointer
 # real bug), so make every undefined-behavior check fatal on first hit,
 # matching how AddressSanitizer already aborts by default. Not an MSVC
 # concern -- MSVC's /fsanitize=address has no UBSan-equivalent switch.
-.  if !empty(_SANITIZE_WORDS:Mundefined) && ${TOOLCHAIN} != "msvc"
+.  if !empty(_SANITIZE_WORDS:Mundefined) && ${_BMK_MSVC_ABI} != "yes"
 CFLAGS   += -fno-sanitize-recover=undefined
 CXXFLAGS += -fno-sanitize-recover=undefined
 .  endif
@@ -708,7 +723,7 @@ OPENMP ?= no
 # through LIBS= needs the OpenMP runtime named for it.
 _OPENMP_LDFLAGS =
 .if ${OPENMP} == "yes"
-.  if ${TOOLCHAIN} == "msvc"
+.  if ${_BMK_MSVC_ABI} == "yes"
 _OPENMP_SUPPORTED = yes
 .  else
 _OPENMP_PROBE != printf 'int main(void){return 0;}' | ${CC} -fopenmp -x c - -c -o /dev/null 2>/dev/null && echo yes || echo no

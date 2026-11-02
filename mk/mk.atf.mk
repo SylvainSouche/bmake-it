@@ -67,7 +67,13 @@ BMK_ATF ?=
 .endif
 _ATF_BUNDLED = no
 _ATFB_MODE =
-.if !empty(.MAKE.OS:U:tl:Mcygwin*) && ${TARGET:Uwin} == "win" && (${TOOLCHAIN:U} == "msvc" || ${ABI:U} == "mingw")
+# The MSVC runtime: cl.exe, or clang for it (clang-msvc-toolchain-req). As
+# _BMK_MSVC_ABI in mk.common.mk, which mk.tst.mk has not read yet here.
+_ATFB_MSVC = no
+.if ${TOOLCHAIN:U} == "msvc" || (${TOOLCHAIN:U} == "llvm" && ${ABI:U} == "msvc")
+_ATFB_MSVC = yes
+.endif
+.if !empty(.MAKE.OS:U:tl:Mcygwin*) && ${TARGET:Uwin} == "win" && (${_ATFB_MSVC} == "yes" || ${ABI:U} == "mingw")
 _ATF_BUNDLED = yes
 _ATFB_MODE = win
 .elif "${BMK_ATF}" == "bundled"
@@ -80,7 +86,7 @@ _ATFB_CXXRT =
 # (scripts/atf-build.sh stages the public headers into ${_ATFB_DIR}/include,
 # as an install would -- with MSVC's missing unistd.h)
 _ATFB_CFLAGS = -I${_ATFB_DIR}/include
-.  if ${TOOLCHAIN:U} == "msvc"
+.  if ${_ATFB_MSVC} == "yes"
 _ATFB_LIBFILES = ${_ATFB_DIR}/atf-c.lib ${_ATFB_DIR}/atf-c++.lib
 .  else
 _ATFB_LIBFILES = ${_ATFB_DIR}/libatf-c.a ${_ATFB_DIR}/libatf-c++.a

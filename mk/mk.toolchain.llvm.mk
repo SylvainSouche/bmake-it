@@ -5,6 +5,16 @@
 .if !defined(_MK_TOOLCHAIN_LLVM_MK_)
 _MK_TOOLCHAIN_LLVM_MK_ = 1
 
+# clang-msvc-toolchain-req: TOOLCHAIN=llvm ABI=msvc is clang for the MSVC
+# runtime -- the MSVC toolchain's discovery and wrapper with clang-cl and
+# lld-link as the tools (mk.toolchain.msvc.mk); none of the rest of this
+# file applies.
+# @impl 7854-6ae5-dc2f-8e71
+.if ${_BMK_MSVC_ABI:Uno} == "yes"
+_BMK_MSVC_DRIVER = clang
+.  include "${BMK_MKDIR}/mk.toolchain.msvc.mk"
+.else
+
 # Host-native defaults (when TARGET matches host).
 # REQ-toolchain-mk-must-set-explicit-cc-paths-req-v5: search PATH, then a
 # list of common install prefixes -- never a single hardcoded absolute path.
@@ -229,4 +239,5 @@ LDFLAGS  += -femulated-tls
 .  endif
 .endif
 
+.endif # _BMK_MSVC_ABI
 .endif # _MK_TOOLCHAIN_LLVM_MK_

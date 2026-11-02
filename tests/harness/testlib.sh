@@ -24,10 +24,17 @@ esac
 if [ -z "${CC:-}" ]; then
     case "${ABI:-}" in mingw) CC=x86_64-w64-mingw32-gcc ;; esac
 fi
-# Under TOOLCHAIN=msvc the fake libraries are built with Bmake It's own
+# msvc_runtime: true when the output is for the MSVC runtime -- TOOLCHAIN=msvc
+# (cl.exe) or TOOLCHAIN=llvm ABI=msvc (clang-cl, clang-msvc-toolchain-req).
+msvc_runtime() {
+    [ "${TOOLCHAIN:-}" = msvc ] || [ "${ABI:-}" = msvc ]
+}
+
+# For the MSVC runtime the fake libraries are built with Bmake It's own
 # cl.exe/lib.exe wrappers, environment included (mk.vcvarsall.mk finds the
-# toolset): asked from bmake itself, its CC and AR become two scripts.
-if [ "${TOOLCHAIN:-}" = msvc ]; then
+# toolset; clang-cl and lld-link for clang): asked from bmake itself, its CC
+# and AR become two scripts.
+if msvc_runtime; then
     _tl_d=$(mktemp -d "${TMPDIR:-/tmp}/bmk-tc.XXXXXX")
     cat > "$_tl_d/makefile" <<'EOF'
 .include <mk.common.mk>
@@ -37,14 +44,20 @@ bmk-tc:
 	@echo "$${BMK_MSVC_LIB:-}"
 	@echo ${CC:Q}
 	@echo ${AR:Q}
+	@echo "$${BMK_MSVC_CL:-}"
+	@echo "$${BMK_MSVC_LIBEXE:-}"
 EOF
     if ! _tl_tc=$(cd "$_tl_d" && bmake bmk-tc) || [ -z "$_tl_tc" ]; then
-        echo "testlib: cannot get the MSVC compiler and archiver from bmake (TOOLCHAIN=msvc, above)" >&2
+        echo "testlib: cannot get the MSVC compiler and archiver from bmake (TOOLCHAIN=${TOOLCHAIN:-} ABI=${ABI:-}, above)" >&2
         exit 1
     fi
     _tl_l() { printf '%s\n' "$_tl_tc" | sed -n "$1p"; }
     BMK_MSVC_BIN=$(_tl_l 1) BMK_MSVC_INCLUDE=$(_tl_l 2) BMK_MSVC_LIB=$(_tl_l 3)
     export BMK_MSVC_BIN BMK_MSVC_INCLUDE BMK_MSVC_LIB
+    if [ -n "$(_tl_l 6)" ]; then
+        BMK_MSVC_CL=$(_tl_l 6) BMK_MSVC_LIBEXE=$(_tl_l 7)
+        export BMK_MSVC_CL BMK_MSVC_LIBEXE
+    fi
     printf '#!/bin/sh\nexec %s "$@"\n' "$(_tl_l 4)" > "$_tl_d/cc"
     printf '#!/bin/sh\nexec %s "$@"\n' "$(_tl_l 5)" > "$_tl_d/ar"
     chmod +x "$_tl_d/cc" "$_tl_d/ar"
@@ -53,10 +66,10 @@ fi
 
 # fake_ar <dir>/lib<name>.a <objects...>: archive a case's fake static
 # library as the linker under test looks for -l<name>: lib<name>.a, or
-# <name>.lib made by lib.exe under TOOLCHAIN=msvc.
+# <name>.lib made by lib.exe for the MSVC runtime.
 fake_ar() {
     _fa=$1; shift
-    if [ "${TOOLCHAIN:-}" = msvc ]; then
+    if msvc_runtime; then
         _fb=$(basename "$_fa" .a)
         "$BMK_T_AR" rcs "$(dirname "$_fa")/${_fb#lib}.lib" "$@"
     else
@@ -146,8 +159,8 @@ prog_libdir() {
 # Windows a DLL plus its import library lib<name>.dll.a (ld and lld do not
 # look for lib<name>.so there).
 shlib_flags() {
-    # MSVC: link.exe looks for -l<name> as <name>.lib
-    [ "${TOOLCHAIN:-}" = msvc ] && { echo "-shared -o $1/$2.dll -Wl,--out-implib,$1/$2.lib"; return; }
+    # MSVC runtime: link.exe (lld-link) looks for -l<name> as <name>.lib
+    msvc_runtime && { echo "-shared -o $1/$2.dll -Wl,--out-implib,$1/$2.lib"; return; }
     case $BMK_T_OS in
         win)   echo "-shared -o $1/lib$2.dll -Wl,--out-implib,$1/lib$2.dll.a" ;;
         macos) echo "-dynamiclib -o $1/lib$2.dylib" ;;
@@ -175,10 +188,10 @@ atf_pc() {
 }
 
 # native_win_runtime: true when the output is for a native Windows runtime
-# (ABI=mingw, TOOLCHAIN=msvc). Bmake It builds the ATF its test programs
+# (ABI=mingw, the MSVC runtime). Bmake It builds the ATF its test programs
 # link (native-windows-tests-req): there is no installed ATF to probe for.
 native_win_runtime() {
-    [ "$BMK_T_OS" = win ] && { [ "${TOOLCHAIN:-}" = msvc ] || [ "${ABI:-}" = mingw ]; }
+    [ "$BMK_T_OS" = win ] && { msvc_runtime || [ "${ABI:-}" = mingw ]; }
 }
 
 # atf_bundled: true when the tests link the ATF Bmake It carries

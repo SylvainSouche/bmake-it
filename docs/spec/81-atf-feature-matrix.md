@@ -29,7 +29,9 @@ installed Kyua does it, not the library (same on every column).
 |---|---|---|---|---|
 | posix (Cygwin, clang) | 334 | 332 | 2: the host's (an administrator is not denied a mode-000 directory; upstream ATF fails them too) | 0 |
 | installed (baseline: the same tests against the installed ATF) | 334 | 330 | 4: the 2 above, and 2 from how that ATF was configured | 0 |
-| win (mingw-w64, clang) | 194 | 133 | 61: starting a process (50), POSIX signals (4), permission bits (2), tests that call POSIX-only functions (5, not built) | 0 |
+| win (mingw-w64, clang) | 200 | 139 | 61: starting a process (50), POSIX signals (4), permission bits (2), tests that call POSIX-only functions (5, not built) | 0 |
+| win (MSVC runtime, clang-cl) | 200 | 139 | 61: the same | 0 |
+| win (MSVC, `cl.exe`) | 183 | 121 | 62: the same, and `dynstr_test`, not built: it declares a variable-length array, which `cl.exe` does not have | 0 |
 | win (MSVC) | — | — | not run: the EWDK image's drive failed during the run | — |
 
 `posix` matches upstream on everything ATF tests about itself. On Windows,

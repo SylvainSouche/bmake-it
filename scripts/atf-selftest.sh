@@ -90,9 +90,12 @@ if [ "$MODE" = win ]; then
 else
     CONFIG_H=$A/config.h
 fi
+# The MSVC wrapper's paths: mixed for cl.exe, POSIX for Cygwin's clang-cl
+# (BMK_MSVC_CL set: TOOLCHAIN=llvm ABI=msvc)
+if [ -n "${BMK_MSVC_CL:-}" ]; then mpath() { cygpath -ua "$1"; }; else mpath() { cygpath -m "$1"; }; fi
 # (ATF's makefiles pass these with -D: the helpers do not include config.h)
 if [ "${TOOLCHAIN:-}" = msvc ]; then
-    TCPPFLAGS="-I$(dirname "$CONFIG_H") $TCPPFLAGS /FI$(cygpath -m "$CONFIG_H")"
+    TCPPFLAGS="-I$(dirname "$CONFIG_H") $TCPPFLAGS /FI$(mpath "$CONFIG_H")"
 else
     TCPPFLAGS="-I$(dirname "$CONFIG_H") $TCPPFLAGS -include $CONFIG_H"
 fi
@@ -101,7 +104,7 @@ fi
 if [ "$MODE" = win ]; then
     SHIM=$BMK/win/test-shim
     if [ "${TOOLCHAIN:-}" = msvc ]; then
-        TCPPFLAGS="-I$(cygpath -m "$SHIM") -I$(cygpath -m "$BMK/win/msvc") $TCPPFLAGS /FI$(cygpath -m "$SHIM/atfw-test-shim.h")"
+        TCPPFLAGS="-I$(mpath "$SHIM") -I$(mpath "$BMK/win/msvc") $TCPPFLAGS /FI$(mpath "$SHIM/atfw-test-shim.h")"
     else
         TCPPFLAGS="-I$SHIM $TCPPFLAGS -include $SHIM/atfw-test-shim.h"
     fi
@@ -253,8 +256,10 @@ cat "$OUT/notbuilt.txt" | sed 's/ # .*//' >> "$OUT/results.txt"
 # "<dir>/<program> not-built # reason"; anything not listed must pass. A line
 # starting "[<host>] " applies only on that host (uname -s, lower case,
 # containing <host>): the host's own behaviour, which upstream ATF shows too.
+# "[cl.exe] " likewise, for what only cl.exe's compiler refuses.
 : > "$OUT/regressions.txt"; : > "$OUT/stale.txt"; : > "$OUT/known.txt"
 host=$(uname -s | tr 'A-Z' 'a-z')
+if [ "${TOOLCHAIN:-}" = msvc ] && [ -z "${BMK_MSVC_CL:-}" ]; then host="$host cl.exe"; fi
 exp_lines=""
 if [ -f "$EXPECTED" ]; then
     exp_lines=$(grep -v '^[[:space:]]*\(#\|$\)' "$EXPECTED" | sed 's/[[:space:]]*#.*//' |

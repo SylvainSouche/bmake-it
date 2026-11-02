@@ -29,6 +29,7 @@ atf-c++/utils_test not-built # [posix] calls fork() itself
 atf-c/detail/fs_test not-built # [posix] calls chown()
 atf-c/detail/process_test not-built # [posix] sys/resource.h (resource limits)
 atf-c/detail/user_test not-built # [posix] geteuid(): no uids on Windows
+[cl.exe] atf-c/detail/dynstr_test not-built # the test's own char buf[maxlen + 1]: cl.exe has no variable-length arrays (clang-cl compiles it)
 
 # --- [fork] -------------------------------------------------------------------------
 atf-c/atf_c_test:include failed: # [fork] compiles a header through atf_check_build_c_o

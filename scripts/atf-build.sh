@@ -78,10 +78,12 @@ CSTD=""; CXXEH=""; WSRCS=""; WXXSRCS=""
 
 if [ "$MODE" = win ]; then
     # cl.exe gets mixed paths (C:/...): the MSVC wrapper re-reads its
-    # arguments through eval, which would eat a backslash.
+    # arguments through eval, which would eat a backslash. Cygwin's clang-cl
+    # (TOOLCHAIN=llvm ABI=msvc: BMK_MSVC_CL set) takes POSIX ones.
     if [ "${TOOLCHAIN:-}" = msvc ]; then
-        inc() { printf '%s' "-I$(cygpath -m "$1")"; }
-        FI="/FI$(cygpath -m "$WIN/atfw-compat.h")"
+        if [ -n "${BMK_MSVC_CL:-}" ]; then mpath() { cygpath -ua "$1"; }; else mpath() { cygpath -m "$1"; }; fi
+        inc() { printf '%s' "-I$(mpath "$1")"; }
+        FI="/FI$(mpath "$WIN/atfw-compat.h")"
         CSTD="-std=c11"
         CXXEH="/EHsc"  # ATF's C++ part throws and catches (cl.exe: C4530 without)
         INCS="$(inc "$WIN") $(inc "$WIN/msvc") $(inc "$BMK/include") $(inc "$WIN/include-msvc") $(inc "$SRC")"

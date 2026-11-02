@@ -97,8 +97,9 @@ it equals that OS's default (`REQ-target-key-omit-defaults-req`):
 
 On `win` the ABI is **read from the compiler**, not taken on trust,
 because the omitted slot claims MSVC's runtime
-(`REQ-win-abi-from-compiler-req`): `TOOLCHAIN=msvc` is `msvc` (`cl.exe`
-has no `-dumpmachine`); otherwise `${CC} -dumpmachine` decides —
+(`REQ-win-abi-from-compiler-req`): `TOOLCHAIN=msvc` and `TOOLCHAIN=llvm
+ABI=msvc` are `msvc` (`cl.exe` and `clang-cl` have no `-dumpmachine`);
+otherwise `${CC} -dumpmachine` decides —
 `*cygwin*`/`*cygnus*` → `cygwin` (Cygwin gcc says `x86_64-pc-cygwin`,
 Cygwin clang `x86_64-pc-windows-cygnus`: POSIX output linked against
 `cygwin1.dll`), `*mingw32*`/`*windows-gnu*` → `mingw`, `*windows-msvc*` →
@@ -118,6 +119,24 @@ Cygwin host for its own arch with `ABI=mingw`:
 |---|---|---|
 | `gcc` | `<triple>-gcc`/`-g++`, with `<triple>-ar`/`-ranlib` | `win-amd64-gcc-mingw` |
 | `llvm` | `clang --target=<triple>`; `--sysroot` only from `BMK_MINGW_SYSROOT=`, otherwise clang locates an installed `<triple>-gcc`'s headers, CRT and libgcc itself; linked with `ld.lld` if installed, else `<triple>-ld`, and with `-pthread` (mingw-w64 gcc links winpthread implicitly, clang does not: `REQ-mingw-clang-links-winpthread-req`); without `BMK_MINGW_SYSROOT` also compiled and linked with `-femulated-tls`, because the installed mingw-w64 gcc's libstdc++ is built with emulated TLS (`std::call_once` otherwise fails to link: `REQ-mingw-clang-emulated-tls-req`) — an llvm-mingw sysroot uses native TLS and does not get it | `win-amd64-mingw` |
+
+**MSVC-runtime output** comes from two toolchains on a Cygwin host, both
+against the MSVC headers and libraries that Visual Studio or a mounted EWDK
+(`BMK_EWDK_ROOT=`) provides:
+
+| Selection | Compiler and linker | Key |
+|---|---|---|
+| `TOOLCHAIN=msvc` | `cl.exe`, `link.exe`, `lib.exe` | `win-amd64-msvc` |
+| `TOOLCHAIN=llvm ABI=msvc` | `clang-cl` linking through `lld-link`, `lld-link /lib` as the archiver, `-fms-compatibility-version` set from the toolset found (`REQ-clang-msvc-toolchain-req`) | `win-amd64` -- both slots at their default |
+
+Both go through `scripts/msvc-cc-wrapper.sh`, which turns the gcc-style
+flags the role files emit into cl's syntax; the wrapper hands Windows paths
+to `cl.exe` and POSIX paths to Cygwin's `clang-cl` and `lld-link`, which
+could not create their output under a drive path. Everything about the MSVC
+runtime -- library names, imports, the ATF built for its tests, sanitizer
+(address only) and OpenMP limits -- is the same for both
+(`_BMK_MSVC_ABI` in `mk.common.mk`). `ABI=msvc` with `TOOLCHAIN=gcc` is an
+error, and clang for MSVC output builds only on a Cygwin host for now.
 
 An explicit Cygwin sysroot (`/usr/x86_64-w64-mingw32/sys-root/mingw`)
 was tested and loses the C++ headers and libgcc, which live outside it

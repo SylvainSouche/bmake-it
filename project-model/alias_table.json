@@ -239,6 +239,18 @@
     "status": "recorded",
     "type": "con"
   },
+  "clang-msvc-toolchain-req": {
+    "active": true,
+    "id": "7854-6ae5-dc2f-8e71",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "clang-msvc-via-msvc-wrapper-dec": {
+    "active": true,
+    "id": "7854-6ae5-dc2f-f14f",
+    "status": "recorded",
+    "type": "dec"
+  },
   "clean-leaves-no-empty-build-dirs-req": {
     "active": true,
     "id": "7854-6ad2-03bb-1a20",
@@ -604,6 +616,42 @@
     "id": "6f38-6a88-1836-c0f9",
     "status": "confirmed",
     "type": "req"
+  },
+  "delay-load-data-export-obs": {
+    "active": true,
+    "id": "7854-6ae5-cc84-d9cc",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "delay-load-default-by-library-req": {
+    "active": true,
+    "id": "7854-6ae5-cb17-4ec0",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "delay-load-failure-hook-cand": {
+    "active": true,
+    "id": "7854-6ae5-d8d0-2a58",
+    "status": "open",
+    "type": "cand"
+  },
+  "delay-load-mechanism-cand": {
+    "active": true,
+    "id": "7854-6ae5-cb28-c565",
+    "status": "open",
+    "type": "cand"
+  },
+  "delay-load-msvc-obs": {
+    "active": true,
+    "id": "7854-6ae5-d759-ff9c",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "delay-load-windows-toolchains-obs": {
+    "active": true,
+    "id": "7854-6ae5-cc83-f7e3",
+    "status": "recorded",
+    "type": "obs"
   },
   "dep-order-generation-mechanism-prototyped": {
     "active": true,
@@ -3095,6 +3143,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "no-bmake-it-runtime-code-dec": {
+    "active": true,
+    "id": "7854-6ae5-d8cf-056d",
+    "status": "recorded",
+    "type": "dec"
+  },
   "no-copy-preq-commands": {
     "active": true,
     "id": "6f38-6a89-bd4b-c4ce",
@@ -4522,6 +4576,12 @@
     "id": "0f87-6aa1-04b8-9a6d",
     "status": "confirmed",
     "type": "req"
+  },
+  "windows-startup-config-cand": {
+    "active": true,
+    "id": "7854-6ae5-d8d1-7489",
+    "status": "open",
+    "type": "cand"
   },
   "windows-toolchain-scope-corrected": {
     "active": true,

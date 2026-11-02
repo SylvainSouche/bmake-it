@@ -23,8 +23,16 @@ make TARGET=freebsd TARGET_ARCH=amd64 TOOLCHAIN=gcc
   underlying variables remain individually overridable afterward via
   ordinary make variable precedence, for mixed setups (e.g. clang + GNU
   `ld`).
+- **`ABI=`** — only where a target has more than one runtime: Linux
+  `glibc` (default) or `musl`; Windows `msvc`, `mingw` or `cygwin`. On a
+  Windows (Cygwin) host `TOOLCHAIN=llvm` or `gcc` alone gives Cygwin output,
+  `ABI=mingw` mingw-w64, and `TOOLCHAIN=llvm ABI=msvc` the MSVC runtime
+  with clang (`clang-cl`, `lld-link`), as `TOOLCHAIN=msvc` does with
+  `cl.exe` (`REQ-clang-msvc-toolchain-req`). An ABI the target or the
+  toolchain cannot produce is an error (`ABI=msvc` with gcc, `ABI=mingw`
+  for Linux).
 
-Together these three variables determine the full compound target key
+Together these variables determine the full compound target key
 (`10-directory-layout.md`). Which host can build which target with which
 toolchain, what a cross build needs and how it is tested:
 `29-cross-platform-builds.md`.

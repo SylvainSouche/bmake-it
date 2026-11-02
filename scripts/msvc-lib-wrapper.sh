@@ -12,6 +12,9 @@ set -eu
 # The MSVC environment, as msvc-cc-wrapper.sh takes it.
 [ -z "${BMK_MSVC_BIN:-}" ] || PATH="$BMK_MSVC_BIN:$PATH"
 [ -z "${BMK_MSVC_LIB:-}" ] || export LIB="$BMK_MSVC_LIB"
+# lib.exe, or for TOOLCHAIN=llvm ABI=msvc "lld-link /lib" (BMK_MSVC_LIBEXE,
+# set by mk.toolchain.msvc.mk: clang-msvc-toolchain-req)
+LIBEXE=${BMK_MSVC_LIBEXE:-lib.exe}
 
 # First arg is ar's own flag bundle (always "rcs" as invoked from
 # mk.lib.mk) -- lib.exe has no equivalent, so it's simply discarded.
@@ -20,13 +23,17 @@ shift
 archive=$1
 shift
 
-winpath() {
-    cygpath -w "$1"
-}
+# (Cygwin's lld-link takes POSIX paths, lib.exe Windows ones: see
+# msvc-cc-wrapper.sh)
+if [ -n "${BMK_MSVC_LIBEXE:-}" ]; then
+    winpath() { cygpath -ua "$1"; }
+else
+    winpath() { cygpath -w "$1"; }
+fi
 
 objs=""
 for o in "$@"; do
     objs="$objs \"$(winpath "$o")\""
 done
 
-eval "lib.exe /nologo /out:\"$(winpath "$archive")\" $objs"
+eval "$LIBEXE /nologo /out:\"$(winpath "$archive")\" $objs"

@@ -19,6 +19,12 @@ extern "C" {
 #endif
 int kill(int, int);
 int pipe(int *);
+#if defined(_MSC_VER)
+/* (mingw-w64's <unistd.h> has sleep(); MSVC's C runtime does not. Declared by
+ * hand: <windows.h> would bring its macros into ATF's tests.) */
+__declspec(dllimport) void __stdcall Sleep(unsigned long);
+static __inline unsigned int sleep(unsigned int s) { Sleep(s * 1000UL); return 0; }
+#endif
 #if defined(__cplusplus)
 }
 #endif

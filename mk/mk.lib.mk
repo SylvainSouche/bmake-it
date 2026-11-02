@@ -625,7 +625,7 @@ ${_v} := ${_BMK_PKG_CONFIG_SYSROOT}${${_v}}
 # (MSVC: <LIB>.lib is a static or an import library alike; a <LIB>.dll
 # beside it, or in the bin/ beside lib/, says shared -- case 71, 2026-10-27)
 .      if exists(${_IMPORT_LIBDIR}/lib${LIB}.so) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dylib) || exists(${_IMPORT_LIBDIR}/lib${LIB}.dll.a) || \
-          (${TOOLCHAIN} == "msvc" && (exists(${_IMPORT_LIBDIR}/${LIB}.dll) || exists(${_IMPORT_LIBDIR}/../bin/${LIB}.dll)))
+          (${_BMK_MSVC_ABI} == "yes" && (exists(${_IMPORT_LIBDIR}/${LIB}.dll) || exists(${_IMPORT_LIBDIR}/../bin/${LIB}.dll)))
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs ${_IMPORT_PKGNAME} 2>/dev/null
 .      else
 _IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs --static ${_IMPORT_PKGNAME} 2>/dev/null
@@ -1029,7 +1029,7 @@ _write_linkdeps:
 _IMPORT_LIB_GLOBS = lib${LIB}.*
 _IMPORT_LIB_NAMES = lib${LIB}.a, lib${LIB}.dll.a, lib${LIB}.so*, lib${LIB}.dylib
 _IMPORT_LIB_MSVC_CASE = *.a
-.if ${TOOLCHAIN} == "msvc"
+.if ${_BMK_MSVC_ABI} == "yes"
 _IMPORT_LIB_GLOBS += ${LIB}.lib ${LIB}.dll
 _IMPORT_LIB_NAMES := ${LIB}.lib, ${LIB}.dll, ${_IMPORT_LIB_NAMES}
 _IMPORT_LIB_MSVC_CASE = *.lib|*.dll

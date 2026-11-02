@@ -8,7 +8,7 @@
 #  target  <os>-<arch> of the output (cross only)
 #  exec    a platform id to run the result on, or  blocked:<reason>  /  none:<reason>
 #          (cross-test-universal-coverage: an impossible cell is listed with its reason)
-#  toolchain  TOOLCHAIN=; <toolchain>+<abi> also forces ABI= (host cells only: llvm+mingw)
+#  toolchain  TOOLCHAIN=; <toolchain>+<abi> also forces ABI= (host cells only: llvm+mingw, llvm+msvc)
 #
 # cell id                          kind    build             target           toolchain  exec
 native-linux_arm64-llvm	native	linux_arm64	-	llvm	-
@@ -33,6 +33,7 @@ native-windows_amd64-llvm	native	windows_amd64	-	llvm	-
 native-windows_amd64-gcc	native	windows_amd64	-	gcc	-
 native-windows_amd64-msvc	native	windows_amd64	-	msvc	-
 native-windows_amd64-mingw	native	windows_amd64	-	llvm+mingw	-
+native-windows_amd64-llvm-msvc	native	windows_amd64	-	llvm+msvc	-
 native-freebsd_host-llvm	native	freebsd_host	-	llvm	-
 native-freebsd_host-gcc	native	freebsd_host	-	gcc	-
 native-netbsd_host-llvm	native	netbsd_host	-	llvm	-

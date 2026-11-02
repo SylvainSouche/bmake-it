@@ -38,11 +38,13 @@ if [ -n "$bmake" ] && ! command -v "$bmake" >/dev/null 2>&1; then
     echo "BLOCKED $P: its make $bmake is not on this host" >"$LOG.status"; cat "$LOG.status"; exit 0
 fi
 
-# TOOLCHAIN=msvc from the cached EWDK (msvc-ewdk-root-req): mount the ISO in
-# BMK_CACHE/msvc read-only unless it already is, and hand its drive to the
-# suite as BMK_EWDK_ROOT. A missing or unmountable ISO blocks the cell.
+# The MSVC runtime (TOOLCHAIN=msvc, or llvm+msvc: clang-msvc-toolchain-req)
+# from the cached EWDK (msvc-ewdk-root-req): mount the ISO in BMK_CACHE/msvc
+# read-only unless it already is, and hand its drive to the suite as
+# BMK_EWDK_ROOT -- unless BMK_EWDK_ROOT is already given. A missing or
+# unmountable ISO blocks the cell.
 ewdk=""
-if [ "$TOOLCHAIN" = msvc ] && [ -z "${BMK_EWDK_ROOT:-}" ]; then
+if { [ "$TOOLCHAIN" = msvc ] || [ "$ABI" = msvc ]; } && [ -z "${BMK_EWDK_ROOT:-}" ]; then
     iso=$(ls "$BMK_CACHE"/msvc/EWDK_*.iso 2>/dev/null | head -1)
     if [ -z "$iso" ]; then
         echo "BLOCKED no EWDK ISO in $BMK_CACHE/msvc" >"$LOG.status"; cat "$LOG.status"; exit 0

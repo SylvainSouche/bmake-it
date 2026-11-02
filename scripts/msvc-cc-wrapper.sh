@@ -52,10 +52,29 @@ export VSLANG=1033  # cl.exe's messages in English: /showIncludes is parsed
 [ -z "${BMK_MSVC_INCLUDE:-}" ] || export INCLUDE="$BMK_MSVC_INCLUDE"
 [ -z "${BMK_MSVC_LIB:-}" ] || export LIB="$BMK_MSVC_LIB"
 sysdirs="${INCLUDE:-}"  # ;-list of Windows dirs whose headers -MMD leaves out
+# The compiler driver: cl.exe, or for TOOLCHAIN=llvm ABI=msvc clang-cl, which
+# takes cl.exe's own syntax and links through lld-link (BMK_MSVC_CL, set by
+# mk.toolchain.msvc.mk: clang-msvc-toolchain-req).
+# @impl 7854-6ae5-dc2f-8e71
+CL=${BMK_MSVC_CL:-cl.exe}
 
-winpath() {
+# The paths the driver is given: cl.exe and link.exe are native and take
+# Windows paths; Cygwin's clang-cl and lld-link take POSIX ones -- given
+# C:\... or C:/..., clang could not create its output (LLVM there treats a
+# drive path as relative: "unable to open output file", 2026-10-31). An
+# absolute POSIX path joined to its option (/Fo/cygdrive/...) or alone is
+# never read as an option. nativepath: always Windows, for dumpbin.exe.
+nativepath() {
     cygpath -w "$1"
 }
+if [ -n "${BMK_MSVC_CL:-}" ]; then
+    winpath() { cygpath -ua "$1"; }
+    dirsep=/
+else
+    winpath() { cygpath -w "$1"; }
+    dirsep='\\'
+fi
+dobjects=""         # the objects again, as dumpbin.exe (native) reads them
 
 while [ $# -gt 0 ]; do
     arg=$1
@@ -201,6 +220,7 @@ while [ $# -gt 0 ]; do
             # but needs one input file (D8003): it stays cl's input.
             sources="$sources \"$(winpath "$arg")\""
             objects="$objects \"$(winpath "$arg")\""
+            dobjects="$dobjects \"$(nativepath "$arg")\""
             objdir=${objdir:-$(dirname "$arg")}
             ;;
         *.c|*.cc|*.cpp|*.cxx)
@@ -233,16 +253,16 @@ if [ "$mode" = "preprocess" ]; then
     fi
     tool_failed=yes
     if [ -n "$out" ] && [ "$out" != - ]; then
-        eval "cl.exe /nologo /E $cflags $sources" > "$out"
+        eval "$CL /nologo /E $cflags $sources" > "$out"
     else
-        eval "cl.exe /nologo /E $cflags $sources"
+        eval "$CL /nologo /E $cflags $sources"
     fi
     exit
 elif [ "$mode" = "compile" ]; then
     [ -n "$out" ] || { echo "msvc-cc-wrapper: -c given with no -o output" >&2; exit 1; }
     if [ "$deps" = no ]; then
         tool_failed=yes
-        eval "cl.exe /nologo /c $cflags $sources /Fo\"$(winpath "$out")\""
+        eval "$CL /nologo /c $cflags $sources /Fo\"$(winpath "$out")\""
         exit
     fi
     # header-dependency-tracking-req under MSVC: -MMD [-MP] [-MF <file>] as
@@ -254,13 +274,15 @@ elif [ "$mode" = "compile" ]; then
     # @impl 0f87-6ab5-8442-b2dc
     [ -n "$depfile" ] || depfile="${out%.*}.d"
     rc=0
-    clout=$(eval "cl.exe /nologo /showIncludes /c $cflags $sources /Fo\"$(winpath "$out")\"") || rc=$?
+    clout=$(eval "$CL /nologo /showIncludes /c $cflags $sources /Fo\"$(winpath "$out")\"") || rc=$?
     clout=$(printf '%s\n' "$clout" | tr -d '\r')
     printf '%s\n' "$clout" | grep -v '^Note: including file:' || true
     [ "$rc" -eq 0 ] || { tool_failed=yes; exit "$rc"; }
-    sysl=$(printf '%s' "$sysdirs" | tr 'A-Z' 'a-z')
+    # (clang-cl names a system header G:\...\ucrt/stdio.h: compared with
+    # every / made \)
+    sysl=$(printf '%s' "$sysdirs" | tr 'A-Z/' 'a-z\\')
     hdrs=$(printf '%s\n' "$clout" | sed -n 's/^Note: including file: *//p' | while IFS= read -r h; do
-        hl=$(printf '%s' "$h" | tr 'A-Z' 'a-z')
+        hl=$(printf '%s' "$h" | tr 'A-Z/' 'a-z\\')
         skip=no
         _ifs=$IFS; IFS=';'
         for s in $sysl; do
@@ -298,24 +320,25 @@ else
             objdir="${out%.*}.objs"
             mkdir -p "$objdir"
             tool_failed=yes
-            eval "cl.exe /nologo /c $cflags $csources /Fo\"$(winpath "$objdir")\\\\\""
+            eval "$CL /nologo /c $cflags $csources /Fo\"$(winpath "$objdir")$dirsep\""
             tool_failed=""
             for o in "$objdir"/*.obj; do
                 objects="$objects \"$(winpath "$o")\""
+                dobjects="$dobjects \"$(nativepath "$o")\""
             done
             sources="$objects $libinputs"
         fi
         if [ "$own_def" = no ] && [ -n "$objects" ]; then
             # beside the objects, not in the DLL's lib/ (copy-up's input)
             def="$objdir/$(basename "${out%.*}").def"
-            syms=$(eval "dumpbin.exe /nologo /symbols $objects") || {
+            syms=$(eval "dumpbin.exe /nologo /symbols $dobjects") || {
                 echo "msvc-cc-wrapper: cannot list the symbols of $out's objects for its export list (dumpbin.exe /symbols failed, above) -- the DLL would have no import library" >&2
                 tool_failed=yes; exit 1
             }
             # symbols already exported by __declspec(dllexport) (an /EXPORT:
             # directive in the object) stay out: listed twice, link.exe
             # warns LNK4197
-            dirs=$(eval "dumpbin.exe /nologo /directives $objects" | tr -d '\r' | tr ' ' '\n' | sed -n 's|^/EXPORT:\([^,]*\).*|\1|p') || dirs=""
+            dirs=$(eval "dumpbin.exe /nologo /directives $dobjects" | tr -d '\r' | tr ' ' '\n' | sed -n 's|^/EXPORT:\([^,]*\).*|\1|p') || dirs=""
             {
                 echo "LIBRARY \"$(basename "$out")\""
                 echo "EXPORTS"
@@ -333,9 +356,9 @@ else
         # /Fe: still names cl's own output for consistency/diagnostics;
         # the authoritative name for a DLL link is /OUT: after /link.
         tool_failed=yes
-        eval "cl.exe /nologo $cflags $sources /link $linkflags /OUT:\"$(winpath "$out")\""
+        eval "$CL /nologo $cflags $sources /link $linkflags /OUT:\"$(winpath "$out")\""
     else
         tool_failed=yes
-        eval "cl.exe /nologo $cflags $sources /Fe:\"$(winpath "$out")\" /link $linkflags"
+        eval "$CL /nologo $cflags $sources /Fe:\"$(winpath "$out")\" /link $linkflags"
     fi
 fi

@@ -73,7 +73,7 @@ _XTEST_LOCAL_ENV += ATFW_CYGROOT="$$(cygpath -m /)"; export ATFW_CYGROOT;
 # (a cross build to Windows) `bmake test` says so up front instead of
 # failing at the link.
 _XTEST_NATIVE_WIN = no
-.if ${TARGET} == "win" && (${TOOLCHAIN} == "msvc" || ${ABI:U} == "mingw") && "${_ATFB_MODE}" != "win"
+.if ${TARGET} == "win" && (${_BMK_MSVC_ABI} == "yes" || ${ABI:U} == "mingw") && "${_ATFB_MODE}" != "win"
 _XTEST_NATIVE_WIN = yes
 .endif
 
@@ -102,7 +102,7 @@ _XTEST_SCRIPT = ${BMK_MKDIR}/../scripts/cross-test.sh
 # runner. A prerequisite of `test`, ahead of the build.
 _xtest_check:
 .if ${_XTEST_NATIVE_WIN} == "yes"
-	@echo "error: bmake test for ${TOOLCHAIN:Mmsvc:?TOOLCHAIN=msvc:ABI=mingw} output runs only on a Windows host with Cygwin: Bmake It builds the ATF for that runtime there, and the Cygwin Kyua runs the tests." >&2; \
+	@echo "error: bmake test for ${_BMK_MSVC_ABI:Myes:?MSVC-runtime:mingw-w64} output runs only on a Windows host with Cygwin: Bmake It builds the ATF for that runtime there, and the Cygwin Kyua runs the tests." >&2; \
 	echo "       Run bmake test on the Windows host, or test this code on another target." >&2; \
 	exit 1
 .elif ${_XTEST_MODE} == "missing"

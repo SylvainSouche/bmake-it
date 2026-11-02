@@ -105,7 +105,7 @@ _TST_FLAVOR = cxx
 # mk.atf.mk) -- there is nothing to find. Cygwin output is asked (it was
 # skipped there too).
 _TST_NATIVE_WIN = no
-.  if ${TARGET:U} == "win" && (${TOOLCHAIN:U} == "msvc" || ${ABI:U} == "mingw" || empty(.MAKE.OS:U:tl:Mcygwin*))
+.  if ${TARGET:U} == "win" && (${_ATFB_MSVC} == "yes" || ${ABI:U} == "mingw" || empty(.MAKE.OS:U:tl:Mcygwin*))
 _TST_NATIVE_WIN = yes
 .  endif
 _TST_ATF_REPORT =
