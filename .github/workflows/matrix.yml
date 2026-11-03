@@ -94,11 +94,12 @@ jobs:
       # Lutok, which Kyua needs, takes Lua 5.4, a test version on Cygwin
       # (tests/README.md): named exactly, because allow-test-packages would let
       # any package move to a test version (the test gcc does not build Kyua
-      # 0.14.1).
+      # 0.14.1). libxml2 too, for now: Cygwin's 2.15 has another DLL name, and clang,
+      # lld and cmake, built against the old one, then start silently failing.
       - uses: cygwin/cygwin-install-action@v7
         with:
           install-dir: C:\cygwin
-          packages: lua=5.4.4-1 liblua-devel=5.4.4-1
+          packages: lua=5.4.4-1 liblua-devel=5.4.4-1 libxml2=2.13.9-2
       # Cygwin's git, not actions/checkout: native Git for Windows refuses the
       # repository, whose project-model/con/ has a name Windows reserves ("invalid
       # path"). Cygwin's also keeps the LF line endings its sh needs.
@@ -126,7 +127,7 @@ jobs:
           done
           exe=$(ls /usr/bin/clang-[0-9]*.exe 2>/dev/null | head -1)
           if [ -n "$bad" ]; then
-              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | grep -iE 'error|not found|cannot' | head -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | { grep -iE 'error|not found|cannot' || true; } | head -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
               echo "::error title=A tool will not start::$bad"
               exit 1
           fi
