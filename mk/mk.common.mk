@@ -11,8 +11,19 @@ _MK_COMMON_MK_ = 1
 # also what selects mk.paths.<os>.mk below, for locating the HOST-native
 # compiler when not cross-compiling -- that's needed even when TARGET was
 # explicitly given (e.g. TARGET=freebsd for cross, or TARGET=all for clean).
-_HOST_OS != uname -s | tr '[:upper:]' '[:lower:]'
-_HOST_ARCH != uname -m
+#
+# pass-values-down-req: a value worked out by asking the system is exported, so
+# the bmake runs below this one take it instead of asking again: one build runs
+# bmake many times, and a process start is slow on Cygwin (11 ms each, 2026-11-02).
+# It lasts as long as the build. Named apart from host-target.mk's _HOST_ARCH.
+# @impl 7854-6ae8-fb43-5b08
+.if !defined(_BMK_HOST_OS) || !defined(_BMK_HOST_ARCH)
+_BMK_HOST_OS != uname -s | tr '[:upper:]' '[:lower:]'
+_BMK_HOST_ARCH != uname -m
+.  export _BMK_HOST_OS _BMK_HOST_ARCH
+.endif
+_HOST_OS := ${_BMK_HOST_OS}
+_HOST_ARCH := ${_BMK_HOST_ARCH}
 
 # Host OS/arch normalized to this project's own labels -- computed
 # unconditionally (not just as a TARGET/TARGET_ARCH default) because cross
@@ -53,6 +64,18 @@ TARGET_ARCH = ${_HOST_ARCH_LABEL}
 
 .if !defined(TOOLCHAIN) || empty(TOOLCHAIN)
 TOOLCHAIN = llvm
+.endif
+
+# pass-values-down-req: what the values below depend on. A run where this differs
+# from the run above it (another PATH, another toolchain or target) asks again.
+# @impl 7854-6ae8-fb43-5b08
+_BMK_PASS_KEY := ${PATH}|${TOOLCHAIN}|${ABI:U}|${TARGET}|${TARGET_ARCH}|${BMK_EWDK_ROOT:U}|${BMK_MINGW_SYSROOT:U}
+.if "${_BMK_PASS_FOR:U}" == "${_BMK_PASS_KEY}"
+_BMK_PASS_OK = yes
+.else
+_BMK_PASS_OK = no
+_BMK_PASS_FOR := ${_BMK_PASS_KEY}
+.  export _BMK_PASS_FOR
 .endif
 
 # Are we actually cross-compiling? (REQ-target-arch-toolchain-selection-is-custom-req)
@@ -514,6 +537,7 @@ FAIL_FAST ?= no
 # ---------------------------------------------------------------------------
 .if !defined(RUN_ID) || empty(RUN_ID)
 RUN_ID != date +%Y%m%d-%H%M%S-$$$$ 2>/dev/null
+.  export RUN_ID
 .endif
 
 # ---------------------------------------------------------------------------

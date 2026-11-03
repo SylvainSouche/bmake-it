@@ -18,7 +18,11 @@
 _MK_ATF_MK_ = 1
 
 KYUA ?= kyua
+.if "${_ATF_KYUA_FOR:U}" != "${KYUA}|${PATH}" || !defined(_ATF_KYUA_BIN)
 _ATF_KYUA_BIN != command -v ${KYUA} 2>/dev/null || true
+_ATF_KYUA_FOR := ${KYUA}|${PATH}
+.  export _ATF_KYUA_BIN _ATF_KYUA_FOR
+.endif
 _ATF_PC_DIRS  = ${_ATF_KYUA_BIN:H:H:S|$|/lib/pkgconfig|} ${_ATF_KYUA_BIN:H:H:S|$|/libdata/pkgconfig|}
 _ATF_PC_DIRS += /usr/local/lib/pkgconfig /usr/local/libdata/pkgconfig
 _ATF_PC_ENV   = env PKG_CONFIG_PATH=${_ATF_PC_DIRS:O:u:ts:}$${PKG_CONFIG_PATH:+:$$PKG_CONFIG_PATH}

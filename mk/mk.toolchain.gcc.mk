@@ -17,24 +17,33 @@ _MK_TOOLCHAIN_GCC_MK_ = 1
 # @impl 7854-6ad0-e970-479a
 .if ${_BMK_WIN_MINGW:Uno} == "yes"
 .  if empty(.MAKEOVERRIDES:MCC)
+.    if ${_BMK_PASS_OK} != "yes" || !defined(_GCC_MINGW_CC)
 _GCC_MINGW_CC != command -v ${_MINGW_TRIPLE}-gcc 2>/dev/null || true
+.      export _GCC_MINGW_CC
+.    endif
 .    if empty(_GCC_MINGW_CC)
 .      error "TOOLCHAIN=gcc for mingw-w64 output (TARGET=win-${TARGET_ARCH}${ABI:D, ABI=${ABI}}) needs ${_MINGW_TRIPLE}-gcc on PATH, and it is not there. On Cygwin: mingw64-x86_64-gcc-core (C) and mingw64-x86_64-gcc-g++ (C++), which exist for x86_64 only. On Debian/Ubuntu: the mingw-w64 package (x86_64/i686). For aarch64, no gcc package is common: use TOOLCHAIN=llvm with an llvm-mingw release as BMK_MINGW_SYSROOT. Without ABI=mingw, a Cygwin host's own gcc builds Cygwin output instead."
 .    endif
 CC  = ${_GCC_MINGW_CC}
 CXX = ${_GCC_MINGW_CC:S/gcc$/g++/}
 .  endif
+.  if ${_BMK_PASS_OK} != "yes" || !defined(_GCC_MINGW_AR)
 _GCC_MINGW_AR != command -v ${_MINGW_TRIPLE}-ar 2>/dev/null || true
+.    export _GCC_MINGW_AR
+.  endif
 .  if !empty(_GCC_MINGW_AR)
 AR     = ${_GCC_MINGW_AR}
 RANLIB = ${_GCC_MINGW_AR:S/-ar$/-ranlib/}
 .  endif
 .elif empty(.MAKEOVERRIDES:MCC)
+.  if ${_BMK_PASS_OK} != "yes" || !defined(_GCC_CC)
 _GCC_CC != _found=""; \
     for _p in ${_TOOL_PREFIXES}; do \
         if [ -x "$$_p/gcc" ]; then _found="$$_p/gcc"; break; fi; \
     done; \
     if [ -n "$$_found" ]; then echo "$$_found"; else command -v gcc 2>/dev/null || true; fi
+.    export _GCC_CC
+.  endif
 .  if !empty(_GCC_CC)
 CC  = ${_GCC_CC}
 CXX = ${_GCC_CC:S/gcc$/g++/}

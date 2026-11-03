@@ -51,7 +51,7 @@ _BMK_MSVC_NAME = TOOLCHAIN=msvc
 .  endif
 .endif
 
-.if empty(.MAKEFLAGS:M-V*) && !make(clean)
+.if empty(.MAKEFLAGS:M-V*) && !make(clean) && (${_BMK_PASS_OK} != "yes" || !defined(BMK_MSVC_BIN) || !defined(_MSVC_VER))
 _MSVC_CL != command -v cl 2>/dev/null || true
 .  if empty(_MSVC_CL)
 # @impl 0f87-6a9a-d311-f245
@@ -61,7 +61,7 @@ _MSVC_CL != command -v cl 2>/dev/null || true
 BMK_MSVC_BIN     := ${_MSVC_BIN}
 BMK_MSVC_INCLUDE := ${_MSVC_INCLUDE}
 BMK_MSVC_LIB     := ${_MSVC_LIB}
-.    export BMK_MSVC_BIN BMK_MSVC_INCLUDE BMK_MSVC_LIB
+.    export BMK_MSVC_BIN BMK_MSVC_INCLUDE BMK_MSVC_LIB _MSVC_VER
 .  else
 _MSVC_LIB_TOOL != command -v lib 2>/dev/null || true
 .    if empty(_MSVC_LIB_TOOL)
@@ -77,7 +77,7 @@ _MSVC_LIB_TOOL != command -v lib 2>/dev/null || true
 # 14.50 toolset (2026-10-30). /EHsc: clang-cl has C++ exceptions off by
 # default and refuses throw and try (cl.exe compiles them, with a warning);
 # first on the command line, so a module's own -fno-exceptions still wins.
-.if ${_BMK_MSVC_DRIVER} == "clang" && empty(.MAKEFLAGS:M-V*) && !make(clean)
+.if ${_BMK_MSVC_DRIVER} == "clang" && empty(.MAKEFLAGS:M-V*) && !make(clean) && (${_BMK_PASS_OK} != "yes" || !defined(BMK_MSVC_CL) || !defined(BMK_MSVC_LIBEXE))
 _MSVC_CLANG_CL != command -v clang-cl 2>/dev/null || true
 _MSVC_LLD_LINK != command -v lld-link 2>/dev/null || true
 .  if empty(_MSVC_CLANG_CL) || empty(_MSVC_LLD_LINK)

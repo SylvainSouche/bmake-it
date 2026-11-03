@@ -42,11 +42,14 @@ _BMK_MSVC_DRIVER = clang
 # (tracked in .MAKEOVERRIDES) -- that is the one case the user is overriding
 # toolchain selection directly.
 .if empty(.MAKEOVERRIDES:MCC)
+.  if ${_BMK_PASS_OK} != "yes" || !defined(_LLVM_CC)
 _LLVM_CC != _found=""; \
     for _p in ${_TOOL_PREFIXES}; do \
         if [ -x "$$_p/clang" ]; then _found="$$_p/clang"; break; fi; \
     done; \
     if [ -n "$$_found" ]; then echo "$$_found"; else command -v clang 2>/dev/null || true; fi
+.    export _LLVM_CC
+.  endif
 .  if !empty(_LLVM_CC)
 CC  = ${_LLVM_CC}
 CXX = ${_LLVM_CC:S/clang$/clang++/}
@@ -186,9 +189,12 @@ LD  = ${CC}
 # @impl 7854-6ad0-e970-479a
 # ---------------------------------------------------------------------------
 .if ${_BMK_WIN_MINGW:Uno} == "yes"
+.  if ${_BMK_PASS_OK} != "yes" || !defined(_MINGW_GCC) || !defined(_MINGW_LLD) || !defined(_MINGW_BFD)
 _MINGW_GCC != command -v ${_MINGW_TRIPLE}-gcc 2>/dev/null || true
 _MINGW_LLD != command -v ld.lld 2>/dev/null || true
 _MINGW_BFD != command -v ${_MINGW_TRIPLE}-ld 2>/dev/null || true
+.    export _MINGW_GCC _MINGW_LLD _MINGW_BFD
+.  endif
 # mingw-sysroot-error-actionable-req-v2: name what is missing and where it
 # comes from -- this error once sent users to a scripts/prep-mingw-
 # sysroot.sh that never existed (2026-10-15).
