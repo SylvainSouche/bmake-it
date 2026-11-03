@@ -1,0 +1,91 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.TEST.MK 5
+.Os
+.Sh NAME
+.Nm mk.test.mk
+.Nd unit tests with ATF and Kyua
+.Sh DESCRIPTION
+Builds and runs a module's tests.
+Compiled tests link ATF and the module's own output; all are registered in a
+generated Kyuafile and run with
+.Xr kyua 1 .
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+.Bl -tag -width "TESTS_CXX"
+.It Va TESTS_C
+Test programs with atf-c, from
+.Pa tests/ Ns Ar name Ns Pa .c .
+.It Va TESTS_CXX
+Test programs with atf-c++, from
+.Pa tests/ Ns Ar name Ns Pa .cpp .
+.It Va TESTS_SH
+Scripts with atf-sh, from
+.Pa tests/ Ns Ar name Ns Pa .sh .
+.It Va TEST_LINK
+What a test links:
+.Cm library ,
+the default, the built library;
+.Cm objects ,
+the module's objects, to reach internals a library does not export.
+.It Va TEST
+Only this test.
+One no module declares is an error.
+.It Va KYUA
+The Kyua to run.
+Default
+.Pa kyua .
+.El
+.Pp
+Set the lists before the
+.Ic .include
+of
+.Xr mk.lib.mk 5
+or
+.Xr mk.prog.mk 5 .
+.Ss Targets
+.Bl -tag -width "test"
+.It Cm test
+Build what the tests need, and run them.
+With
+.Va REPORT=yes ,
+an HTML report too.
+.El
+.Sh FILES
+.Bl -tag -width "build/KEY/runs/RUN_ID/test-results.xml"
+.It Pa tests/
+sources
+.It Pa build/ Ns Ar KEY Ns Pa /tests/
+the programs and Kyuafile
+.It Pa build/ Ns Ar KEY Ns Pa /runs/ Ns Ar RUN_ID Ns Pa /test-results.xml
+JUnit results, always written
+.El
+.Sh EXIT STATUS
+Non-zero if any test failed.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+LIB=geo
+TESTS_CXX=raster_test
+TEST_LINK=objects
+\&.include <mk.lib.mk>
+.Ed
+.Pp
+.Dl $ bmake test TEST=raster_test REPORT=yes
+.Sh DIAGNOSTICS
+.Bl -diag
+.It TEST= Ns Ar name : no such test declared in Ar module
+Check the name.
+.It TEST_LINK= Ns Ar value : expected library or objects
+A bad value.
+.El
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr kyua 1 ,
+.Xr mk.atf.mk 5 ,
+.Xr mk.crosstest.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.tst.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

@@ -1,0 +1,52 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.ATF.MK 5
+.Os
+.Sh NAME
+.Nm mk.atf.mk
+.Nd where ATF is found
+.Sh DESCRIPTION
+Finds the ATF test libraries:
+in the prefix of the Kyua that runs the tests, under
+.Pa /usr/local ,
+and on
+.Xr pkg-config 1 Ns 's
+own path.
+A test module stops, saying what was looked for, if there is none.
+.Pp
+Not included directly by a makefile.
+.Pp
+Native Windows output has no installed ATF, and always uses the one Bmake It
+carries; see
+.Xr mk.atfbmk.mk 5 .
+.Ss Variables
+.Bl -tag -width "BMK_ATF"
+.It Va BMK_ATF
+.Cm installed ,
+the default: the system's.
+.Cm bundled :
+the one Bmake It carries.
+.It Va KYUA
+The Kyua to run, and where to look beside.
+Default
+.Pa kyua .
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "PKG_CONFIG_PATH"
+.It Ev PKG_CONFIG_PATH
+Also searched.
+.El
+.Sh DIAGNOSTICS
+.Bl -diag
+.It BMK_ATF= Ns Ar value : expected bundled or installed
+A bad value.
+.El
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr kyua 1 ,
+.Xr mk.atfbmk.mk 5 ,
+.Xr mk.test.mk 5 ,
+.Xr mk.tst.mk 5 ,
+.Xr pkg-config 1
+.Sh AUTHORS
+.An Sylvain Souche

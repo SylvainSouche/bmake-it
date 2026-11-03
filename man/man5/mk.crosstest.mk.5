@@ -1,0 +1,56 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.CROSSTEST.MK 5
+.Os
+.Sh NAME
+.Nm mk.crosstest.mk
+.Nd where the tests run
+.Sh DESCRIPTION
+Decides where
+.Cm test
+runs.
+Tests run locally unless the target is foreign to the build host.
+A foreign target needs a runner;
+.Cm test
+stops before building if it has none, rather than run target programs on the
+wrong machine.
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+.Bl -tag -width "TEST_RUNNER.os-arch"
+.It Va TEST_RUNNER. Ns Ar os Ns - Ns Ar arch
+The runner for that target.
+.It Va TEST_RUNNER
+The runner for any other.
+.El
+.Pp
+A runner is one of:
+.Bl -tag -width "ssh:[user@]host[:port]" -offset indent -compact
+.It Cm ssh: Ns Oo Ar user Ns @ Oc Ns Ar host Ns Op : Ns Ar port
+.It Cm docker: Ns Ar image Ns Op @ Ns Ar platform
+.It Cm cmd: Ns Ar program
+.It Cm local
+run here anyway, for example through an emulator
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "QEMU_LD_PREFIX"
+.It Ev BMK_SSH_OPTS
+Extra options for
+.Xr ssh 1 .
+.It Ev QEMU_LD_PREFIX
+For a foreign Linux target with
+.Cm local ,
+set to
+.Ev BMK_LINUX_SYSROOT
+unless already set, so the emulator finds the target's loader.
+.El
+.Sh EXAMPLES
+.Dl $ bmake test TARGET=linux TARGET_ARCH=amd64 TEST_RUNNER=docker:debian:13@linux/amd64
+.Dl $ bmake test TARGET=freebsd TEST_RUNNER=ssh:ci@bsd-box
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.test.mk 5 ,
+.Xr mk.tst.mk 5 ,
+.Xr ssh 1
+.Sh AUTHORS
+.An Sylvain Souche

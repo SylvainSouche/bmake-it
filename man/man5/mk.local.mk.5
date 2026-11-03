@@ -1,0 +1,64 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.LOCAL.MK 5
+.Os
+.Sh NAME
+.Nm mk.local.mk
+.Nd per-level hook files
+.Sh DESCRIPTION
+Reads a level's hook files, for local settings that do not belong in the shared
+files.
+.Pp
+Not included directly by a makefile.
+.Pp
+Every level may have an
+.Pa mk/
+directory, and each is searched for, in this order:
+.Bl -tag -width "pre.TARGET_TARGET_ARCH.mk" -offset indent -compact
+.It Pa pre.mk , local.mk
+always
+.It Pa pre. Ns Va TOOLCHAIN Ns Pa .mk
+for one toolchain
+.It Pa pre. Ns Va TARGET Ns Pa .mk
+for one system
+.It Pa pre. Ns Va TARGET Ns Pa _ Ns Va TARGET_ARCH Ns Pa .mk
+for one system and architecture
+.El
+.Pp
+.Pa local Ns Pa .*
+has the same variants.
+.Pa pre
+files are read after the target is known and before the role file sets its
+defaults;
+.Pa local
+files at the end.
+.Pp
+All levels that have a file are read, outermost first, so an inner one can
+override:
+.Bl -column "Framework" "each parent, workspace, framework, module" -offset indent
+.It Sy From Ta Sy Reads Pa mk/ Sy in
+.It Workspace Ta each parent, then its own
+.It Framework Ta each parent, workspace, its own
+.It Module Ta each parent, workspace, framework, its own
+.El
+.Sh EXAMPLES
+A Homebrew path on one architecture, in
+.Pa mk/pre.macos_arm64.mk :
+.Bd -literal -offset indent
+IMPORT_PREFIX=/opt/homebrew
+.Ed
+.Pp
+One more flag for one toolchain, in
+.Pa mk/local.gcc.mk :
+.Bd -literal -offset indent
+CFLAGS+=-fno-strict-aliasing
+.Ed
+.Sh CAVEATS
+There is no name combining toolchain and architecture.
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.workspace.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

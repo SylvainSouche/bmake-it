@@ -24,6 +24,7 @@ mk/                      # role makefiles
 ├── mk.prog.mk            # executable module (PROG=, LIBS=)
 ├── mk.lib.mk             # library module (LIB=, LIB_SHARED=, INCL=, SHLIB_*)
 ├── mk.delayload.mk       # DELAYLOAD=, DELAYLOAD.<lib>= (Windows linkers)
+man/                     # a manual page per mk file; start with bmake-it(7)
 ├── mk.docs.mk            # `bmake docs` — Doxygen generation + tag-file cross-linking
 ├── mk.test.mk            # `bmake test` (REPORT=yes for HTML) — ATF/Kyua unit tests
 └── mk.local.mk           # per-level mk/ hook-file cascade (pre.mk/local.mk)

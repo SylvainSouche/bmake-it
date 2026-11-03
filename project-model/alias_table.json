@@ -893,6 +893,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "fetch-cmake-mingw-output-req": {
+    "active": true,
+    "id": "7854-6ae9-890f-2c28",
+    "status": "confirmed",
+    "type": "req"
+  },
   "fetch-distinfo-checksum-req": {
     "active": true,
     "id": "0f87-6ab6-4e2d-fb96",
@@ -2201,6 +2207,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "import-dll-staged-req": {
+    "active": true,
+    "id": "7854-6ae9-07c4-5af8",
+    "status": "confirmed",
+    "type": "req"
+  },
   "import-headers-glob-req": {
     "active": true,
     "id": "0f87-6abe-3f41-37f0",
@@ -2728,6 +2740,12 @@
     "id": "0f87-6ad7-d973-ab1d",
     "status": "recorded",
     "type": "obs"
+  },
+  "man-pages-for-mk-files-req": {
+    "active": true,
+    "id": "7854-6ae9-90fb-b9d5",
+    "status": "confirmed",
+    "type": "req"
   },
   "md-dependency-tracking-freebsd-specific-req": {
     "active": true,

@@ -1,0 +1,41 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.PATHS 5
+.Os
+.Sh NAME
+.Nm mk.paths ,
+.Nm mk.paths.darwin.mk ,
+.Nm mk.paths.linux.mk ,
+.Nm mk.paths.freebsd.mk ,
+.Nm mk.paths.netbsd.mk ,
+.Nm mk.paths.default.mk
+.Nd where tools are looked for, per host
+.Sh DESCRIPTION
+Each file sets the prefixes searched for a compiler, for libraries a
+.Xr mk.lib.mk 5
+import has not otherwise resolved, and for
+.Cm header:
+entries of
+.Xr mk.requires.mk 5 .
+.Xr mk.common.mk 5
+reads the one for the host, or
+.Pa mk.paths.default.mk .
+.Pp
+Not included directly by a makefile.
+.Bl -column "mk.paths.freebsd.mk" "prefixes" -offset indent
+.It Pa mk.paths.linux.mk Ta Pa /usr/bin /usr/local/bin
+.It Pa mk.paths.freebsd.mk Ta Pa /usr/bin /usr/local/bin
+.It Pa mk.paths.netbsd.mk Ta Pa /usr/bin /usr/pkg/bin /usr/local/bin
+.It Pa mk.paths.darwin.mk Ta Pa /opt/local/bin /opt/homebrew/bin /usr/local/bin /opt/pkg/bin ...
+.It Pa mk.paths.default.mk Ta Pa /usr/bin /usr/local/bin
+.El
+.Pp
+On macOS the base system is not the intended default: a package manager's tools
+come first.
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.requires.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

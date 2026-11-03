@@ -1,0 +1,46 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.TOOLCHAIN.GCC.MK 5
+.Os
+.Sh NAME
+.Nm mk.toolchain.gcc.mk
+.Nd GNU gcc
+.Sh DESCRIPTION
+Read when
+.Va TOOLCHAIN Ns = Ns Cm gcc .
+It finds gcc in the prefixes of
+.Xr mk.paths 5 ,
+then on
+.Ev PATH ,
+and sets a matching
+.Va CC , CXX , LD , AR , AS
+and
+.Va RANLIB .
+Each may still be overridden.
+gcc does not cross-compile here, except to mingw-w64, with
+.Ar triple Ns Pa -gcc .
+On a BSD, a ports or pkgsrc gcc also gets an rpath to its own runtime.
+.Pp
+Not included directly by a makefile.
+.Sh EXAMPLES
+.Dl $ bmake TOOLCHAIN=gcc
+.Dl $ bmake TOOLCHAIN=gcc ABI=mingw
+.Sh DIAGNOSTICS
+.Bl -diag
+.It TOOLCHAIN=gcc: no gcc found
+Add gcc to
+.Ev PATH ,
+set
+.Va TOOLCHAIN Ns = Ns Cm llvm ,
+or set
+.Va CC .
+.It TOOLCHAIN=gcc for mingw-w64 output needs Ar triple Ns -gcc on PATH
+Install it; the message names the package.
+.El
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr gcc 1 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.toolchain.llvm.mk 5
+.Sh AUTHORS
+.An Sylvain Souche
