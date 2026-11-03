@@ -118,6 +118,13 @@ An imported DLL under GNU ld, which has no
 to make one from.
 Use ld.lld or the MSVC linker.
 .El
+.Sh SEE ALSO
+.Xr dlltool 1 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
 .Sh CAVEATS
 It covers the direct link only: a library's own dependencies follow their own
 settings.
@@ -128,10 +135,3 @@ is noticed only in the module's own makefile, because
 cannot list variables.
 For an imported DLL, data exports are unknown; ld.lld and the MSVC linker refuse a
 data import themselves.
-.Sh SEE ALSO
-.Xr bmake-it 7 ,
-.Xr dlltool 1 ,
-.Xr mk.lib.mk 5 ,
-.Xr mk.prog.mk 5
-.Sh AUTHORS
-.An Sylvain Souche

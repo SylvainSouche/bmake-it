@@ -39,6 +39,13 @@ missing at once before building anything.
 REQUIRES=cmake gdal header:glm/glm.hpp
 \&.include <mk.prog.mk>
 .Ed
+.Sh SEE ALSO
+.Xr pkg-config 1 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
 .Sh CAVEATS
 On a cross build with a sysroot, a library is looked for in that sysroot and a
 tool on the host's
@@ -50,10 +57,3 @@ entry found under a prefix adds no
 .Fl I ;
 a module that includes it directly still needs one.
 There are no version constraints.
-.Sh SEE ALSO
-.Xr bmake-it 7 ,
-.Xr mk.lib.mk 5 ,
-.Xr mk.prog.mk 5 ,
-.Xr pkg-config 1
-.Sh AUTHORS
-.An Sylvain Souche

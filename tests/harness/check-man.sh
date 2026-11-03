@@ -47,8 +47,10 @@ done
 _lint=none
 if command -v mandoc >/dev/null 2>&1; then
     _lint=mandoc
-    # WARNING and above; a reference to a page of another package is a STYLE note
-    out=$(cd "$MAN" && mandoc -Tlint -Wwarning man5/*.5 man7/*.7 2>&1) || true
+    # WARNING and above; a reference to a page of another package is a STYLE note.
+    # The .so pages stay: the symbolic link mandoc would like does not survive a
+    # checkout on Windows.
+    out=$(cd "$MAN" && mandoc -Tlint -Wwarning man5/*.5 man7/*.7 2>&1 | grep -v '\.so is fragile') || true
     [ -z "$out" ] || { printf '%s\n' "$out" >&2; say "mandoc -Tlint is not clean"; }
 elif command -v groff >/dev/null 2>&1; then
     _lint=groff
