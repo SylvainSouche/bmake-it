@@ -92,13 +92,13 @@ jobs:
             curl wget file tar gzip unzip zip patch
             libsqlite3-devel sqlite3
       # Lutok, which Kyua needs, takes Lua 5.4, a test version on Cygwin
-      # (tests/README.md). In a step of its own: allow-test-packages applies to
-      # every package named, and the test gcc does not build Kyua 0.14.1.
+      # (tests/README.md): named exactly, because allow-test-packages would let
+      # any package move to a test version (the test gcc does not build Kyua
+      # 0.14.1).
       - uses: cygwin/cygwin-install-action@v7
         with:
           install-dir: C:\cygwin
-          allow-test-packages: true
-          packages: lua liblua-devel
+          packages: lua=5.4.4-1 liblua-devel=5.4.4-1
       # Cygwin's git, not actions/checkout: native Git for Windows refuses the
       # repository, whose project-model/con/ has a name Windows reserves ("invalid
       # path"). Cygwin's also keeps the LF line endings its sh needs.
@@ -118,14 +118,15 @@ jobs:
       - name: Check the tools
         run: |
           export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
-          echo "::notice title=Cygwin packages::$(cygcheck -cd clang lld gcc-core mingw64-x86_64-gcc-core cmake lua bmake | awk 'NR>2 { printf "%s %s; ", $1, $2 }')"
+          echo "::notice title=Cygwin packages::$(cygcheck -cd clang lld gcc-core mingw64-x86_64-gcc-core cmake lua bmake cygwin libstdc++6 libgcc1 zlib0 libzstd1 libiconv2 libintl8 libedit0 libncursesw10 libxml2 libcurl4 libuv1 | awk 'NR>2 { printf "%s %s; ", $1, $2 }')"
           bad=""
           for t in "clang -dumpmachine" "gcc -dumpmachine" "x86_64-w64-mingw32-gcc -dumpmachine" "ld.lld --version" "cmake --version" "bmake -r -f /dev/null -V MAKE_VERSION"; do
-              if ! out=$($t 2>&1); then bad="$bad%0A$t: $(printf '%s' "$out" | tail -n 3 | sed 's/%/%25/g' | tr '\n' ' ')"; fi
+              rc=0; out=$($t 2>&1) || rc=$?
+              if [ "$rc" -ne 0 ]; then bad="$bad%0A$t: exit $rc: $(printf '%s' "$out" | tail -n 3 | sed 's/%/%25/g' | tr '\n' ' ')"; fi
           done
           exe=$(ls /usr/bin/clang-[0-9]*.exe 2>/dev/null | head -1)
           if [ -n "$bad" ]; then
-              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | tail -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | grep -iE 'error|not found|cannot' | head -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
               echo "::error title=A tool will not start::$bad"
               exit 1
           fi
