@@ -2,7 +2,7 @@
 # check-man.sh: the manual pages against mk/. man-pages-for-mk-files-req.
 #   - every mk/mk.*.mk has a page, and every page a file (a .so page counts)
 #   - every variable a file sets with ?=, which is what makes it a setting, is
-#     named in that file's page (internal _NAMES and the listed exceptions aside)
+#     named in that file's page (internal _NAMES are not settings)
 #   - every target a role file defines is named in its page
 #   - every .Xr to a bmake-it page resolves
 #   - the pages are clean under mandoc -Tlint if it is here, and groff if it is

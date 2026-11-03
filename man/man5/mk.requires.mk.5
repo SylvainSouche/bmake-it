@@ -30,17 +30,20 @@ for the prefixes in
 .Xr mk.paths 5 .
 .El
 .Pp
-A missing entry stops the build when the makefile is read, before any slow step.
+A missing entry stops a module's build when its makefile is read, before any slow
+step.
+A workspace or framework build checks every module first, and lists everything
+missing at once before building anything.
 .Sh EXAMPLES
 .Bd -literal -offset indent
 REQUIRES=cmake gdal header:glm/glm.hpp
 \&.include <mk.prog.mk>
 .Ed
 .Sh CAVEATS
-On a cross build the host is asked, so the answer is about a native build, not
-the target's sysroot, unless a sysroot's
-.Xr pkg-config 1
-is in use.
+On a cross build with a sysroot, a library is looked for in that sysroot and a
+tool on the host's
+.Ev PATH .
+Without a sysroot, the host is asked, which says nothing about the target.
 A
 .Cm header:
 entry found under a prefix adds no
