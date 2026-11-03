@@ -37,7 +37,14 @@ jobs:
       - name: Install mandoc
         run: sudo apt-get update -qq && sudo apt-get install -y -qq mandoc
       - name: Check the pages
-        run: sh tests/harness/check-man.sh
+        # As an annotation: a job's log needs a sign-in, the run's page does not.
+        run: |
+          if ! out=$(sh tests/harness/check-man.sh 2>&1); then
+            printf '%s\n' "$out" | cut -c1-300 | sed 's/%/%25/g' |
+              awk 'BEGIN { printf "::error title=manual pages::" } { printf "%s%%0A", $0 } END { print "" }'
+            exit 1
+          fi
+          printf '%s\n' "$out"
 
   linux:
     name: ${{ matrix.cell }}
