@@ -1,0 +1,196 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.COMMON.MK 5
+.Os
+.Sh NAME
+.Nm mk.common.mk
+.Nd target selection, target key and flags shared by every role
+.Sh DESCRIPTION
+Read first by every role file.
+It works out the target and toolchain, reads the toolchain's file, builds the
+target key and sets the common flags.
+.Pp
+Not included directly by a makefile.
+.Ss Target selection
+.Bl -tag -width "TARGET_ARCH"
+.It Va TARGET
+The operating system:
+.Cm macos , linux , freebsd , netbsd
+or
+.Cm win .
+Default: the host's.
+.It Va TARGET_ARCH
+.Cm amd64
+or
+.Cm arm64 .
+Default: the host's.
+.It Va TOOLCHAIN
+.Cm llvm ,
+the default,
+.Cm gcc
+or
+.Cm msvc .
+.It Va ABI
+Only where a target has several runtimes:
+Linux
+.Cm glibc
+or
+.Cm musl ;
+Windows
+.Cm msvc , mingw
+or
+.Cm cygwin .
+On a Cygwin host,
+.Cm llvm
+or
+.Cm gcc
+alone give Cygwin output,
+.Va ABI Ns = Ns Cm mingw
+native mingw-w64 output, and
+.Va TOOLCHAIN Ns = Ns Cm llvm Va ABI Ns = Ns Cm msvc
+the MSVC runtime with clang.
+A combination that cannot exist is an error.
+.El
+.Ss Set for you
+.Bl -tag -width "SHAREDIR_LOCAL"
+.It Va OS_ARCH
+The target key,
+.Ar os Ns - Ns Ar arch Ns Op - Ns Ar toolchain Ns Op - Ns Ar abi .
+.It Va BUILD_ROOT
+.Pa build/ Ns Va OS_ARCH
+.It Va DISTRIB_ROOT
+.Pa distrib/ Ns Va OS_ARCH
+.It Va OBJDIR , Va BINDIR_LOCAL , Va LIBDIR_LOCAL , Va INCDIR_LOCAL , Va SHAREDIR_LOCAL
+.Pa obj , bin , lib , include
+and
+.Pa share
+under
+.Va BUILD_ROOT .
+.It Va BMK_IS_NATIVE_BUILD
+.Cm yes
+unless cross-compiling.
+.It Va BMK_MKDIR
+The directory of these files.
+.It Va NATIVE_CURDIR
+The module's directory in a form the program being built can open:
+.Pa C:/...
+for native Windows output on a Cygwin host, otherwise
+.Va .CURDIR .
+For a path compiled into a program:
+.Dl CFLAGS += -DDATA='\(dq${NATIVE_CURDIR}/data\(dq'
+.El
+.Ss Flags
+.Bl -tag -width "INPUTS_HASH_EXTRA"
+.It Va CFLAGS , Va CXXFLAGS , Va LDFLAGS , Va YFLAGS , Va LFLAGS
+Append with
+.Ql += .
+A change rebuilds what they affect.
+.It Va DEBUG_FLAGS
+Usually
+.Fl g .
+.It Va CXXSTD
+The C++ standard.
+Default
+.Cm c++17 .
+.It Va WARN
+.Cm none
+silences this module's warnings, for compiling third-party source.
+Otherwise
+.Fl Wall Fl Wextra .
+.It Va OPENMP
+.Cm yes
+builds with OpenMP.
+Default
+.Cm no .
+A compiler that cannot is an error.
+.It Va SANITIZE
+A comma-separated list of
+.Cm address , undefined , thread , memory
+and
+.Cm leak ,
+in which
+.Cm address , thread
+and
+.Cm memory
+exclude one another.
+MSVC has only
+.Cm address .
+.It Va INPUTS_HASH_EXTRA
+Anything else whose change must rebuild the module.
+.El
+.Ss Runs and reports
+.Bl -tag -width "FAIL_FAST"
+.It Va REPORT
+.Cm yes :
+also build the dashboard of a workspace or framework
+.Cm all
+or
+.Cm test .
+Logs are written either way.
+.It Va FAIL_FAST
+.Cm yes :
+stop at the first failed module.
+By default the rest still run, and the exit status reports the failure.
+.It Va RUN_ID
+Names this run's logs and reports.
+Default: a timestamp and process id.
+Set it to correlate with a CI build number.
+.El
+.Ss Targets
+.Bl -tag -width "run"
+.It Cm run
+.Va PROGRAM Ns = Ns Ar name Op Va ARGS Ns = Ns Ar args
+runs a program through the build environment, from any directory of the
+workspace: the workspace's and each parent's
+.Pa bin
+are prepended to
+.Ev PATH ,
+their
+.Pa lib
+to the library search variable, and
+.Ev BMK_BINDIR , BMK_LIBDIR , BMK_SHAREDIR , BMK_TARGET
+and
+.Ev BMK_LIBVAR
+are set.
+It does not build.
+.Va PROGRAM Ns = Ns Cm sh
+opens a shell in that environment.
+.El
+.Sh ENVIRONMENT
+The variables above may come from the environment, the command line or a hook
+file, by the usual
+.Xr make 1
+precedence.
+.Sh FILES
+.Bl -tag -width "build/KEY/runs/RUN_ID/build.log"
+.It Pa build/ Ns Ar KEY Ns Pa /runs/ Ns Ar RUN_ID Ns Pa /build.log
+one run's output
+.It Pa build/ Ns Ar KEY Ns Pa /runs/latest/
+a copy of the newest run
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+$ bmake TARGET=linux TARGET_ARCH=arm64
+$ bmake ABI=mingw TOOLCHAIN=gcc
+$ bmake test SANITIZE=address,undefined
+$ bmake all REPORT=yes RUN_ID=ci-4821
+$ bmake run PROGRAM=viewer ARGS="--title 'my scene' f.las"
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It ABI= Ns Ar abi contradicts this build
+The compiler produces another runtime than the one asked for.
+.It ABI=msvc with TOOLCHAIN=gcc
+gcc does not build for the MSVC runtime.
+.El
+An unknown
+.Va TOOLCHAIN
+is an error listing those that exist, and which one a common alias means.
+.Sh SEE ALSO
+.Xr mk.local.mk 5 ,
+.Xr mk.toolchain.gcc.mk 5 ,
+.Xr mk.toolchain.llvm.mk 5 ,
+.Xr mk.toolchain.msvc.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

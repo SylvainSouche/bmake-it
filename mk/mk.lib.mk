@@ -994,13 +994,6 @@ _write_delayload: _stage_import
 .  elif ${LIB_SHARED:Uno} == "YES"
 _write_delayload: ${_LIBOUT_DIR}/${SHLIB_NAME}
 .  endif
-# An import library names its DLL, which a package often keeps in bin/, where
-# nothing stages it. _n: that name for $$_f, empty for a static library.
-.  if ${_DELAYLOAD_KIND} == "msvc"
-_DELAYLOAD_IDENTIFY = _n=$$(PATH="${BMK_MSVC_BIN:U}:$$PATH" dumpbin.exe /nologo /headers "$$(cygpath -w "$$_f")" 2>/dev/null | tr -d '\r' | sed -n 's/^ *DLL name *: *//p' | head -1)
-.  else
-_DELAYLOAD_IDENTIFY = _n=$$(${_MINGW_TRIPLE}-dlltool -I "$$_f" 2>/dev/null | head -1)
-.  endif
 _write_delayload:
 	@_dll=-; _data=?; _def=${_OBJDIR}/${LIB}.def; \
 	for _f in ${_LIBOUT_DIR}/${LIB}.dll ${_LIBOUT_DIR}/lib${LIB}*.dll; do \
@@ -1009,7 +1002,7 @@ _write_delayload:
 	if [ "$$_dll" = - ]; then \
 		for _f in ${_LIBOUT_DIR}/lib${LIB}.dll.a ${_LIBOUT_DIR}/${LIB}.lib ${_LIBOUT_DIR}/lib${LIB}.a; do \
 			[ -f "$$_f" ] || continue; \
-			${_DELAYLOAD_IDENTIFY}; \
+			${_WIN_DLL_OF}; \
 			[ -n "$$_n" ] && { _dll=$$_n; break; }; \
 		done; \
 	fi; \
@@ -1108,6 +1101,36 @@ _IMPORT_LIB_MSVC_CASE = *.lib|*.dll
 # first missing file, "-" when there is no record yet, empty when all exist.
 # @impl 7854-6ae0-bffd-a6d8
 _STAGE_OUT_CHECK = _miss=""; if [ -f "$$_out" ]; then while IFS= read -r _o; do [ -e "$$_o" ] || [ -L "$$_o" ] || { _miss=$$_o; break; }; done < "$$_out"; else _miss=-; fi
+# import-dll-staged-req: on Windows the import library matches the names above,
+# and its DLL often does not: CMake on Cygwin writes cygfoo.dll beside libfoo.dll.a,
+# a mingw-w64 package keeps libfoo-1.dll in bin/. The program then linked and could
+# not start (cases 64, 69, CI, 2026-11-02). The import library names its DLL: it is
+# staged too, and if it is in neither directory the build says so. _WIN_DLL_OF sets
+# _n to the DLL $$_f imports from, empty for a static library.
+# @impl 7854-6ae9-07c4-5af8
+.if ${_BMK_MSVC_ABI} == "yes"
+_WIN_DLL_OF = _n=$$(PATH="${BMK_MSVC_BIN:U}:$$PATH" dumpbin.exe /nologo /headers "$$(cygpath -w "$$_f")" 2>/dev/null | tr -d '\r' | sed -n 's/^ *DLL name *: *//p' | head -1)
+.else
+_WIN_DLL_OF = _n=""; for _t in ${_MINGW_TRIPLE:U}-dlltool dlltool llvm-dlltool; do if command -v "$$_t" >/dev/null 2>&1; then _n=$$("$$_t" -I "$$_f" 2>/dev/null | head -1); break; fi; done
+.endif
+_IMPORT_STAGE_DLL =
+.if ${TARGET} == "win"
+_IMPORT_STAGE_DLL = for _f in "${_IMPORT_LIBDIR}/lib${LIB}.dll.a" "${_IMPORT_LIBDIR}/${LIB}.lib" "${_IMPORT_LIBDIR}/lib${LIB}.a"; do \
+			[ -f "$$_f" ] || continue; \
+			${_WIN_DLL_OF}; \
+			[ -n "$$_n" ] || continue; \
+			_dll=""; \
+			for _d in "${_IMPORT_LIBDIR}" "${_IMPORT_LIBDIR}/../bin"; do \
+				if [ -f "$$_d/$$_n" ]; then _dll=$$_d/$$_n; break; fi; \
+			done; \
+			if [ -n "$$_dll" ]; then \
+				cp -p "$$_dll" "${_LIBOUT_DIR}/$$_n"; echo "${_LIBOUT_DIR}/$$_n" >> "$$_out.tmp"; \
+			else \
+				echo "note: IMPORT=${IMPORT}: $$(basename "$$_f") needs $$_n, which is neither in ${_IMPORT_LIBDIR} nor in ../bin: a program linking ${LIB} needs it on PATH to start"; \
+			fi; \
+			break; \
+		done;
+.endif
 _stage_import:
 	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
 	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
@@ -1181,6 +1204,7 @@ _stage_import:
 			echo "error: IMPORT=${IMPORT}: no library file for ${LIB} (${_IMPORT_LIB_NAMES}) in resolved libdir ${_IMPORT_LIBDIR}" >&2; \
 			exit 1; \
 		fi; \
+		${_IMPORT_STAGE_DLL} \
 	fi; \
 	mv "$$_out.tmp" "$$_out"; \
 	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fp; \
@@ -1389,6 +1413,17 @@ _fetch_import:
 # different minimum OS version than this project's own native objects,
 # which caused linker warnings) are also forwarded now.
 # @impl 0f87-6ab6-6562-0f89
+#
+# fetch-cmake-mingw-output-req: mingw-w64 output gets a mingw-w64 library. Given
+# only CC's first word, clang lost --target and CMake built a Cygwin DLL, which
+# the mingw-w64 program crashed on loading (cases 64, 69, CI, 2026-11-02). A list
+# keeps CC's arguments, and CMAKE_SYSTEM_NAME stops Cygwin's cmake configuring
+# for Cygwin. The other cross builds still lose their flags, as said above.
+# @impl 7854-6ae9-890f-2c28
+_FETCH_CMAKE_COMPILERS = -DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}"
+.if ${_BMK_WIN_MINGW:Uno} == "yes"
+_FETCH_CMAKE_COMPILERS = -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER="${CC:ts;}" -DCMAKE_CXX_COMPILER="${CXX:ts;}"
+.endif
 _fetch_build:
 .if ${_IMPORT_KIND:Uno} != "source-build"
 	@:
@@ -1449,7 +1484,7 @@ _fetch_build:
 			command -v cmake >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=cmake but cmake not found on PATH" >&2; exit 1; }; \
 			echo "===> FETCH_BUILD=cmake: configure && build && install"; \
 			( cmake -S ${_IMPORT_WRKSRC} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
-				-DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}" \
+				${_FETCH_CMAKE_COMPILERS} \
 				-DCMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}" \
 				${FETCH_BUILD_ARGS} && \
 			  cmake --build "$$_builddir" -j"$$_njobs" && \

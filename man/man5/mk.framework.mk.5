@@ -1,0 +1,105 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.FRAMEWORK.MK 5
+.Os
+.Sh NAME
+.Nm mk.framework.mk
+.Nd framework role: builds its modules in dependency order
+.Sh SYNOPSIS
+.Fd .include <mk.framework.mk>
+.Sh DESCRIPTION
+A framework is a directory of modules with public headers in
+.Pa include/ .
+Any immediate subdirectory named
+.Pa *.m
+is a module and
+.Pa *.tst
+a test module; they are found without being listed, and built in the order
+their
+.Va LIBS
+imply.
+.Ss Variables
+.Bl -tag -width "PUBLIC_HEADERS_SYSTEM"
+.It Va PREREQS
+Required, even empty.
+The frameworks whose public headers and libraries this one may use, in order.
+A framework is recognised by setting it.
+.It Va PUBLIC_HEADERS_SYSTEM
+.Cm yes :
+consumers get this framework's headers with
+.Fl isystem
+instead of
+.Fl I ,
+for a framework wrapping third-party code.
+.It Va PLATFORMS , Va TOOLCHAINS , Va REASON. Ns Ar entry
+Where the whole framework is built; see
+.Xr mk.constraints.mk 5 .
+.It Va FW
+With
+.Cm add-prereq :
+the framework to add.
+.It Va TEST
+With
+.Cm test :
+only the modules declaring this test.
+.El
+.Ss Targets
+.Bl -tag -width "add-prereq"
+.It Cm all
+Build every module and copy its output up.
+This is the default.
+.It Cm copy-up
+Build, then copy this framework's output to the workspace.
+.It Cm test
+Run every module's tests; see
+.Xr mk.test.mk 5 .
+.It Cm docs
+Document this framework; see
+.Xr mk.docs.mk 5 .
+.It Cm clean
+Remove this framework's and its modules' output for the current key.
+.It Cm add-prereq
+Append
+.Va FW
+to
+.Va PREREQS
+in the makefile.
+It edits text only and looks nothing up.
+.It Cm help
+Print the current selection and the usual variables.
+.El
+.Sh FILES
+.Bl -tag -width "build/KEY/runs/RUN_ID/build.log"
+.It Pa include/
+public headers
+.It Pa build/ Ns Ar KEY Ns Pa /{bin,lib,include,share}/
+what the modules copied up
+.It Pa build/ Ns Ar KEY Ns Pa /runs/ Ns Ar RUN_ID Ns Pa /build.log
+this run's output; each module has its own
+.It Pa .gen-mod-order.mk
+the module order, generated
+.El
+.Sh EXIT STATUS
+Non-zero if any module failed, even when the run went on past it.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+PREREQS=System Math
+PUBLIC_HEADERS_SYSTEM=yes
+\&.include <mk.framework.mk>
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It PREREQS= must be defined (even if empty) in a framework makefile
+Set
+.Va PREREQS ,
+to nothing if the framework has no prerequisites.
+.El
+.Sh SEE ALSO
+.Xr mk.constraints.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.tst.mk 5 ,
+.Xr mk.workspace.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

@@ -34,7 +34,9 @@ export BMK_CACHE BMK_RUN BMK_VMS BMK_DISKS
 HARNESS_DIR=${HARNESS_DIR:-$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)}
 
 # plat <id> <field>: a field of platforms.mk (the single source of truth).
+# (No \" in the format: dash's printf keeps the backslash, and every field came
+# back in literal quotes, so that no cell had a runner on Debian or Ubuntu.)
 plat() {
-    printf 'include %s/platforms.mk\n_x:\n\t@echo \"$(%s_%s)\"\n' "$HARNESS_DIR" "$2" "$1" \
+    printf 'include %s/platforms.mk\n_x:\n\t@echo "$(%s_%s)"\n' "$HARNESS_DIR" "$2" "$1" \
         | make -s -f - _x 2>/dev/null
 }

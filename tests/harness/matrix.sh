@@ -1,5 +1,5 @@
 #!/bin/sh
-# matrix.sh list | run [cell-glob ...] | progress | report
+# matrix.sh list | run [cell-glob ...] | check <cell-glob ...> | progress | report
 #
 # The host x target x toolchain matrix of matrix.tsv, one cell at a time:
 #   native cells run the unit suite inside the build platform;
@@ -140,7 +140,7 @@ case "$cmd" in
            cells | awk -F'\t' '{printf "%-34s %-7s %-17s %-14s %-6s %s\n",$1,$2,$3,$4,$5,$6}' ;;
     run)   cells | while IFS='	' read -r c k b t tc e; do
                ok=no; if [ $# -eq 0 ]; then ok=yes; else for g in "$@"; do case "$c" in $g) ok=yes ;; esac; done; fi
-               [ "$ok" = yes ] && run_cell "$c" "$k" "$b" "$t" "$tc" "$e" </dev/null
+               if [ "$ok" = yes ]; then run_cell "$c" "$k" "$b" "$t" "$tc" "$e" </dev/null; fi
            done ;;
     # harness-case-progress-req. A run that was stopped leaves its cell here too.
     # @impl 7854-6ae8-b000-14cb
@@ -151,6 +151,22 @@ case "$cmd" in
                last=$(grep -E '^ *[0-9]+/[0-9]+ ' "$log" | tail -1)
                printf '%-34s %s\n' "$c" "${last:-no case started yet}"
            done | grep . || echo "no native cell is waiting for a result" ;;
+    # `run` reports a failed cell and still exits 0, so that the others run:
+    # this says whether the named cells passed. A cell with no result has not.
+    check) [ $# -gt 0 ] || { echo "matrix.sh check: name the cells to check" >&2; exit 2; }
+           cells | { n=0; bad=0
+               while IFS='	' read -r c k b t tc e; do
+                   ok=no; for g in "$@"; do case "$c" in $g) ok=yes ;; esac; done
+                   [ "$ok" = yes ] || continue
+                   n=$((n + 1))
+                   r=$(grep "^$c	" "$RESULTS" | head -1)
+                   case "$(printf '%s' "$r" | cut -f2,3)" in
+                       "pass	-"|"pass	pass") echo "passed: $c" ;;
+                       *) bad=$((bad + 1)); echo "NOT PASSED: $c: $(printf '%s' "${r:-no result}" | cut -f2-4)" ;;
+                   esac
+               done
+               [ "$n" -gt 0 ] || { echo "matrix.sh check: no cell matches: $*" >&2; exit 2; }
+               [ "$bad" -eq 0 ]; } ;;
     report) printf '%-34s %-8s %-8s %s\n' cell build run detail
            cells | while IFS='	' read -r c k b t tc e; do
                r=$(grep "^$c	" "$RESULTS" | head -1)

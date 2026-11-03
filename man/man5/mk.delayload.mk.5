@@ -1,0 +1,137 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.DELAYLOAD.MK 5
+.Os
+.Sh NAME
+.Nm mk.delayload.mk
+.Nd loads a shared library at its first call, on Windows
+.Sh DESCRIPTION
+A delay-loaded DLL is loaded at the first call into it, not when the program
+starts, so the program can start without it.
+A library declares the default, and a module linking it can override that for
+itself.
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+.Bl -tag -width "DELAYLOAD.lib"
+.It Va DELAYLOAD
+On a shared library:
+.Cm yes
+or
+.Cm no ,
+the default.
+.It Va DELAYLOAD. Ns Ar lib
+On a program or shared library linking
+.Ar lib :
+.Cm yes
+or
+.Cm no ,
+replacing that library's default.
+.El
+.Pp
+How, by output:
+.Bl -tag -width "mingw-w64, GNU ld" -offset indent
+.It MSVC, cl.exe or clang
+.Fl Wl,--delayload ,
+turned into
+.Ql /DELAYLOAD
+with
+.Pa delayimp.lib
+.It mingw-w64, ld.lld
+.Fl Wl,--delayload
+.It mingw-w64, GNU ld
+a delay-import library,
+.Pa lib Ns Ar name Ns Pa .delay.a ,
+made with
+.Xr dlltool 1
+from the DLL's
+.Pa .def
+.It anything else
+nothing: a library's default has no effect, and a consumer's
+.Cm yes
+prints a note and links normally
+.El
+.Sh FILES
+.Bl -tag -width "lib/libNAME.delayload"
+.It Pa lib/lib Ns Ar name Ns Pa .delayload
+written by the library:
+.Ar default dll data ,
+where
+.Ar dll
+is
+.Fl
+if there is none, and
+.Ar data
+is 0, 1, or
+.Ql \&?
+if unknown
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+# libfoo.m/makefile
+LIB=foo
+DELAYLOAD=yes
+\&.include <mk.lib.mk>
+
+# app.m/makefile
+PROG=app
+LIBS=foo bar
+DELAYLOAD.foo=no
+DELAYLOAD.bar=yes
+\&.include <mk.prog.mk>
+.Ed
+.Pp
+A missing DLL ends the program at the first call with exit status 127 and no
+message.
+Bmake It links no code of its own into what it builds; for a message, define the
+toolchain's failure hook in the program:
+.Bd -literal -offset indent
+#include <windows.h>
+#include <delayimp.h>
+#include <stdio.h>
+#include <stdlib.h>
+static FARPROC WINAPI on_failure(unsigned reason, PDelayLoadInfo info) {
+    (void)reason;
+    fprintf(stderr, "cannot load %s\en", info->szDll);
+    exit(1);
+}
+#ifdef _MSC_VER
+const
+#endif
+PfnDliHook __pfnDliFailureHook2 = on_failure;
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It DELAYLOAD= Ns Ar value : expected yes or no
+A bad value.
+.It DELAYLOAD=yes on the static library Ar lib
+Only a shared library can be delay-loaded.
+.It DELAYLOAD. Ns Ar lib Ns =yes on the static library Ar name
+A static library links nothing; set it on what links that library.
+.It DELAYLOAD. Ns Ar lib is set in Ar module , but Ar lib is not in its LIBS=
+Probably misspelt.
+.It Ar dll exports data , and a DLL that exports data cannot be delay-loaded
+Export functions only, or do not delay it.
+.It there is no lib Ns Ar lib Ns .delay.a
+An imported DLL under GNU ld, which has no
+.Pa .def
+to make one from.
+Use ld.lld or the MSVC linker.
+.El
+.Sh SEE ALSO
+.Xr dlltool 1 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
+.Sh CAVEATS
+It covers the direct link only: a library's own dependencies follow their own
+settings.
+A misspelt
+.Va DELAYLOAD. Ns Ar lib
+is noticed only in the module's own makefile, because
+.Xr make 1
+cannot list variables.
+For an imported DLL, data exports are unknown; ld.lld and the MSVC linker refuse a
+data import themselves.

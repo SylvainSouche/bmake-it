@@ -192,6 +192,13 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
         fail=$((fail + 1))
         echo "---- log: $name ----" >&2
         tail -n 50 "$log" >&2 || true
+        # A case often stops on a command it had sent to a log of its own, with
+        # nothing said here: that log is where the reason is.
+        _inner=$(find "$wdir" -name '*.log' -type f -exec ls -t {} + 2>/dev/null | head -1)
+        if [ -n "$_inner" ]; then
+            echo "---- the case's newest log, ${_inner#"$wdir"/}:" >&2
+            tail -n 30 "$_inner" >&2 || true
+        fi
         echo "---- end ----" >&2
         if [ "$KEEP_FAILED" != "1" ]; then
             rm -rf "$wdir"

@@ -1,0 +1,30 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.HELP.MK 5
+.Os
+.Sh NAME
+.Nm mk.help.mk
+.Nd the help target
+.Sh DESCRIPTION
+Provides the
+.Cm help
+target, which prints the current selection, the targets of this role and the
+usual variables.
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+.Bl -tag -width "BMK_HELP_ROLE"
+.It Va BMK_HELP_ROLE
+Set by the role file:
+.Cm workspace , framework , prog
+or
+.Cm lib .
+.El
+.Sh SEE ALSO
+.Xr mk.framework.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.workspace.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

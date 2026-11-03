@@ -1,0 +1,75 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.CONSTRAINTS.MK 5
+.Os
+.Sh NAME
+.Nm mk.constraints.mk
+.Nd where a module or framework is built
+.Sh DESCRIPTION
+Evaluates
+.Va PLATFORMS
+and
+.Va TOOLCHAINS
+for the selected target, before any import or
+.Va REQUIRES
+is looked at, so an excluded module never fails on something only another
+platform needs.
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+Set in the module's or framework's makefile, before its
+.Ic .include ;
+both default to everything.
+.Bl -tag -width "REASON.entry"
+.It Va PLATFORMS
+Systems, or system and architecture:
+.Cm linux , linux_arm64 .
+.It Va TOOLCHAINS
+.Cm llvm , gcc , msvc .
+.It Va REASON. Ns Ar entry
+Text added to the message for that entry.
+.El
+.Pp
+An entry is written:
+.Bl -tag -width "!-name" -offset indent -compact
+.It Ar name
+only these; others are skipped quietly
+.It Fl Ns Ar name
+not these; skipped quietly
+.It Cm \&! Ns Ar name
+only these; anything else is an error
+.It Cm \&!- Ns Ar name
+not these; choosing one is an error
+.El
+.Pp
+Plain and negative entries mix only when each negative is part of a plain entry,
+such as
+.Ql linux -linux_arm64 .
+.Pp
+A skip is intent, not failure: one line, exit 0, and
+.Xr mk.skipped.mk 5
+takes over.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+PLATFORMS=macos linux
+TOOLCHAINS=!-gcc
+REASON.gcc=miscompiles the raster kernels, use TOOLCHAIN=llvm
+\&.include <mk.lib.mk>
+.Ed
+.Sh DIAGNOSTICS
+Errors and warnings are not given for a
+.Fl V
+query,
+.Cm clean
+or
+.Cm help :
+asking about a build must not fail because of where it is not built.
+.Sh SEE ALSO
+.Xr mk.constraint-axis.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.skipped.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

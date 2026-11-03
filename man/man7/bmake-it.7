@@ -1,0 +1,145 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.\" @impl 7854-6ae9-90fb-b9d5
+.Dd November 3, 2026
+.Dt BMAKE-IT 7
+.Os
+.Sh NAME
+.Nm bmake-it
+.Nd BSD make build system for C and C++: workspaces, frameworks and modules
+.Sh SYNOPSIS
+.Nm bmake
+.Op Ar target ...
+.Op Ar variable Ns = Ns Ar value ...
+.Sh DESCRIPTION
+.Nm
+is a set of
+.Xr make 1
+include files for building C, C++, lex and yacc sources on macOS, Linux,
+.Fx ,
+.Nx
+and Windows.
+A makefile states what it is and includes the file for that role; sources,
+frameworks and modules are found by convention.
+.Pp
+There are three levels.
+A
+.Em workspace
+contains frameworks.
+A
+.Em framework
+is a directory whose makefile sets
+.Va PREREQS ,
+and contains modules.
+A
+.Em module
+is a directory named
+.Pa *.m
+that builds one library or one program, or
+.Pa *.tst
+for a test module.
+.Pp
+Output goes to
+.Pa build/ Ns Ar KEY Ns Pa / ,
+where
+.Ar KEY
+is
+.Ar os Ns - Ns Ar arch Ns Op - Ns Ar toolchain Ns Op - Ns Ar abi
+with defaults omitted, so builds for different targets sit side by side.
+.Ss Files to include
+.Bl -column "mk.workspace.mk" "description" -offset indent
+.It Sy Role Ta Sy Page
+.It workspace Ta Xr mk.workspace.mk 5
+.It framework Ta Xr mk.framework.mk 5
+.It library module Ta Xr mk.lib.mk 5
+.It program module Ta Xr mk.prog.mk 5
+.It test module Ta Xr mk.tst.mk 5
+.El
+.Ss Files the roles read themselves
+.Bl -tag -width "mk.constraint-axis.mk" -offset indent
+.It Xr mk.common.mk 5
+target selection, target key, flags, sanitizers,
+.Cm run
+.It Xr mk.local.mk 5
+per-level hook files
+.It Xr mk.constraints.mk 5 , Xr mk.constraint-axis.mk 5
+.Va PLATFORMS
+and
+.Va TOOLCHAINS
+.It Xr mk.skipped.mk 5
+what an excluded module or framework does instead
+.It Xr mk.requires.mk 5
+.Va REQUIRES
+.It Xr mk.delayload.mk 5
+.Va DELAYLOAD
+.It Xr mk.test.mk 5 , Xr mk.crosstest.mk 5
+.Cm test ,
+locally or on a runner
+.It Xr mk.atf.mk 5 , Xr mk.atfbmk.mk 5
+finding or building ATF
+.It Xr mk.docs.mk 5
+.Cm docs
+.It Xr mk.help.mk 5
+.Cm help
+.It Xr mk.toolchain.llvm.mk 5 , Xr mk.toolchain.gcc.mk 5 , Xr mk.toolchain.msvc.mk 5
+compiler bundles
+.It Xr mk.vcvarsall.mk 5
+finding MSVC without a developer prompt
+.It Xr mk.paths 5
+where tools are looked for, per host
+.El
+.Sh ENVIRONMENT
+.Bl -tag -width "MAKESYSPATH"
+.It Ev MAKESYSPATH
+Where
+.Xr make 1
+finds the include files: Bmake It's
+.Pa mk/
+directory, then the system's.
+.Pa scripts/install-env.sh
+sets it, and
+.Ev MANPATH
+for these pages, in your shell's startup file.
+.El
+.Sh FILES
+.Bl -tag -width "docs/spec/"
+.It Pa mk/
+the include files
+.It Pa scripts/
+helpers they call
+.It Pa docs/spec/
+the design, with the reasons behind what these pages state
+.It Pa project-model/
+the requirements and decisions
+.El
+.Sh EXAMPLES
+A workspace with one framework, one library and one program:
+.Bd -literal -offset indent
+myws/makefile              PARENT_WS=
+                           \&.include <mk.workspace.mk>
+myws/Fw/makefile           PREREQS=
+                           \&.include <mk.framework.mk>
+myws/Fw/libgreet.m/makefile
+                           \&.include <mk.lib.mk>
+myws/Fw/libgreet.m/src/greet.c
+myws/Fw/hello.m/makefile   LIBS=greet
+                           \&.include <mk.prog.mk>
+myws/Fw/hello.m/src/main.c
+.Ed
+.Pp
+Build it, for another toolchain, and run the program:
+.Bd -literal -offset indent
+$ bmake
+$ bmake TOOLCHAIN=gcc
+$ bmake run PROGRAM=hello
+.Ed
+.Sh SEE ALSO
+.Xr make 1 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.tst.mk 5 ,
+.Xr mk.workspace.mk 5 ,
+.Xr mdoc 7
+.Sh AUTHORS
+.An Sylvain Souche

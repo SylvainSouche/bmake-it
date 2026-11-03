@@ -1,0 +1,90 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.DOCS.MK 5
+.Os
+.Sh NAME
+.Nm mk.docs.mk
+.Nd API documentation with Doxygen
+.Sh DESCRIPTION
+The
+.Cm docs
+target documents a framework's public headers with
+.Xr doxygen 1 .
+Links to other frameworks use tag files: from a framework, those already
+generated; from a workspace, all, because it goes in
+.Va PREREQS
+order.
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+Set in a
+.Pa pre.mk
+hook file, since this file reads them when it is included.
+.Bl -tag -width "DOC_WARN_IF_UNDOCUMENTED"
+.It Va DOXYGEN
+The program.
+Default
+.Pa doxygen .
+.It Va DOCS
+.Cm no
+leaves this framework out.
+Default
+.Cm yes .
+.It Va DOCS_DIR
+Output directory.
+Default
+.Pa docs .
+.It Va DOC_PROJECT_NAME
+Default: the directory's name.
+.It Va DOC_PROJECT_VERSION
+Default: the first line of the workspace's
+.Pa VERSION .
+.It Va DOC_PROJECT_BRIEF
+A one-line description.
+.It Va DOC_LOGO
+Default:
+.Pa docs/logo.png
+or
+.Pa .svg ,
+here then in the workspace.
+.It Va DOC_LICENSE_NOTICE
+Default: the first line of the workspace's
+.Pa LICENSE .
+.It Va DOC_INPUT_EXTRA
+More directories to read, relative to the framework.
+A framework with no
+.Pa include/
+but this is documented.
+.It Va DOC_FILE_PATTERNS
+Which files in those.
+.It Va DOC_WARN_IF_UNDOCUMENTED , Va DOC_EXTRACT_PRIVATE
+.Cm YES
+or
+.Cm NO ,
+the default, passed to Doxygen.
+.El
+.Sh FILES
+.Bl -tag -width "docs/framework.tag"
+.It Pa docs/Doxyfile
+generated
+.It Pa docs/html/
+the output
+.It Pa docs/ Ns Ar framework Ns Pa .tag
+what other frameworks link through
+.El
+.Sh EXAMPLES
+In
+.Pa mk/pre.mk :
+.Bd -literal -offset indent
+DOC_PROJECT_NAME=Geo Toolkit
+DOC_PROJECT_BRIEF=Raster and vector primitives
+DOC_INPUT_EXTRA=src/api
+.Ed
+.Sh SEE ALSO
+.Xr doxygen 1 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.local.mk 5 ,
+.Xr mk.workspace.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

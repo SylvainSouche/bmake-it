@@ -1,0 +1,285 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.LIB.MK 5
+.Os
+.Sh NAME
+.Nm mk.lib.mk
+.Nd library module role: builds, imports or fetches one library
+.Sh SYNOPSIS
+.Fd .include <mk.lib.mk>
+.Sh DESCRIPTION
+A module directory
+.Pa libname.m
+or
+.Pa name.m
+builds one library from
+.Pa src/ ,
+or takes one from outside with
+.Va IMPORT .
+Either way, other modules use it the same way, through
+.Va LIBS .
+Set variables before the
+.Ic .include ;
+one set after it is not seen.
+.Pp
+While its own sources compile,
+.Dv <LIB>_BUILDING
+is defined, in upper case, with anything but letters, digits and underscores
+turned into underscores, for the export macros of
+.Pa include/bmk_export.h .
+.Ss Variables
+.Bl -tag -width "IMPORT_HEADERS"
+.It Va LIB
+The library's base name.
+Default: the directory's name without
+.Pa .m
+and a leading
+.Pa lib .
+.It Va LIB_SHARED
+.Cm YES ,
+the default: shared.
+.Cm NO :
+static only.
+.It Va SHLIB_MAJOR
+The shared library's major version.
+Default 1.
+It names
+.Pa lib Ns Ar name Ns Pa .so. Ns Ar major
+and
+.Pa lib Ns Ar name Ns Pa . Ns Ar major Ns Pa .dylib ;
+a Windows DLL has no version in its name.
+.It Va INCL
+Generated headers to make public, by copying them to the framework's
+.Pa build/ Ns Ar KEY Ns Pa /include/ .
+Others stay private to the module.
+.It Va LIBS
+Libraries to link.
+Link time only: headers come from
+.Va PREREQS .
+A library's own dependencies are added for you.
+.It Va SRCS
+Sources, relative to
+.Pa src/ .
+By default every
+.Pa .c , .cc , .cpp , .cxx , .y
+and
+.Pa .l
+file found there, leaving out hidden files.
+.It Va LINK_CXX
+.Cm yes :
+link with
+.Va CXX
+although the sources are all C, for a module linking a static C++ library.
+.It Va REQUIRES
+See
+.Xr mk.requires.mk 5 .
+.It Va PLATFORMS , Va TOOLCHAINS , Va REASON. Ns Ar entry
+See
+.Xr mk.constraints.mk 5 .
+.It Va DELAYLOAD. Ns Ar lib
+See
+.Xr mk.delayload.mk 5 .
+.It Va TESTS_C , Va TESTS_CXX , Va TESTS_SH
+See
+.Xr mk.test.mk 5 .
+.It Va DELAYLOAD
+See
+.Xr mk.delayload.mk 5 .
+.El
+.Ss Importing
+.Bl -tag -width "IMPORT_HEADERS"
+.It Va IMPORT
+.Cm pkg: Ns Ar name
+from
+.Xr pkg-config 1 ,
+.Cm prefix: Ns Ar dir
+from
+.Ar dir Ns Pa /include
+and
+.Pa lib ,
+.Cm fetch: Ns Ar label
+a source download, compiled, or
+.Cm fetch-bin: Ns Ar label
+a prebuilt download.
+.It Va IMPORT_HEADERS
+Which headers or directories to stage, shell patterns allowed.
+Never the whole prefix.
+.It Va IMPORT_LIB
+.Cm none :
+a header-only import, with no library to find.
+.It Va IMPORT_PREFIX , Va IMPORT_CFLAGS , Va IMPORT_LIBS
+Set in a hook file, these resolve the import before
+.Va IMPORT
+is looked at.
+.It Va FETCH_URL
+One or more URLs of the same file, tried in order.
+Its checksum must be in the module's
+.Pa distinfo .
+.It Va FETCH_PATCHES
+Files in
+.Pa patches/ ,
+applied in order with
+.Ql patch -p1 .
+.It Va FETCH_BUILD
+For
+.Cm fetch: ,
+build with the project's own system instead of
+.Va SRCS :
+.Cm autotools , cmake , meson
+or
+.Cm custom .
+.It Va FETCH_BUILD_ARGS
+Added to the preset's configure step.
+.It Va FETCH_BUILD_CMD
+With
+.Cm custom ,
+the command to run, from the source directory, given
+.Ev BMK_FETCH_SRCDIR , BMK_FETCH_BUILD_DIR
+and
+.Ev BMK_FETCH_INSTALL_PREFIX .
+.El
+.Pp
+The first of these that applies resolves an import:
+.Bl -enum -offset indent -compact
+.It
+.Ev <LIB>_PREFIX ,
+or
+.Ev <LIB>_CFLAGS
+with
+.Ev <LIB>_LIBS ,
+from the environment or command line
+.It
+.Va IMPORT_PREFIX ,
+or
+.Va IMPORT_CFLAGS
+with
+.Va IMPORT_LIBS ,
+from a hook file
+.It
+.Va IMPORT
+.It
+the prefixes in
+.Xr mk.paths 5
+.El
+.Ss Targets
+.Bl -tag -width "copy-up"
+.It Cm all
+Build or stage into
+.Pa build/ Ns Ar KEY Ns Pa /lib/ .
+This is the default.
+.It Cm copy-up
+Build, then copy the library to the framework.
+.It Cm test
+See
+.Xr mk.test.mk 5 .
+.It Cm clean
+Remove this key's output; with
+.Va TARGET=all ,
+every key's.
+.It Cm help
+Print the current selection and the usual variables.
+.El
+.Pp
+On Windows, an imported library's DLL is staged with it whatever its name: the
+import library names it, and it is looked for beside that and in
+.Pa ../bin .
+If it is in neither, the build says which DLL a program will need on
+.Ev PATH .
+.Sh ENVIRONMENT
+.Bl -tag -width "<LIB>_PREFIX"
+.It Ev <LIB>_PREFIX
+The prefix of an import, with
+.Ar LIB
+in upper case.
+.It Ev PKG_CONFIG_PATH
+Searched for
+.Cm pkg:
+imports.
+.El
+.Sh FILES
+.Bl -tag -width "build/KEY/lib/libNAME.linkdeps"
+.It Pa src/
+sources
+.It Pa include/
+private headers
+.It Pa distinfo
+checksums of what
+.Va FETCH_URL
+names
+.It Pa patches/
+what
+.Va FETCH_PATCHES
+names
+.It Pa distfiles/ , Pa work/
+downloads and their extraction, never committed
+.It Pa build/ Ns Ar KEY Ns Pa /lib/
+the library
+.It Pa build/ Ns Ar KEY Ns Pa /lib/lib Ns Ar name Ns Pa .linkdeps
+what a consumer must also link
+.It Pa build/ Ns Ar KEY Ns Pa /lib/lib Ns Ar name Ns Pa .delayload
+see
+.Xr mk.delayload.mk 5
+.El
+.Sh EXAMPLES
+A shared library, version 2:
+.Bd -literal -offset indent
+LIB=geo
+SHLIB_MAJOR=2
+LIBS=m
+\&.include <mk.lib.mk>
+.Ed
+.Pp
+An installed library:
+.Bd -literal -offset indent
+LIB=png
+IMPORT=pkg:libpng
+IMPORT_HEADERS=png.h pngconf.h
+\&.include <mk.lib.mk>
+.Ed
+.Pp
+A download built with its own CMake:
+.Bd -literal -offset indent
+LIB=foo
+IMPORT=fetch:foo
+FETCH_URL=https://example.org/foo-1.0.tar.gz
+FETCH_BUILD=cmake
+IMPORT_HEADERS=foo.h
+\&.include <mk.lib.mk>
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It IMPORT= Ns Ar value : SRCS= is required
+A
+.Cm fetch:
+source without
+.Va FETCH_BUILD
+needs its sources named: they are not discovered in a downloaded tree.
+.It IMPORT_HEADERS= Ns Ar name : not found under any resolved include dir
+The import resolved, and this header is not where it says.
+.It IMPORT= Ns Ar value : no library file for Ar lib
+No library under the expected names in the resolved directory.
+.El
+.Sh SEE ALSO
+.Xr pkg-config 1 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.delayload.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.paths 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr mk.requires.mk 5 ,
+.Xr mk.test.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
+.Sh CAVEATS
+With
+.Va FETCH_BUILD Ns = Ns Cm cmake
+or
+.Cm meson ,
+a cross build other than mingw-w64 output does not carry its cross flags to
+the project's build system.
+.Pp
+.Va SHLIB_MINOR
+appears in
+.Cm help
+and the design documents, but nothing reads it.

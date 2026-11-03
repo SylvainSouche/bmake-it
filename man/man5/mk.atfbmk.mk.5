@@ -1,0 +1,33 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.ATFBMK.MK 5
+.Os
+.Sh NAME
+.Nm mk.atfbmk.mk
+.Nd builds the ATF that Bmake It carries
+.Sh DESCRIPTION
+Builds
+.Pa contrib/atf-0.23
+with
+.Pa contrib/atf-bmk ,
+using the module's compilers, once per framework build root.
+It is used when
+.Xr mk.atf.mk 5
+selects it: always for native Windows output, and with
+.Va BMK_ATF Ns = Ns Cm bundled
+elsewhere.
+.Pp
+Not included directly by a makefile.
+.Sh FILES
+.Bl -tag -width "scripts/atf-build.sh"
+.It Pa scripts/atf-build.sh
+the build; its compiler messages go to
+.Pa build.log
+in its output directory
+.El
+.Sh SEE ALSO
+.Xr mk.atf.mk 5 ,
+.Xr mk.test.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

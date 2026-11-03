@@ -1,0 +1,185 @@
+# matrix.yml -- matrix cells of tests/harness/matrix.tsv on GitHub's runners,
+# one job per cell, through matrix.sh as on a developer's machine.
+# harness-ci-workflow-req. Each job installs what tests/README.md lists for
+# that platform; `matrix.sh check` fails the job when its cell did not pass.
+# @impl 7854-6ae8-d1e7-04b9
+#
+# Not here yet:
+#   MSVC       cl.exe and clang-cl need run-native-host.sh to accept Visual
+#              Studio: it asks for an EWDK ISO in BMK_CACHE, too large to fetch
+#              per run, while the runner has Visual Studio installed.
+#   macOS      a native runner, without the Tart guest the macos_arm64 cell
+#              boots: it needs a KIND host platform like freebsd_host.
+#   BSD guests vm.sh's images and QEMU, with KVM on a Linux runner; untried.
+#   cross      a cell builds its sysroot and runs on a second platform.
+name: Matrix
+
+on:
+  push:
+    branches: [main, 'ci/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch replaces the run in progress.
+concurrency:
+  group: matrix-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  manual:
+    name: manual pages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mandoc
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mandoc
+      - name: Check the pages
+        # As an annotation: a job's log needs a sign-in, the run's page does not.
+        run: |
+          if ! out=$(sh tests/harness/check-man.sh 2>&1); then
+            printf '%s\n' "$out" | cut -c1-300 | sed 's/%/%25/g' |
+              awk 'BEGIN { printf "::error title=manual pages::" } { printf "%s%%0A", $0 } END { print "" }'
+            exit 1
+          fi
+          printf '%s\n' "$out"
+
+  linux:
+    name: ${{ matrix.cell }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { cell: native-linux_amd64_emu-llvm, runner: ubuntu-24.04, image: linux-glibc-amd64 }
+          - { cell: native-linux_amd64_emu-gcc, runner: ubuntu-24.04, image: linux-glibc-amd64 }
+          - { cell: native-linux_arm64-llvm, runner: ubuntu-24.04-arm, image: linux-glibc-arm64 }
+          - { cell: native-linux_arm64-gcc, runner: ubuntu-24.04-arm, image: linux-glibc-arm64 }
+          - { cell: native-linux_amd64_musl-llvm, runner: ubuntu-24.04, image: linux-musl-amd64 }
+          - { cell: native-linux_amd64_musl-gcc, runner: ubuntu-24.04, image: linux-musl-amd64 }
+    steps:
+      - uses: actions/checkout@v7
+      - name: Choose the cache
+        run: echo "BMK_CACHE=$RUNNER_TEMP/bmk-cache" >> "$GITHUB_ENV"
+      - name: Build the cell's image
+        run: make -C tests/harness "$BMK_CACHE/images/.${{ matrix.image }}.provisioned"
+      - name: Run the cell
+        working-directory: tests/harness
+        run: sh matrix.sh run '${{ matrix.cell }}'
+      - name: Check the cell
+        working-directory: tests/harness
+        run: sh matrix.sh check '${{ matrix.cell }}'
+      - name: Say why it failed
+        if: failure()
+        run: sh tests/harness/ci-report.sh '${{ matrix.cell }}'
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.cell }}
+          path: ${{ runner.temp }}/bmk-cache/logs/
+          if-no-files-found: warn
+
+  windows:
+    name: ${{ matrix.cell }}
+    runs-on: windows-2022
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        cell:
+          - native-windows_amd64-llvm
+          - native-windows_amd64-gcc
+          - native-windows_amd64-mingw
+    defaults:
+      run:
+        shell: C:\cygwin\bin\bash.exe --noprofile --norc -e -o pipefail -o igncr '{0}'
+    # Each step's PATH is what a Cygwin host has, not the runner's: its Strawberry
+    # Perl brings a native gmake, which cmake finds and which cannot see /tmp.
+    steps:
+      - uses: cygwin/cygwin-install-action@v7
+        with:
+          install-dir: C:\cygwin
+          packages: >-
+            git bmake clang lld gcc-core gcc-g++
+            mingw64-x86_64-gcc-core mingw64-x86_64-gcc-g++
+            make pkgconf pkg-config bison flex doxygen cmake
+            curl wget file tar gzip unzip zip patch
+            libsqlite3-devel sqlite3
+      # Lutok, which Kyua needs, takes Lua 5.4, a test version on Cygwin
+      # (tests/README.md): named exactly, because allow-test-packages would let
+      # any package move to a test version (the test gcc does not build Kyua
+      # 0.14.1). libxml2 too, for now: Cygwin's 2.15 has another DLL name, and clang,
+      # lld and cmake, built against the old one, then start silently failing.
+      - uses: cygwin/cygwin-install-action@v7
+        with:
+          install-dir: C:\cygwin
+          packages: lua=5.4.4-1 liblua-devel=5.4.4-1 libxml2=2.13.9-2
+      # Cygwin's git, not actions/checkout: native Git for Windows refuses the
+      # repository, whose project-model/con/ has a name Windows reserves ("invalid
+      # path"). Cygwin's also keeps the LF line endings its sh needs.
+      - name: Check out
+        run: |
+          export PATH=/usr/bin:$PATH
+          # (the workspace belongs to another Windows user, for Cygwin's git)
+          g() { git -c safe.directory='*' "$@"; }
+          { g init -q . &&
+            g fetch -q --depth 1 "https://github.com/$GITHUB_REPOSITORY" "$GITHUB_SHA" &&
+            g checkout -q FETCH_HEAD; } >"$RUNNER_TEMP/co.log" 2>&1 || {
+              echo "::error title=check out::$(sed 's/%/%25/g' "$RUNNER_TEMP/co.log" | awk '{ printf "%s%%0A", $0 }')"
+              exit 1; }
+      # Each job installs Cygwin's latest packages, so one can change under a
+      # green branch: say which versions this run has, and name a tool that
+      # will not start, with its own message, before anything depends on it.
+      - name: Check the tools
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
+          echo "::notice title=Cygwin packages::$(cygcheck -cd clang lld gcc-core mingw64-x86_64-gcc-core cmake lua bmake cygwin libstdc++6 libgcc1 zlib0 libzstd1 libiconv2 libintl8 libedit0 libncursesw10 libxml2 libcurl4 libuv1 | awk 'NR>2 { printf "%s %s; ", $1, $2 }')"
+          bad=""
+          for t in "clang -dumpmachine" "gcc -dumpmachine" "x86_64-w64-mingw32-gcc -dumpmachine" "ld.lld --version" "cmake --version" "bmake -r -f /dev/null -V MAKE_VERSION"; do
+              rc=0; out=$($t 2>&1) || rc=$?
+              if [ "$rc" -ne 0 ]; then bad="$bad%0A$t: exit $rc: $(printf '%s' "$out" | tail -n 3 | sed 's/%/%25/g' | tr '\n' ' ')"; fi
+          done
+          exe=$(ls /usr/bin/clang-[0-9]*.exe 2>/dev/null | head -1)
+          if [ -n "$bad" ]; then
+              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | { grep -iE 'error|not found|cannot' || true; } | head -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              echo "::error title=A tool will not start::$bad"
+              exit 1
+          fi
+      - name: Restore ATF and Kyua
+        id: kyua
+        uses: actions/cache@v6
+        with:
+          path: C:\cygwin\usr\local
+          key: atf-kyua-cygwin-${{ hashFiles('tests/harness/provision/build-atf-kyua.sh') }}
+      - name: Build ATF and Kyua
+        if: steps.kyua.outputs.cache-hit != 'true'
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
+          export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
+          sh tests/harness/provision/build-atf-kyua.sh >"$RUNNER_TEMP/kyua.log" 2>&1 || {
+              echo "::error title=ATF and Kyua::$(tail -n 45 "$RUNNER_TEMP/kyua.log" | cut -c1-300 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              exit 1; }
+      - name: Run the cell
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
+          export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
+          cd tests/harness
+          sh matrix.sh run '${{ matrix.cell }}'
+          sh matrix.sh check '${{ matrix.cell }}'
+      - name: Say why it failed
+        if: failure() && hashFiles('tests/harness/ci-report.sh') != ''
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
+          export BMK_CACHE="$(cygpath -u "$RUNNER_TEMP")/bmk-cache"
+          sh tests/harness/ci-report.sh '${{ matrix.cell }}'
+      - name: Keep the logs
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: logs-${{ matrix.cell }}
+          path: ${{ runner.temp }}/bmk-cache/logs/
+          if-no-files-found: warn

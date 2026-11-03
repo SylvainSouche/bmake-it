@@ -1,0 +1,47 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.VCVARSALL.MK 5
+.Os
+.Sh NAME
+.Nm mk.vcvarsall.mk
+.Nd finds MSVC without a developer prompt
+.Sh DESCRIPTION
+Does what
+.Pa vcvarsall.bat
+does, so
+.Va TOOLCHAIN Ns = Ns Cm msvc
+works from a plain Cygwin shell.
+It finds a toolset and Windows SDK in a mounted EWDK if one is named, otherwise
+through
+.Pa vswhere.exe ,
+and sets the
+.Ev PATH ,
+.Ev INCLUDE
+and
+.Ev LIB
+they need.
+It is skipped for a
+.Fl V
+query and
+.Cm clean .
+.Pp
+Not included directly by a makefile.
+.Sh ENVIRONMENT
+.Bl -tag -width "BMK_EWDK_ROOT"
+.It Ev BMK_EWDK_ROOT
+Where an EWDK ISO is mounted, in Windows or Cygwin form:
+.Pa F:\e
+or
+.Pa /cygdrive/f .
+No Visual Studio is needed then.
+.El
+.Sh DIAGNOSTICS
+.Bl -diag
+.It TOOLCHAIN=msvc: BMK_EWDK_ROOT= Ns Ar dir has no ... BuildTools
+The ISO is not mounted there.
+.El
+.Sh SEE ALSO
+.Xr mk.toolchain.msvc.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

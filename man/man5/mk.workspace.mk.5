@@ -1,0 +1,143 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.WORKSPACE.MK 5
+.Os
+.Sh NAME
+.Nm mk.workspace.mk
+.Nd workspace role: builds every framework and aggregates their output
+.Sh SYNOPSIS
+.Fd .include <mk.workspace.mk>
+.Sh DESCRIPTION
+A workspace is the top of a source tree.
+Any immediate subdirectory whose makefile sets
+.Va PREREQS
+is a framework; they are found without being listed and built in
+.Va PREREQS
+order.
+A framework whose prerequisite failed is skipped, not built, and counts as failed.
+.Ss Variables
+.Bl -tag -width "BUILD_REPORT_DIR"
+.It Va PARENT_WS
+Absolute paths of parent workspaces, searched in order for frameworks and
+hook files not found here.
+A path that does not exist is a warning.
+.It Va BUILD_REPORT_DIR
+Where
+.Cm all Va REPORT=yes
+writes its dashboard.
+Default
+.Pa build-report .
+.It Va TEST_REPORT_DIR
+The same for
+.Cm test .
+Default
+.Pa test-report .
+.It Va WS_DOCS_DIR
+Where
+.Cm docs
+writes the workspace page.
+Default
+.Pa build/docs .
+.It Va DOCS_DIR , Va DOC_PROJECT_NAME , Va DOC_PROJECT_BRIEF
+See
+.Xr mk.docs.mk 5 .
+.It Va FW
+With
+.Cm test :
+only this framework.
+.It Va WS
+With
+.Cm add-parent :
+the path to add.
+.It Va DESTDIR , Va PREFIX
+With
+.Cm install .
+.Va PREFIX
+defaults to
+.Pa /usr/local .
+.El
+.Pp
+.Va REPORT , FAIL_FAST , RUN_ID , SANITIZE
+and the target selection are described in
+.Xr mk.common.mk 5
+and forwarded to every framework.
+.Ss Targets
+.Bl -tag -width "add-parent"
+.It Cm all
+Build every framework, then copy their
+.Pa bin , lib
+and
+.Pa share
+into this workspace's
+.Pa build/ Ns Ar KEY .
+This is the default.
+.It Cm test
+Run every framework's tests; see
+.Xr mk.test.mk 5 .
+.It Cm docs
+Document every framework, in
+.Va PREREQS
+order, and write a landing page.
+.It Cm clean
+Remove the current target key's output and reports.
+With
+.Va TARGET=all ,
+every key's.
+.It Cm install
+Copy the built
+.Pa bin , lib
+and
+.Pa share
+into
+.Va DESTDIR Ns Va PREFIX .
+It does not build first.
+.It Cm add-parent
+Append
+.Va WS
+to
+.Va PARENT_WS
+in the makefile.
+.It Cm help
+Print the current selection and the usual variables.
+.El
+.Sh FILES
+.Bl -tag -width "build-report/RUN_ID/KEY/"
+.It Pa build/ Ns Ar KEY Ns Pa /
+aggregated output
+.It Pa .gen-fw-order.mk
+the framework order, generated
+.It Pa build-report/ Ns Ar RUN_ID Ns Pa / Ns Ar KEY Ns Pa /
+build dashboard
+.It Pa test-report/ Ns Ar RUN_ID Ns Pa / Ns Ar KEY Ns Pa /
+test dashboard
+.El
+.Sh EXIT STATUS
+Non-zero if any framework failed or was skipped for a failed prerequisite, even
+when the run went on past it; a summary names each one.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+PARENT_WS=/work/base-ws
+\&.include <mk.workspace.mk>
+.Ed
+.Pp
+.Dl $ bmake install DESTDIR=/tmp/stage PREFIX=/opt/demo
+.Sh DIAGNOSTICS
+.Bl -diag
+.It framework build order could not be determined
+.Pa scripts/gen-fw-order.sh
+failed; its reason is printed above this line.
+.El
+.Sh SEE ALSO
+.Xr mk.common.mk 5 ,
+.Xr mk.docs.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.local.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
+.Sh CAVEATS
+The packaging targets
+.Cm pkg , deb , rpm , msi
+and
+.Cm port
+are designed but not implemented.

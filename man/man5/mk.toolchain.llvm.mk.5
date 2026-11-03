@@ -1,0 +1,68 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.TOOLCHAIN.LLVM.MK 5
+.Os
+.Sh NAME
+.Nm mk.toolchain.llvm.mk
+.Nd clang and lld
+.Sh DESCRIPTION
+Read when
+.Va TOOLCHAIN Ns = Ns Cm llvm ,
+the default.
+It finds clang in the prefixes of
+.Xr mk.paths 5 ,
+then on
+.Ev PATH ,
+and sets a matching
+.Va CC , CXX , LD , AR , AS
+and
+.Va RANLIB .
+Each may still be overridden.
+Clang targets anything, so this is also the file for cross builds, which need
+the target's sysroot.
+With
+.Va ABI Ns = Ns Cm msvc
+it hands over to
+.Xr mk.toolchain.msvc.mk 5 .
+.Pp
+Not included directly by a makefile.
+.Sh ENVIRONMENT
+.Bl -tag -width "BMK_MACOS_MIN_VERSION"
+.It Ev BMK_LINUX_SYSROOT , BMK_FREEBSD_SYSROOT , BMK_NETBSD_SYSROOT , BMK_MACOS_SYSROOT
+The sysroot of a cross build for that system.
+.It Ev BMK_MINGW_SYSROOT
+A mingw-w64 tree with
+.Pa include/
+and
+.Pa lib/ ,
+such as llvm-mingw's.
+Otherwise an installed
+.Ar triple Ns Pa -gcc
+provides them.
+.It Ev BMK_MACOS_MIN_VERSION
+The oldest macOS to support.
+.El
+.Sh EXAMPLES
+.Dl $ bmake TARGET=freebsd TARGET_ARCH=arm64 BMK_FREEBSD_SYSROOT=/sr/fbsd
+.Dl $ bmake ABI=mingw
+.Sh DIAGNOSTICS
+.Bl -diag
+.It TOOLCHAIN=llvm: no clang found
+Add clang to
+.Ev PATH ,
+set
+.Va TOOLCHAIN Ns = Ns Cm gcc ,
+or set
+.Va CC .
+.It TARGET=win- Ns Ar arch with TOOLCHAIN=llvm is a mingw-w64 build
+The mingw-w64 files or a linker are missing; the message says which and where
+they come from.
+.El
+.Sh SEE ALSO
+.Xr clang 1 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.toolchain.gcc.mk 5 ,
+.Xr mk.toolchain.msvc.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche
