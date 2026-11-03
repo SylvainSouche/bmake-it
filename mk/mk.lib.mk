@@ -1363,6 +1363,17 @@ _fetch_import:
 # different minimum OS version than this project's own native objects,
 # which caused linker warnings) are also forwarded now.
 # @impl 0f87-6ab6-6562-0f89
+#
+# fetch-cmake-mingw-output-req: mingw-w64 output gets a mingw-w64 library. Given
+# only CC's first word, clang lost --target and CMake built a Cygwin DLL, which
+# the mingw-w64 program crashed on loading (cases 64, 69, CI, 2026-11-02). A list
+# keeps CC's arguments, and CMAKE_SYSTEM_NAME stops Cygwin's cmake configuring
+# for Cygwin. The other cross builds still lose their flags, as said above.
+# @impl 7854-6ae9-890f-2c28
+_FETCH_CMAKE_COMPILERS = -DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}"
+.if ${_BMK_WIN_MINGW:Uno} == "yes"
+_FETCH_CMAKE_COMPILERS = -DCMAKE_SYSTEM_NAME=Windows -DCMAKE_C_COMPILER="${CC:ts;}" -DCMAKE_CXX_COMPILER="${CXX:ts;}"
+.endif
 _fetch_build:
 .if ${_IMPORT_KIND:Uno} != "source-build"
 	@:
@@ -1423,7 +1434,7 @@ _fetch_build:
 			command -v cmake >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=cmake but cmake not found on PATH" >&2; exit 1; }; \
 			echo "===> FETCH_BUILD=cmake: configure && build && install"; \
 			( cmake -S ${_IMPORT_WRKSRC} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
-				-DCMAKE_C_COMPILER="${CC:[1]}" -DCMAKE_CXX_COMPILER="${CXX:[1]}" \
+				${_FETCH_CMAKE_COMPILERS} \
 				-DCMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}" \
 				${FETCH_BUILD_ARGS} && \
 			  cmake --build "$$_builddir" -j"$$_njobs" && \
