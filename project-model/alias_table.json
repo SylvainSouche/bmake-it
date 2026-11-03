@@ -638,7 +638,7 @@
   "delay-load-mechanism-cand": {
     "active": true,
     "id": "7854-6ae5-cb28-c565",
-    "status": "open",
+    "status": "accepted",
     "type": "cand"
   },
   "delay-load-msvc-obs": {
@@ -646,6 +646,12 @@
     "id": "7854-6ae5-d759-ff9c",
     "status": "recorded",
     "type": "obs"
+  },
+  "delay-load-syntax-dec": {
+    "active": true,
+    "id": "7854-6ae8-c8f4-fe97",
+    "status": "recorded",
+    "type": "dec"
   },
   "delay-load-windows-toolchains-obs": {
     "active": true,
@@ -884,6 +890,12 @@
   "fetch-cache-never-committed-req": {
     "active": true,
     "id": "0f87-6ab6-4e33-9d3b",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "fetch-cmake-mingw-output-req": {
+    "active": true,
+    "id": "7854-6ae9-890f-2c28",
     "status": "confirmed",
     "type": "req"
   },
@@ -1234,6 +1246,12 @@
     "id": "7854-6adf-8c26-e698",
     "status": "recorded",
     "type": "obs"
+  },
+  "harness-ci-workflow-req": {
+    "active": true,
+    "id": "7854-6ae8-d1e7-04b9",
+    "status": "confirmed",
+    "type": "req"
   },
   "harness-comprehensive-feature-coverage": {
     "active": true,
@@ -2189,6 +2207,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "import-dll-staged-req": {
+    "active": true,
+    "id": "7854-6ae9-07c4-5af8",
+    "status": "confirmed",
+    "type": "req"
+  },
   "import-headers-glob-req": {
     "active": true,
     "id": "0f87-6abe-3f41-37f0",
@@ -2716,6 +2740,12 @@
     "id": "0f87-6ad7-d973-ab1d",
     "status": "recorded",
     "type": "obs"
+  },
+  "man-pages-for-mk-files-req": {
+    "active": true,
+    "id": "7854-6ae9-90fb-b9d5",
+    "status": "confirmed",
+    "type": "req"
   },
   "md-dependency-tracking-freebsd-specific-req": {
     "active": true,

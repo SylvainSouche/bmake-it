@@ -1,0 +1,33 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.SKIPPED.MK 5
+.Os
+.Sh NAME
+.Nm mk.skipped.mk
+.Nd what an excluded module or framework does
+.Sh DESCRIPTION
+Replaces a role file's normal body when
+.Va PLATFORMS
+or
+.Va TOOLCHAINS
+exclude it here.
+Nothing is built, copied up, tested or imported.
+.Cm all
+prints one line saying so and exits 0, and
+.Cm clean
+still removes the output.
+.Pp
+Not included directly by a makefile.
+.Sh FILES
+Markers that let a dependent tell excluded from failed:
+.Bl -tag -width "build/KEY/runs/RUN_ID/build.excluded"
+.It Pa build/ Ns Ar KEY Ns Pa /.skipped/ Ns Va LIB
+a library module; read when something links it
+.It Pa build/ Ns Ar KEY Ns Pa /runs/ Ns Va RUN_ID Ns Pa /build.excluded
+a framework; read by the workspace
+.El
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.constraints.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

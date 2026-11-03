@@ -1,0 +1,59 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.REQUIRES.MK 5
+.Os
+.Sh NAME
+.Nm mk.requires.mk
+.Nd checks for prerequisite software
+.Sh DESCRIPTION
+Checks that software a module needs is already there.
+It acquires nothing: for that, see
+.Va IMPORT
+in
+.Xr mk.lib.mk 5 .
+.Pp
+Not included directly by a makefile.
+.Ss Variables
+.Bl -tag -width "REQUIRES"
+.It Va REQUIRES
+Names, checked with
+.Ql pkg-config --exists ,
+then
+.Ql command -v .
+An entry
+.Cm header: Ns Ar path
+is checked by preprocessing an
+.Ql #include ,
+in C and then in C++, and is also accepted under
+.Ar prefix Ns Pa /include
+for the prefixes in
+.Xr mk.paths 5 .
+.El
+.Pp
+A missing entry stops a module's build when its makefile is read, before any slow
+step.
+A workspace or framework build checks every module first, and lists everything
+missing at once before building anything.
+.Sh EXAMPLES
+.Bd -literal -offset indent
+REQUIRES=cmake gdal header:glm/glm.hpp
+\&.include <mk.prog.mk>
+.Ed
+.Sh CAVEATS
+On a cross build with a sysroot, a library is looked for in that sysroot and a
+tool on the host's
+.Ev PATH .
+Without a sysroot, the host is asked, which says nothing about the target.
+A
+.Cm header:
+entry found under a prefix adds no
+.Fl I ;
+a module that includes it directly still needs one.
+There are no version constraints.
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr pkg-config 1
+.Sh AUTHORS
+.An Sylvain Souche

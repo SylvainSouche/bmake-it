@@ -1,0 +1,72 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.TOOLCHAIN.MSVC.MK 5
+.Os
+.Sh NAME
+.Nm mk.toolchain.msvc.mk
+.Nd the MSVC runtime, with cl.exe or clang
+.Sh DESCRIPTION
+Read when
+.Va TOOLCHAIN Ns = Ns Cm msvc ,
+or
+.Va TOOLCHAIN Ns = Ns Cm llvm Va ABI Ns = Ns Cm msvc ,
+which compiles with clang-cl and links with lld-link against the same MSVC
+headers and libraries.
+Both build only on a Windows host with Cygwin.
+.Pp
+.Va CC
+is
+.Pa scripts/msvc-cc-wrapper.sh ,
+which takes the usual compiler options and passes them on in cl.exe's syntax, so
+makefiles need no MSVC branches.
+.Va LD , AR , AS
+and
+.Va RANLIB
+are set to match;
+.Va AS
+may be overridden.
+.Pp
+Not included directly by a makefile.
+.Pp
+If cl.exe is on
+.Ev PATH ,
+that environment is used as it is; otherwise
+.Xr mk.vcvarsall.mk 5
+finds one.
+.Sh ENVIRONMENT
+Exported to the wrapper:
+.Bl -tag -width "BMK_MSVC_INCLUDE"
+.It Ev BMK_MSVC_BIN
+The toolset's directory.
+.It Ev BMK_MSVC_INCLUDE , BMK_MSVC_LIB
+Its headers and libraries.
+.It Ev BMK_MSVC_CL , BMK_MSVC_LIBEXE
+With clang: what replaces cl.exe and lib.exe.
+.El
+.Sh EXAMPLES
+.Dl $ bmake TOOLCHAIN=msvc
+.Dl $ bmake TOOLCHAIN=llvm ABI=msvc BMK_EWDK_ROOT='F:\e'
+.Sh DIAGNOSTICS
+.Bl -diag
+.It TOOLCHAIN=msvc cannot cross-compile
+MSVC only targets Windows, from Windows.
+Use
+.Va TOOLCHAIN Ns = Ns Cm llvm
+for mingw-w64 output.
+.It cl.exe was found on PATH but lib.exe was not
+.Ev PATH
+is only partly set up.
+.It TOOLCHAIN=llvm ABI=msvc needs clang-cl and lld-link on PATH
+On Cygwin they come with the clang and lld packages.
+.El
+.Sh CAVEATS
+Only the
+.Cm address
+sanitizer exists.
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.toolchain.llvm.mk 5 ,
+.Xr mk.vcvarsall.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

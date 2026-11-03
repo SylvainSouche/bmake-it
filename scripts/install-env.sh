@@ -30,6 +30,8 @@ set -eu
 
 SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 REPO_MK=$(cd "$SCRIPT_DIR/../mk" && pwd)
+# man-pages-for-mk-files-req: `man mk.lib.mk` works once this has run.
+REPO_MAN=$(cd "$SCRIPT_DIR/../man" && pwd)
 
 MARK_BEGIN="# >>> bmake-it >>>"
 MARK_END="# <<< bmake-it <<<"
@@ -105,6 +107,8 @@ block_sh() {
     printf '# Added by bmake-it/scripts/install-env.sh -- do not edit by hand,\n'
     printf '# re-run the script instead (safe: it replaces this block in place).\n'
     printf 'export MAKESYSPATH="%s"\n' "$MAKESYSPATH_VALUE"
+    # (the empty last entry keeps man's default directories)
+    printf 'case ":${MANPATH:-}:" in *":%s:"*) ;; *) export MANPATH="%s:${MANPATH:-}" ;; esac\n' "$REPO_MAN" "$REPO_MAN"
     printf '%s\n' "$MARK_END"
 }
 
@@ -121,6 +125,7 @@ block_fish() {
     printf 'else\n'
     printf '    set -gx MAKESYSPATH "%s:%s"\n' "$REPO_MK" "$DEFAULT_SYSPATH"
     printf 'end\n'
+    printf 'contains -- "%s" $MANPATH; or set -gx MANPATH "%s" $MANPATH ""\n' "$REPO_MAN" "$REPO_MAN"
     printf '%s\n' "$MARK_END"
 }
 

@@ -1,0 +1,25 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.CONSTRAINT-AXIS.MK 5
+.Os
+.Sh NAME
+.Nm mk.constraint-axis.mk
+.Nd evaluates one of PLATFORMS and TOOLCHAINS
+.Sh DESCRIPTION
+Internal to
+.Xr mk.constraints.mk 5 ,
+which includes it once per list.
+It parses the entries of the list, applies them in the order loud negative,
+quiet negative, positive, and reports whether the selected target is built,
+skipped or an error.
+.Pp
+Not included directly by a makefile.
+.Pp
+It has no variables of its own for a user.
+The grammar is in
+.Xr mk.constraints.mk 5 .
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.constraints.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

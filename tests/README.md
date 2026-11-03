@@ -84,6 +84,13 @@ the BSD guests and the cross cells; the workflow's header says what each needs.
   `rade-bmake/*` tags: `docker tag rade-bmake/linux-glibc:arm64 bmk/linux-glibc:arm64`
   (and likewise for the other two) instead of rebuilding.
 
+### Results (2026-11-02, Windows 10 amd64 host, 111 cases)
+
+111 cases, with `DELAYLOAD` (case 111), the host cells only: llvm and gcc with
+Cygwin output 101 pass, 10 skip; MSVC with `cl.exe`, MSVC with clang and mingw-w64
+with llvm 102 pass, 9 skip. No failures. Case 111 also passed by itself on
+mingw-w64 with gcc (GNU ld), which has no cell. It has not run on a guest.
+
 ### Results (2026-11-02, Windows 10 amd64 host, 110 cases)
 
 110 cases, with cases 105-110 from OpenRider's reports, the host cells only:
@@ -385,6 +392,8 @@ that (how the 2026-10-26 Cygwin changes were repacked).
 | 108 | `bmake test` of mingw-w64 output has the sysroot's `bin/` on `PATH` with none on the caller's and no hook (`ABI=mingw` on a Windows host only; kyua and atf-sh) |
 | 109 | `TEST_LINK=objects`: a library's test reaches an internal the shared library does not export, and the same test does not link with `TEST_LINK=library`; a bad value is an error. On Windows, on every runtime, a DLL with an explicit `dllexport` exports only that, and one with none exports all it defines (kyua and ATF; skips without them) |
 | 110 | `NATIVE_CURDIR`: a C and a C++ program open a file through a path compiled in with it, started from another directory; it is drive-letter form for native Windows output, `.CURDIR` otherwise |
+| 113 | The manual pages: every `mk/mk.*.mk` has one, naming its `?=` settings and its targets; references resolve; clean under `mandoc -Tlint` or `groff -ww`, whichever is here (`tests/harness/check-man.sh`) |
+| 111 | `DELAYLOAD`: a library's default and a consumer's override both ways; a program starts without its DLL and fails at the first call; the spec's failure hook names the DLL; a data export, a misspelt library, a bad value and a static library are refused; an imported DLL is named from its import library, and refused under GNU ld; where delay loading does not exist, a default does nothing and an explicit yes says so |
 
 Exit code 77 from `run.sh` is treated as SKIP.
 

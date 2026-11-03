@@ -1,0 +1,102 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.TST.MK 5
+.Os
+.Sh NAME
+.Nm mk.tst.mk
+.Nd test module role: scripts and programs that test the built software
+.Sh SYNOPSIS
+.Fd .include <mk.tst.mk>
+.Sh DESCRIPTION
+A module directory
+.Pa name.tst
+holds tests of what a framework built.
+Every
+.Pa testcases/*.sh
+is a test, run with
+.Xr atf-sh 1 .
+A plain
+.Xr make 1
+compiles the module, so a compile error in a test shows at build time, but
+nothing in it is copied up, installed or shipped.
+.Pp
+Its scripts see the resulting build output: this module's test directory, its
+framework's
+.Pa bin ,
+the workspace's and each
+.Va PARENT_WS Ns 's
+are on
+.Ev PATH ,
+and
+.Ev BMK_SHAREDIR
+lists their
+.Pa share
+directories.
+.Ss Variables
+.Bl -tag -width "TEST_PROG"
+.It Va PROG
+A utility program the scripts use: built, not registered as a test.
+.It Va TEST_PROG
+A program that is itself an ATF test program, registered with Kyua.
+.It Va TEST_SRCS
+The sources of
+.Va TEST_PROG ,
+relative to
+.Pa src/ .
+Required when
+.Va PROG
+is set too, which is then built from the rest.
+.It Va LIBS
+Libraries to link.
+.It Va KYUA
+The Kyua to run.
+Default
+.Pa kyua .
+.El
+.Pp
+A module with neither
+.Va PROG
+nor
+.Va TEST_PROG
+holds scripts only, and still reads its hook files.
+.Ss Targets
+.Bl -tag -width "clean"
+.It Cm all
+Compile, and stage the scripts.
+This is the default.
+.It Cm test
+Run the tests; see
+.Xr mk.test.mk 5 .
+.It Cm clean
+Remove this key's output.
+.El
+.Sh FILES
+.Bl -tag -width "testcases/*.sh"
+.It Pa src/
+compiled sources
+.It Pa testcases/*.sh
+tests
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+PROG=raster_util
+TEST_PROG=raster_test
+TEST_SRCS=raster_test.cpp
+LIBS=geo
+\&.include <mk.tst.mk>
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It PROG= and TEST_PROG= are both set, so TEST_SRCS= must name the test program's sources
+Say which sources are the test; the rest build
+.Va PROG .
+.El
+.Sh SEE ALSO
+.Xr atf-sh 1 ,
+.Xr bmake-it 7 ,
+.Xr kyua 1 ,
+.Xr mk.atf.mk 5 ,
+.Xr mk.crosstest.mk 5 ,
+.Xr mk.test.mk 5
+.Sh AUTHORS
+.An Sylvain Souche

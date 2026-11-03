@@ -28,6 +28,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  manual:
+    name: manual pages
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Install mandoc
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq mandoc
+      - name: Check the pages
+        run: sh tests/harness/check-man.sh
+
   linux:
     name: ${{ matrix.cell }}
     runs-on: ${{ matrix.runner }}

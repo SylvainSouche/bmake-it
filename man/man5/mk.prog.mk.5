@@ -1,0 +1,120 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 3, 2026
+.Dt MK.PROG.MK 5
+.Os
+.Sh NAME
+.Nm mk.prog.mk
+.Nd program module role: compiles and links one executable
+.Sh SYNOPSIS
+.Fd .include <mk.prog.mk>
+.Sh DESCRIPTION
+A module directory
+.Pa name.m
+holding
+.Pa src/
+builds one program.
+Set variables before the
+.Ic .include ;
+one set after it is not seen.
+.Ss Variables
+.Bl -tag -width "TOOLCHAINS"
+.It Va PROG
+The program's name.
+Default: the directory's name without
+.Pa .m .
+.It Va LIBS
+Libraries to link.
+Link time only: headers come from
+.Va PREREQS .
+A library's own dependencies are added for you.
+.It Va SRCS
+Sources, relative to
+.Pa src/ .
+By default every
+.Pa .c , .cc , .cpp , .cxx , .y
+and
+.Pa .l
+file found there, leaving out hidden files.
+.It Va LINK_CXX
+.Cm yes :
+link with
+.Va CXX
+although the sources are all C, for a module linking a static C++ library.
+.It Va REQUIRES
+See
+.Xr mk.requires.mk 5 .
+.It Va PLATFORMS , Va TOOLCHAINS , Va REASON. Ns Ar entry
+See
+.Xr mk.constraints.mk 5 .
+.It Va DELAYLOAD. Ns Ar lib
+See
+.Xr mk.delayload.mk 5 .
+.It Va TESTS_C , Va TESTS_CXX , Va TESTS_SH
+See
+.Xr mk.test.mk 5 .
+.El
+.Pp
+.Va CFLAGS , CXXFLAGS , LDFLAGS , YFLAGS , LFLAGS , DEBUG_FLAGS
+and the target selection are described in
+.Xr mk.common.mk 5 .
+.Ss Targets
+.Bl -tag -width "copy-up"
+.It Cm all
+Compile and link into
+.Pa build/ Ns Ar KEY Ns Pa /bin/ .
+This is the default.
+A library rebuilt elsewhere causes a relink, as does a change of flags.
+.It Cm copy-up
+Build, then copy the program to the framework.
+.It Cm test
+See
+.Xr mk.test.mk 5 .
+.It Cm clean
+Remove this key's output; with
+.Va TARGET=all ,
+every key's.
+.It Cm help
+Print the current selection and the usual variables.
+.El
+.Sh FILES
+.Bl -tag -width "build/KEY/bin/PROG"
+.It Pa src/
+sources
+.It Pa include/
+private headers
+.It Pa mk/
+hook files; see
+.Xr mk.local.mk 5
+.It Pa build/ Ns Ar KEY Ns Pa /bin/ Ns Va PROG
+the program
+.It Pa build/ Ns Ar KEY Ns Pa /obj/
+objects and dependency files
+.El
+.Sh EXAMPLES
+.Bd -literal -offset indent
+PROG=viewer
+LIBS=geo png
+CFLAGS+=-DUSE_PNG
+\&.include <mk.prog.mk>
+.Ed
+.Sh DIAGNOSTICS
+.Bl -diag
+.It error: cannot link Ar prog : prerequisite library Ar lib (from LIBS=) has not been built yet
+No library of that name in the search directories, which are named.
+.It error: cannot link Ar prog : library Ar lib is not built here
+That library is excluded on this target; give this module the same
+.Va PLATFORMS
+or
+.Va TOOLCHAINS .
+.El
+.Sh SEE ALSO
+.Xr bmake-it 7 ,
+.Xr mk.common.mk 5 ,
+.Xr mk.delayload.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.requires.mk 5 ,
+.Xr mk.test.mk 5 ,
+.Xr mk.tst.mk 5
+.Sh AUTHORS
+.An Sylvain Souche
