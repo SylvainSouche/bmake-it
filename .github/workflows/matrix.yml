@@ -112,6 +112,23 @@ jobs:
             g checkout -q FETCH_HEAD; } >"$RUNNER_TEMP/co.log" 2>&1 || {
               echo "::error title=check out::$(sed 's/%/%25/g' "$RUNNER_TEMP/co.log" | awk '{ printf "%s%%0A", $0 }')"
               exit 1; }
+      # Each job installs Cygwin's latest packages, so one can change under a
+      # green branch: say which versions this run has, and name a tool that
+      # will not start, with its own message, before anything depends on it.
+      - name: Check the tools
+        run: |
+          export PATH=/usr/local/bin:/usr/bin:/cygdrive/c/Windows/System32:/cygdrive/c/Windows
+          echo "::notice title=Cygwin packages::$(cygcheck -cd clang lld gcc-core mingw64-x86_64-gcc-core cmake lua bmake | awk 'NR>2 { printf "%s %s; ", $1, $2 }')"
+          bad=""
+          for t in "clang -dumpmachine" "gcc -dumpmachine" "x86_64-w64-mingw32-gcc -dumpmachine" "ld.lld --version" "cmake --version" "bmake -r -f /dev/null -V MAKE_VERSION"; do
+              if ! out=$($t 2>&1); then bad="$bad%0A$t: $(printf '%s' "$out" | tail -n 3 | sed 's/%/%25/g' | tr '\n' ' ')"; fi
+          done
+          exe=$(ls /usr/bin/clang-[0-9]*.exe 2>/dev/null | head -1)
+          if [ -n "$bad" ]; then
+              [ -z "$exe" ] || bad="$bad%0Acygcheck $exe:%0A$(cygcheck "$exe" 2>&1 | tail -n 12 | sed 's/%/%25/g' | awk '{ printf "%s%%0A", $0 }')"
+              echo "::error title=A tool will not start::$bad"
+              exit 1
+          fi
       - name: Restore ATF and Kyua
         id: kyua
         uses: actions/cache@v6
