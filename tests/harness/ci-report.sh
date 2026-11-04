@@ -10,10 +10,12 @@ log="$BMK_CACHE/logs/$cell.log"
 {
     grep "^$cell	" "$BMK_CACHE/results/matrix.tsv" 2>/dev/null || echo "no result recorded for $cell"
     if [ -f "$log" ]; then
-        grep -E ' (FAIL|ERROR)' "$log"
+        # -a: a case's output can hold bytes that make grep take the log for a
+        # binary file, and it then says so on stderr and prints no line.
+        grep -aE ' (FAIL|ERROR)' "$log"
         # each failed case's own output, as run-tests.sh printed it
         sed -n '/^---- log: /,/^---- end ----/p' "$log"
-        grep -q '^---- log: ' "$log" || { echo "--- end of $log"; tail -n 40 "$log"; }
+        grep -aq '^---- log: ' "$log" || { echo "--- end of $log"; tail -n 40 "$log"; }
     else
         echo "--- no log: $log"
         ls -la "$BMK_CACHE/logs" 2>&1
