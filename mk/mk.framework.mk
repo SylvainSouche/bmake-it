@@ -38,6 +38,7 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.resolved.mk"
 
 # framework-level-constraint-req: a PLATFORMS=/TOOLCHAINS= declared here
 # applies to the whole framework -- none of its modules is entered.

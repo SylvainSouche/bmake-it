@@ -1,0 +1,43 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 4, 2026
+.Dt MK.RESOLVED.MK 5
+.Os
+.Sh NAME
+.Nm mk.resolved.mk
+.Nd stops a build whose settings were changed too late
+.Sh DESCRIPTION
+Checks that
+.Va TOOLCHAIN , ABI , TARGET , TARGET_ARCH , OPENMP
+and
+.Va SANITIZE
+still have the value
+.Xr mk.common.mk 5
+resolved them with.
+Those settings choose the compiler, the flags and the build directory when
+.Xr mk.common.mk 5
+is read, so a change after that has no effect.
+Rather than let the build go on with the old value, it stops with an error such
+as:
+.Bd -literal -offset indent
+TOOLCHAIN=gcc was set after mk.common.mk had already resolved
+TOOLCHAIN=llvm -- a module makefile or a mk/pre*.mk hook changed it
+too late to have any effect ...
+.Ed
+.Pp
+Not included directly by a makefile.
+Each role file reads it after the
+.Cm pre
+hooks, so it sees a setting made by a module after an early
+.Ql .include "mk.common.mk" ,
+and one made by a hook file.
+Setting the same value again is accepted.
+.Pp
+To change one of them, set it before the include of
+.Xr mk.common.mk 5 ,
+on the command line, or in the environment.
+.Sh SEE ALSO
+.Xr mk.common.mk 5 ,
+.Xr mk.local.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

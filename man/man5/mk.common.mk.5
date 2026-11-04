@@ -1,5 +1,5 @@
 .\" SPDX-License-Identifier: BSD-3-Clause
-.Dd November 3, 2026
+.Dd November 4, 2026
 .Dt MK.COMMON.MK 5
 .Os
 .Sh NAME
@@ -10,7 +10,13 @@ Read first by every role file.
 It works out the target and toolchain, reads the toolchain's file, builds the
 target key and sets the common flags.
 .Pp
-Not included directly by a makefile.
+A module makefile does not need to include it, but may do so first, as
+.Ql .include "mk.common.mk" ,
+to read
+.Va TARGET
+in its own top section.
+See
+.Sx Reading TARGET in a module makefile .
 .Ss Target selection
 .Bl -tag -width "TARGET_ARCH"
 .It Va TARGET
@@ -186,6 +192,36 @@ gcc does not build for the MSVC runtime.
 An unknown
 .Va TOOLCHAIN
 is an error listing those that exist, and which one a common alias means.
+.Ss Reading TARGET in a module makefile
+The top of a module makefile runs before any role file, so
+.Va TARGET
+is not set there when the module is built on its own (from a workspace it comes
+on the command line).
+Include this file first:
+.Bd -literal -offset indent
+\&.include "mk.common.mk"
+PROG=hello
+\&.if ${TARGET} == "win"
+LDFLAGS+=-lpsapi
+\&.endif
+\&.include "mk.prog.mk"
+.Ed
+.Pp
+It finds its own directory, so
+.Va BMK_MKDIR
+need not be set.
+Set
+.Va TOOLCHAIN , ABI , TARGET , TARGET_ARCH , OPENMP
+and
+.Va SANITIZE
+before the include, or on the command line;
+a different value afterwards stops the build with an error that names the
+variable (see
+.Xr mk.resolved.mk 5 ) .
+A flag that depends on the target can also go in a hook file such as
+.Pa mk/pre.win.mk ,
+see
+.Xr mk.local.mk 5 .
 .Sh SEE ALSO
 .Xr mk.local.mk 5 ,
 .Xr mk.toolchain.gcc.mk 5 ,

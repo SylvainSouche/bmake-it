@@ -4,6 +4,18 @@
 .if !defined(_MK_COMMON_MK_)
 _MK_COMMON_MK_ = 1
 
+# A module makefile may .include this file first, before any role file, to
+# read TARGET, TARGET_ARCH and _TARGET_KEY in its own top section -- no role
+# file has set BMK_MKDIR yet, so it is this file's own directory
+# (common-includable-first-req). Settings this file reads at parse time
+# (TOOLCHAIN, ABI, OPENMP, SANITIZE, ...) must then come BEFORE the include,
+# or on the command line: mk.resolved.mk stops the build on a later change.
+# @impl 0f87-6aea-ddec-7e01
+.if !defined(BMK_MKDIR)
+BMK_MKDIR := ${.PARSEDIR}
+.endif
+_BMK_PARSE_TIME_VARS = TOOLCHAIN ABI TARGET TARGET_ARCH OPENMP SANITIZE
+
 # ---------------------------------------------------------------------------
 # Host detection → default TARGET / TARGET_ARCH / TOOLCHAIN
 # ---------------------------------------------------------------------------
@@ -794,5 +806,13 @@ _OPENMP_LDFLAGS += -L/opt/local/lib/libomp
 
 # REQUIRES= checking lives in mk.requires.mk (included by mk.prog.mk/
 # mk.lib.mk after the "pre" hook phase) -- see requires-header-prefix-probe-req.
+
+# What this file has resolved, for mk.resolved.mk to compare with later
+# (late-setting-error-req). Recorded last, after every default and derived
+# value above.
+# @impl 0f87-6aea-ddec-454d
+.for _v in ${_BMK_PARSE_TIME_VARS}
+_BMK_RESOLVED.${_v} := ${${_v}:U}
+.endfor
 
 .endif # _MK_COMMON_MK_

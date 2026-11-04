@@ -25,6 +25,7 @@ _LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.resolved.mk"
 .include "${BMK_MKDIR}/mk.constraints.mk"
 .if ${_BMK_BUILD} == "yes"
 .include "${BMK_MKDIR}/mk.requires.mk"
