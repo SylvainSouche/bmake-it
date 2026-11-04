@@ -55,7 +55,7 @@ TOOLCHAIN="${TOOLCHAIN:-}"
 # The same for ABI= (e.g. ABI=mingw on a Cygwin host: mingw-w64 output).
 ABI="${ABI:-}"
 
-pass=0; fail=0; skip=0; errors=0; flaky=0
+pass=0; fail=0; skip=0; errors=0; flaky=0; templeft=0
 
 # Under ABI=mingw a C++ program needs the mingw runtime DLLs (libstdc++-6.dll,
 # libgcc_s_seh-1.dll, libwinpthread-1.dll) on PATH to start, as `bmake run`
@@ -76,7 +76,13 @@ kept=0
 # KEEP_FAILED=1 keeps a failing case's work directory; the trap must not
 # delete it along with the rest.
 _cleanup() { rm -rf "$WRAPDIR"; [ "$kept" -gt 0 ] || rm -rf "$WORKDIR_BASE"; }
-trap _cleanup EXIT INT TERM
+trap _cleanup EXIT
+# A signal ends the run, which then cleans up: sh runs no EXIT trap for a signal
+# by itself, and a handler that did not exit would go on to the next case.
+# @impl 7854-6ae9-ff93-1d73
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 cat > "$WRAPDIR/bmake" << EOF
 #!/bin/sh
@@ -118,7 +124,9 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
     fi
 
     wdir="$WORKDIR_BASE/$name"
-    mkdir -p "$wdir"
+    # Its own temporary directory, gone with the case whatever it left there.
+    casetmp="$wdir.tmp"
+    mkdir -p "$wdir" "$casetmp"
     position=$((position + 1))
     started=$(date +%s)
     printf '%3d/%d %s %-40s ' "$position" "$total" "$(date +%H:%M:%S)" "$name"
@@ -150,6 +158,7 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             cd "$tdir"
             unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true
             export BMK_MKDIR BMK_SCRIPTS
+            export TMPDIR="$casetmp"
             # harness-cases-target-neutral-req: target names and loader paths
             # come from testlib.sh, never hardcoded for Unix in a case.
             # @impl 7854-6adf-8c28-260c
@@ -169,7 +178,7 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             attempt=2
             # keep the evidence: the first attempt's log would be overwritten
             { echo "---- $name: first attempt failed (exit $status), retrying; its last lines:"; tail -n 12 "$log"; echo "---- end first attempt"; } >> "$WORKDIR_BASE/flaky-evidence.log" 2>/dev/null
-            rm -rf "$wdir"; mkdir -p "$wdir"
+            rm -rf "$wdir" "$casetmp"; mkdir -p "$wdir" "$casetmp"
             tar -xzf "$archive" -C "$wdir" 2>/dev/null || break
             if [ -d "$wdir/$name" ]; then tdir="$wdir/$name"; else tdir="$wdir"; fi
             chmod +x "$tdir/run.sh" 2>/dev/null || true
@@ -179,14 +188,17 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
     done
 
     took="$(($(date +%s) - started))s"
+    # What a case or the build left behind. Outside this suite it would stay in
+    # the user's /tmp. testlib.sh's bmk-tc is meant to last as long as the case.
+    _left=$(ls -A "$casetmp" 2>/dev/null | grep -v '^bmk-tc\.' | tr '\n' ' ' || true)
     if [ "$status" -eq 0 ]; then
         if [ "$attempt" -eq 2 ]; then echo "PASS (flaky: passed on retry) $took"; flaky=$((flaky + 1)); else echo "PASS $took"; fi
         pass=$((pass + 1))
-        rm -rf "$wdir" "$log"
+        rm -rf "$wdir" "$casetmp" "$log"
     elif [ "$status" -eq 77 ]; then
         echo "SKIP $took"
         skip=$((skip + 1))
-        rm -rf "$wdir" "$log"
+        rm -rf "$wdir" "$casetmp" "$log"
     else
         echo "FAIL (exit $status) $took"
         fail=$((fail + 1))
@@ -201,18 +213,23 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
         fi
         echo "---- end ----" >&2
         if [ "$KEEP_FAILED" != "1" ]; then
-            rm -rf "$wdir"
+            rm -rf "$wdir" "$casetmp"
         else
             echo "(kept $wdir)" >&2
             kept=$((kept + 1))
         fi
         rm -f "$log"
     fi
+    if [ -n "$_left" ]; then
+        echo "        left in its temporary directory: $_left"
+        templeft=$((templeft + 1))
+    fi
 done
 
 echo
 echo "=== summary ==="
 echo "pass=$pass  fail=$fail  skip=$skip  error=$errors"
+[ "$templeft" -eq 0 ] || echo "temp-left=$templeft (cases that left files in their temporary directory, named above)"
 if [ "$flaky" -gt 0 ]; then
     echo "flaky=$flaky (passed only on a retry: RETRY_FAILED=1)"
     [ -f "$WORKDIR_BASE/flaky-evidence.log" ] && cat "$WORKDIR_BASE/flaky-evidence.log"

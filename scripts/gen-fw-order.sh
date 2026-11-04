@@ -15,6 +15,13 @@ set -eu
 
 OUT="${1:-.gen-fw-order.mk}"
 BMAKE="${BMAKE:-bmake}"
+# Nothing of this run stays, however it ends (sh runs no EXIT trap for a signal
+# by itself). @impl 7854-6ae9-ff93-1d73
+tmpdir=""
+trap 'rm -f "$OUT.tmp.$$"; [ -z "$tmpdir" ] || rm -rf "$tmpdir"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 case "$BMAKE" in
     /*) ;;
     *)
@@ -42,7 +49,6 @@ if [ -z "$fws" ]; then
 fi
 
 tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
 
 # order-query-failure-is-error-req: a PREREQS= query that fails is an
 # error, not "no prerequisites" -- that used to put a framework before the

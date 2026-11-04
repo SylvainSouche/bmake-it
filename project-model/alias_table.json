@@ -4061,6 +4061,12 @@
     "status": "superseded",
     "type": "req"
   },
+  "temp-files-outlive-no-use-req": {
+    "active": true,
+    "id": "7854-6ae9-ff93-1d73",
+    "status": "confirmed",
+    "type": "req"
+  },
   "test-aggregation-continues-after-failure-req": {
     "active": true,
     "id": "0f87-6ad7-1f31-b683",

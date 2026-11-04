@@ -321,6 +321,14 @@ elif [ "$mode" = "compile" ]; then
     exit 0
 else
     [ -n "$out" ] || { echo "msvc-cc-wrapper: link mode with no -o output" >&2; exit 1; }
+    # cl.exe leaves the objects of a compile-and-link in the current directory,
+    # for a test program its module's source directory: beside the output, as
+    # for a DLL below. @impl 7854-6ae9-ff93-1d73
+    fo=""
+    if [ -n "$csources" ] && [ "$out" != /dev/null ]; then
+        mkdir -p "${out%.*}.objs"
+        fo="/Fo\"$(winpath "${out%.*}.objs")$dirsep\""
+    fi
     if [ "$building_dll" = "yes" ]; then
         # msvc-shared-lib-export-req: a DLL exports what its objects define
         # with no __declspec(dllexport) needed, as on every other toolchain
@@ -345,6 +353,7 @@ else
                 dobjects="$dobjects \"$(nativepath "$o")\""
             done
             sources="$objects $libinputs"
+            fo=""
         fi
         # msvc-explicit-export-limits-exports-req: objects with an explicit
         # __declspec(dllexport) (an /EXPORT: directive) export only that, as
@@ -379,9 +388,9 @@ else
         # /Fe: still names cl's own output for consistency/diagnostics;
         # the authoritative name for a DLL link is /OUT: after /link.
         tool_failed=yes
-        eval "$CL /nologo $cflags $sources /link $linkflags /OUT:\"$(winpath "$out")\""
+        eval "$CL /nologo $cflags $sources $fo /link $linkflags /OUT:\"$(winpath "$out")\""
     else
         tool_failed=yes
-        eval "$CL /nologo $cflags $sources /Fe:\"$(winpath "$out")\" /link $linkflags"
+        eval "$CL /nologo $cflags $sources $fo /Fe:\"$(winpath "$out")\" /link $linkflags"
     fi
 fi

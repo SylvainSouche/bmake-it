@@ -9,6 +9,13 @@
 set -eu
 OUT="${1:-.gen-mod-order.mk}"
 BMAKE="${BMAKE:-bmake}"
+# Nothing of this run stays, however it ends (sh runs no EXIT trap for a signal
+# by itself). @impl 7854-6ae9-ff93-1d73
+tmpdir=""
+trap 'rm -f "$OUT.tmp.$$"; [ -z "$tmpdir" ] || rm -rf "$tmpdir"' EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
 case "$BMAKE" in
     /*) ;;
     *)
@@ -49,7 +56,6 @@ if [ -z "$mods" ]; then
 fi
 
 tmpdir=$(mktemp -d)
-trap 'rm -rf "$tmpdir"' EXIT
 
 if [ -n "${BMK_MKDIR:-}" ]; then
     bmk_find_sys_mk || exit 1

@@ -33,7 +33,8 @@ msvc_runtime() {
 # For the MSVC runtime the fake libraries are built with Bmake It's own
 # cl.exe/lib.exe wrappers, environment included (mk.vcvarsall.mk finds the
 # toolset; clang-cl and lld-link for clang): asked from bmake itself, its CC
-# and AR become two scripts.
+# and AR become two scripts. They must last until the case ends, so their
+# directory is in the case's TMPDIR, which run-tests.sh removes with the case.
 if msvc_runtime; then
     _tl_d=$(mktemp -d "${TMPDIR:-/tmp}/bmk-tc.XXXXXX")
     cat > "$_tl_d/makefile" <<'EOF'
