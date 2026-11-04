@@ -256,6 +256,28 @@ make test REPORT=yes RUN_ID=ci-4821           # caller-supplied run identity
   expected to own retrieving code and making those files reachable (a
   LAN site, an artifact store, whatever fits) (`CON-ci-integration-scope-boundary`).
 
+## Run it with bmake, not GNU make (best practice)
+
+Bmake It is BSD make syntax. GNU make (`gmake`, macOS's `/usr/bin/make`) fails
+on it with "missing separator", and a makefile cannot refuse GNU make from
+inside itself: GNU's `$(error ...)` is an invalid line to bmake, and a BSD
+directive gives GNU make only that unreadable message. The documented practice
+(`gnumakefile-stub-best-practice-dec`, `gnumakefile-stub-documented-req`) is a
+one-line `GNUmakefile` beside the `makefile`:
+
+```make
+$(error This project needs BSD make: run bmake (not make or gmake). See README.md)
+```
+
+GNU make prefers `GNUmakefile` over `makefile`; bmake never reads it. Tested:
+`gmake` (4.x) and macOS's GNU make 3.81 stop with the message; `bmake` builds.
+Limits: `gmake -f makefile` bypasses the stub, and it covers only its own
+directory, so place one in each directory a user may run `make` in. FreeBSD's
+and NetBSD's `make` is bmake and needs none. A recommendation only — Bmake It
+neither requires nor generates the file. It is one case of the rule that a
+wrong invocation ends in a message naming the problem and the fix
+(`graceful-error-on-missing-variable-req`).
+
 ## Discovery (no explicit listing required)
 
 - **Workspace → frameworks**: any immediate subdirectory containing a

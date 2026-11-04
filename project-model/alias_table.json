@@ -1145,6 +1145,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "gnumakefile-stub-best-practice-dec": {
+    "active": true,
+    "id": "0f87-6aeb-4521-533c",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "gnumakefile-stub-documented-req": {
+    "active": true,
+    "id": "0f87-6aeb-4521-4ab6",
+    "status": "confirmed",
+    "type": "req"
+  },
   "graceful-error-audit-cand": {
     "active": true,
     "id": "0f87-6aea-dde0-c690",

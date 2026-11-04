@@ -137,6 +137,26 @@ line) if you'd rather not touch shell configuration, but every `mk.*.mk`
 file already auto-computes it correctly from wherever it was actually
 found, whether that's a local relative path or `MAKESYSPATH`.
 
+### Best practice: refuse GNU make with a readable message
+
+Bmake It's makefiles are BSD make syntax. Run by GNU make (`gmake`, or the
+`make` that macOS ships), a Bmake It makefile stops with "missing separator",
+which tells nobody what is wrong. A makefile cannot refuse GNU make itself —
+GNU's `$(error ...)` is an invalid line to bmake — but GNU make reads a file
+named `GNUmakefile` in preference to `makefile`, and bmake never reads it. Put
+this one line in it, next to the `makefile`:
+
+```make
+$(error This project needs BSD make: run bmake (not make or gmake). See README.md)
+```
+
+`gmake` and macOS's `make` then stop with that message, and `bmake` builds as
+before. Two limits: `gmake -f makefile` skips the stub, and it protects only
+the directory it sits in, so put one wherever a user may run `make` — the
+workspace, and the framework or module directories people work in. On FreeBSD
+and NetBSD `make` is bmake and needs no stub. Bmake It does not create the file;
+it is a recommendation (`gnumakefile-stub-documented-req`).
+
 ## Quick start
 
 ```sh

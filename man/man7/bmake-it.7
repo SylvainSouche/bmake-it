@@ -89,6 +89,25 @@ finding MSVC without a developer prompt
 .It Xr mk.paths 5
 where tools are looked for, per host
 .El
+.Pp
+Run it with
+.Nm bmake ,
+not GNU make, which fails on these makefiles with
+.Dq missing separator .
+To make GNU make say so, put a one-line
+.Pa GNUmakefile
+beside the
+.Pa makefile :
+.Bd -literal -offset indent
+$(error This project needs BSD make: run bmake (not make or gmake). See README.md)
+.Ed
+.Pp
+GNU make reads
+.Pa GNUmakefile
+first; bmake never does.
+It covers only its own directory, and
+.Ql gmake -f makefile
+skips it.
 .Sh ENVIRONMENT
 .Bl -tag -width "MAKESYSPATH"
 .It Ev MAKESYSPATH
