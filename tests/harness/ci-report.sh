@@ -15,7 +15,11 @@ log="$BMK_CACHE/logs/$cell.log"
         grep -aE ' (FAIL|ERROR)' "$log"
         # each failed case's own output, as run-tests.sh printed it
         sed -n '/^---- log: /,/^---- end ----/p' "$log"
-        grep -aq '^---- log: ' "$log" || { echo "--- end of $log"; tail -n 40 "$log"; }
+        grep -aq '^---- log: ' "$log" || {
+            # no line says which case: everything in the log that is not a pass
+            echo "--- $log, $(wc -l <"$log") lines, what is not a PASS or SKIP:"
+            grep -avE '^ *[0-9]+/[0-9]+ .* (PASS|SKIP)( |$)' "$log" | head -n 50
+        }
     else
         echo "--- no log: $log"
         ls -la "$BMK_CACHE/logs" 2>&1
