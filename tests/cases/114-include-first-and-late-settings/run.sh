@@ -19,11 +19,12 @@ T=$(direct -f early.mk -V '${TARGET}' 2>&1) || { echo "direct run failed:" >&2; 
 [ "$T" = "$(bmake -V '${TARGET}')" ] || { echo "TARGET read in the top section was '$T'" >&2; exit 1; }
 M=$(direct -f early.mk -V '${BMK_MKDIR}')
 [ "$(cd "$M" && pwd -P)" = "$(cd "$BMK_MKDIR" && pwd -P)" ] || { echo "BMK_MKDIR is '$M', not $BMK_MKDIR" >&2; exit 1; }
-# the conditional on TARGET took effect: -lpsapi for TARGET=win, only then
-direct -f early.mk -V '${LDFLAGS}' TARGET=win 2>&1 | grep -q -- '-lpsapi' \
-    || { echo "TARGET=win: -lpsapi missing" >&2; exit 1; }
-if [ "$T" != win ] && direct -f early.mk -V '${LDFLAGS}' 2>&1 | grep -q -- '-lpsapi'; then
-    echo "-lpsapi added on TARGET=$T" >&2; exit 1
+# the conditional on TARGET took effect, with this host's own TARGET: another
+# one can need a compiler this cell does not have (gcc for win needs mingw-w64)
+direct -f early.mk -V '${LDFLAGS}' WANT_TARGET="$T" 2>&1 | grep -q -- '-learly' \
+    || { echo "TARGET=$T: the top section's conditional did not take effect" >&2; exit 1; }
+if direct -f early.mk -V '${LDFLAGS}' 2>&1 | grep -q -- '-learly'; then
+    echo "the top section's conditional took effect on another TARGET" >&2; exit 1
 fi
 # 2. the same makefile through the harness wrapper (BMK_MKDIR given), as in a workspace
 bmake -f early.mk -V '${TARGET}' >/dev/null || { echo "early include failed with BMK_MKDIR set" >&2; exit 1; }
