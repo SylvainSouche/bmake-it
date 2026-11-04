@@ -43,6 +43,7 @@ _LOCAL_MK_DIRS += ${.CURDIR}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
+.include "${BMK_MKDIR}/mk.resolved.mk"
 
 # ---------------------------------------------------------------------------
 # Auto-discover frameworks: subdirs containing makefile that defines PREREQS=

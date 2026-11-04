@@ -293,6 +293,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "common-includable-first-req": {
+    "active": true,
+    "id": "0f87-6aea-dde0-0209",
+    "status": "confirmed",
+    "type": "req"
+  },
   "compiler-native-dependency-tracking-inapplicable-to-own-recipes": {
     "active": true,
     "id": "0f87-6ab5-841f-3f9a",
@@ -1139,6 +1145,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "graceful-error-audit-cand": {
+    "active": true,
+    "id": "0f87-6aea-dde0-c690",
+    "status": "open",
+    "type": "cand"
+  },
+  "graceful-error-on-missing-variable-req": {
+    "active": true,
+    "id": "0f87-6aea-dde0-a9df",
+    "status": "confirmed",
+    "type": "req"
+  },
   "graceful-failure-cross-cutting": {
     "active": true,
     "id": "0f87-6aa1-048a-d54b",
@@ -1499,6 +1517,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-common-includable-first": {
+    "active": true,
+    "id": "0f87-6aea-ddec-7e01",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-copy-up-collision-different-modules-only": {
     "active": true,
     "id": "0f87-6ac0-c275-07a6",
@@ -1809,6 +1833,12 @@
     "active": true,
     "id": "0f87-6a98-7755-574e",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-late-setting-error": {
+    "active": true,
+    "id": "0f87-6aea-ddec-454d",
+    "status": "verified",
     "type": "impl"
   },
   "impl-ldflags-dedup-hook-timing-fix": {
@@ -2339,6 +2369,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "include-first-and-graceful-errors-dec": {
+    "active": true,
+    "id": "0f87-6aea-dde0-3c4c",
+    "status": "recorded",
+    "type": "dec"
+  },
   "initial-domain-model": {
     "active": true,
     "id": "6f38-6a88-1836-bc1f",
@@ -2482,6 +2518,12 @@
     "id": "0f87-6abf-bef3-fed3",
     "status": "recorded",
     "type": "obs"
+  },
+  "late-setting-error-req": {
+    "active": true,
+    "id": "0f87-6aea-dde0-3d25",
+    "status": "confirmed",
+    "type": "req"
   },
   "layered-build-output-tree": {
     "active": true,

@@ -113,6 +113,40 @@ Typical use: a module's own `mk/local.${TOOLCHAIN}.mk` appending an extra
 `CFLAGS` for one specific toolchain, without touching the shared
 `mk/*.mk` role files.
 
+### Reading `TARGET` in a module makefile (`common-includable-first-req`, `late-setting-error-req`)
+
+A module's top section runs before any Bmake It file, so `TARGET` is undefined
+there when the module is built on its own (from a workspace it arrives on the
+command line, which is why the same makefile behaves differently depending on
+where it is run). Two supported ways to depend on it:
+
+- **A hook file**, `mk/pre.${TARGET}.mk` (above): `LDFLAGS+=-lpsapi` in
+  `mk/pre.win.mk`. It is read after `TARGET` is resolved and works wherever
+  `bmake` is run. Use `pre` rather than `local` for flags the `REQUIRES=` header
+  probe must see.
+- **An early include**: `.include "mk.common.mk"` as the first line of the
+  module makefile, then `.if ${TARGET} == "win"`, then the role file. `mk.common.mk`
+  finds its own directory (`BMK_MKDIR` need not be set) and is include-guarded,
+  so the role file's own include of it does nothing.
+
+Either way `TOOLCHAIN`, `ABI`, `TARGET`, `TARGET_ARCH`, `OPENMP` and
+`SANITIZE` are read when `mk.common.mk` runs and must be set **before** it, on
+the command line or in the environment — `TOOLCHAIN` is project-wide, never per
+module, and a `pre` hook cannot set it. A different value afterwards stops the
+build (`mk.resolved.mk`, included by each role file after the `pre` hooks):
+
+```
+TOOLCHAIN=gcc was set after mk.common.mk had already resolved TOOLCHAIN=llvm -- ...
+Set TOOLCHAIN before the .include of mk.common.mk, or on the command line ...
+```
+
+Before this check such a setting was ignored without a message (`CC` stayed
+clang). Setting the value `mk.common.mk` already resolved is accepted. This is one
+case of the project-wide rule (`graceful-error-on-missing-variable-req`): a
+missing, invalid or too-late variable ends in a message that names the variable
+and the fix, never a raw bmake message or a silent wrong result. Test:
+`tests/cases/114-include-first-and-late-settings`.
+
 ## Test declarations (`.include <mk.test.mk>`, included by `mk.prog.mk`/`mk.lib.mk`)
 
 | Macro | Meaning | Status |
