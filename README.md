@@ -37,6 +37,8 @@ docs/
 ├── spec/                 # design specification (00-overview.md … 90-*.md)
 └── manual.tex            # LaTeX package manual
 project-model/           # discovery-driven-dev project model (see below)
+VERSION                  # the current version
+VERSION.md               # what each version holds, and how they are numbered
 ```
 
 ## Prerequisites
