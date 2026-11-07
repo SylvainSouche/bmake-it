@@ -30,6 +30,8 @@ case "$BMAKE" in
         ;;
 esac
 
+BMK_PROG=gen-fw-order
+. "$(dirname "$0")/bmk-names.sh"
 fws=""
 for d in */; do
     [ -d "$d" ] || continue
@@ -38,6 +40,9 @@ for d in */; do
         build|distrib) continue ;;
     esac
     if [ -f "$name/makefile" ] && grep -q '^PREREQS' "$name/makefile" 2>/dev/null; then
+        # path-characters-refused-upfront-req
+        # @impl 0f87-6aee-e982-0f20
+        bmk_refuse "$name" other
         fws="$fws $name"
     fi
 done

@@ -1,24 +1,24 @@
 #!/bin/sh
-# path-characters: what a special character in a workspace, framework or
-# module directory name -- or in a directory above the workspace, or in the
-# directory the mk files are installed in -- does to a build.
+# path-characters (path-characters-supported-req, path-characters-refused-
+# upfront-req): what a special character in a workspace, framework or module
+# directory name -- or in a directory above the workspace, or in the directory
+# the mk files are installed in -- does to a build.
 #
-# Each character is tried in every one of those places at once (one tree whose
-# every component carries it), and in a tree whose mk directory carries it.
-# Three outcomes, from the build that follows:
+# Each character is tried in four places: every name at once, the module name
+# only, the workspace name only (with a parent directory carrying it too), and
+# the mk directory. The outcome of the build that follows:
 #   works     the binary is built and `bmake clean` removes it
-#   refused   the build stops with a non-zero status
-#   SILENT    the build says it succeeded and built nothing
-# Contract (path-characters-contract-cand):
-#   1. SUPPORTED characters must work, everywhere.
-#   2. No character may end in SILENT: a build that built nothing must not say
-#      it succeeded.
-#   3. (to come) A refused character is refused with a message naming it.
-# KNOWN_GAP lists the characters that today break the contract; the case ends
-# SKIP where one of them does, and FAILS on any other violation.
-#
-# The escaping layers a name goes through, and where each breaks, are written up
-# in docs/spec/85-names-and-paths.md.
+#   refused   the build stops, and says why in a message that begins
+#             "Bmake It cannot" (the name, the character in words, what works)
+#   raw       the build stops with some other error: never acceptable
+#   SILENT    the build says it succeeded and built nothing: never acceptable
+# Contract (docs/spec/85-names-and-paths.md): what works anywhere works
+# everywhere, so a character that works is tested to work on every platform;
+# the rest is refused upfront with an explanation. MUST_FIX lists the
+# characters that are meant to work (space, parentheses, apostrophe, ampersand,
+# hash; and = where bmake reads it as an assignment) and do not yet: refused
+# with "not supported yet" is a gap, the case ends SKIP while one is open. Any
+# other deviation fails the case.
 set -eu
 REAL=$(PATH=${PATH#*:} command -v bmake)   # past the harness wrapper, to choose BMK_MKDIR
 MKSRC=$BMK_MKDIR
@@ -63,10 +63,30 @@ dash|\0055
 eacute|\0303\0251
 cjk|\0346\0227\0245\0346\0234\0254'
 
-SUPPORTED="lbracket rbracket percent tilde at plus caret dash eacute cjk"
-# Break the contract today (measured on macOS): a build that says it succeeded
-# and built nothing. Contract 3 (a readable refusal) is not checked yet.
-KNOWN_GAP="star question equals"
+# works in every place, on every platform
+OK_ALL=" lbracket rbracket percent tilde at plus caret dash eacute cjk "
+# meant to work everywhere and do not yet (refused as "not supported yet")
+MUST_FIX=" space twospaces lparen rparen squote amp hash "
+# builds nothing, silently, under some bmake versions (macOS's, Alpine's): meant to work
+SILENT_GAP=" equals "
+# work in the mk directory's name, though not in the others
+MKDIR_OK=" hash bang colon comma equals star question lbrace rbrace "
+# work in a workspace's name (and its parents'), not in a module's
+BRACE=" lbrace rbrace "
+
+# want <label> <column> -> works | refused
+want() {
+    _l=" $1 "
+    case $2 in
+        mkdir)
+            case "$OK_ALL$MKDIR_OK$MUST_FIX" in *"$_l"*) echo works; return ;; esac ;;
+        workspace)
+            case "$OK_ALL$MUST_FIX$SILENT_GAP$BRACE" in *"$_l"*) echo works; return ;; esac ;;
+        *)
+            case "$OK_ALL$MUST_FIX$SILENT_GAP" in *"$_l"*) echo works; return ;; esac ;;
+    esac
+    echo refused
+}
 
 mkws() { # mkws <root> <ws> <fw> <module> : a workspace with one module
     mkdir -p "$1/$2/$3/$4/src"
@@ -81,7 +101,8 @@ has_binary() { [ -n "$(find "$1" -type f -name x -path '*/bin/*' 2>/dev/null)" ]
 probe() {
     RESULT=works
     if ! ( cd "$1" && env -u BMK_MKDIR MAKESYSPATH="$2:${MAKESYSPATH#*:}" "$REAL" -m "$2" -m "${MAKESYSPATH#*:}" BMK_MKDIR="$2" >"$TOP/out.log" 2>&1 ); then
-        RESULT=refused; return 0
+        if grep -q 'Bmake It cannot' "$TOP/out.log"; then RESULT=refused; else RESULT=raw; fi
+        return 0
     fi
     has_binary "$1" || { RESULT=SILENT; return 0; }
     ( cd "$1" && env -u BMK_MKDIR MAKESYSPATH="$2:${MAKESYSPATH#*:}" "$REAL" -m "$2" -m "${MAKESYSPATH#*:}" BMK_MKDIR="$2" clean >"$TOP/clean.log" 2>&1 ) || RESULT=clean-failed
@@ -121,26 +142,30 @@ done
 
 viol=''; open_gaps=''
 while read -r label r1 r2 r3 r4; do
-    supported=no; case " $SUPPORTED " in *" $label "*) supported=yes ;; esac
-    gap=no; case " $KNOWN_GAP " in *" $label "*) gap=yes ;; esac
-    broken=no
-    for r in $r1 $r2 $r3 $r4; do
-        [ "$r" = skipped ] && continue
-        [ "$supported" = yes ] && [ "$r" != works ] && broken=yes
-        [ "$r" = SILENT ] && broken=yes
-        case $r in clean-*) broken=yes ;; esac
+    i=0
+    for col in names module workspace mkdir; do
+        i=$((i + 1)); eval "got=\$r$i"
+        [ "$got" = skipped ] && continue
+        exp=$(want "$label" "$col")
+        if [ "$got" = "$exp" ]; then continue; fi
+        # A $ in the mk directory's own name stops bmake itself ("Could not
+        # find .../mk.common.mk": make expands it in the .include) before any
+        # Bmake It file can run, so no message of ours can come first.
+        case "$label:$col:$got" in dollar*:mkdir:raw) continue ;; esac
+        case " $MUST_FIX$SILENT_GAP " in
+            *" $label "*)
+                # meant to work: refused ("not supported yet") or silent is an open gap
+                if [ "$exp" = works ] && { [ "$got" = refused ] || [ "$got" = SILENT ]; }; then
+                    open_gaps="$open_gaps $label"; continue
+                fi ;;
+        esac
+        viol="$viol $label($col: wanted $exp, got $got)"
     done
-    if [ "$broken" = yes ]; then
-        if [ "$gap" = yes ]; then open_gaps="$open_gaps $label"; else viol="$viol $label"; fi
-    fi
 done < "$TOP/results"
 
-[ -z "$viol" ] || { echo "FAIL: contract broken for:$viol" >&2; exit 1; }
-# Whether a gap shows depends on the bmake version as much as on the OS (an
-# '=' in a name builds nothing under bmake 20260406 and works under Debian's):
-# the case is SKIP only where a listed gap is really open.
+[ -z "$viol" ] || { echo "FAIL: contract broken:$viol" >&2; exit 1; }
 if [ -n "$open_gaps" ]; then
-    echo "SKIP: known gaps still open here (a build that built nothing said it succeeded):$open_gaps" >&2
+    echo "SKIP: meant to work, not yet (refused as 'not supported yet', or built nothing):$(printf '%s\n' $open_gaps | sort -u | tr '\n' ' ')" >&2
     exit 77
 fi
 echo "path-characters OK"

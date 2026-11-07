@@ -5,7 +5,8 @@ directory above the workspace, or the directory the `mk/` files are installed in
 — contains a character that make or the shell treats specially. Measured on
 macOS (bmake 20260406, `/bin/sh`), 2026-11-07; the harness case
 `116-path-characters` repeats the measurement on every platform the suite runs
-on. Proposed contract: `path-characters-contract-cand` (open). Measurements:
+on. Contract: `path-characters-contract-dec`, `path-characters-supported-req`,
+`path-characters-refused-upfront-req`. Measurements:
 `path-characters-measured-obs`.
 
 ## The result in one table
@@ -83,32 +84,96 @@ and 7 (`= : ! # * ? { } ,`), which are make's own syntax or another program's, s
 quoting everything cannot make every name work. The way out for those is to
 refuse them.
 
-## Proposed contract (`path-characters-contract-cand`)
+## The contract (decided)
 
-1. **Supported** characters work in every name and in the install directory of
-   `mk/`, on every platform: letters, digits and `. _ - + @ % ~ ^ [ ]` and
-   non-ASCII letters.
-2. **No silent success**: a build that built nothing never says it succeeded.
-3. **Everything else is refused up front**, before any build step, with a
-   message that names the offending character, the path and the rule — the
-   project-wide rule that a wrong input ends in a readable error
-   (`graceful-error-on-missing-variable-req`) — for a workspace, framework or
-   module name, a directory above them, and the `mk/` directory.
+What is tested to work is valid, and must be supported and tested: **a
+character that works on any platform works on every platform**. A mixed result
+is fixed, not refused — `=` works under Debian's bmake and builds nothing under
+macOS's and Alpine's, so the build is made to work there. **What works nowhere
+is tested upfront and refused with an explanation**, before any build step.
+There is one exception to refusing: characters evidently expected to work are
+supported even though they fail today. Decided: **space, parentheses `( )`,
+apostrophe `'`, ampersand `&` and hash `#`** (`C:\Program Files (x86)`,
+`John's Documents`, `R&D`, `C# projects`). A comma is not in that set and is
+refused. No outcome is ever a silent success.
 
-Whether to also quote (layers 3 to 5) so that space and the shell characters
-work is a separate decision: it is a change to about 320 expansions for
-spaces in a path, which matters most on Windows (`C:\Users\First Last`) and
-macOS (`~/Library/Mobile Documents`). The refusal in point 3 is cheap and
-comes first.
+A character is judged where it was measured, so the sets differ by place:
+
+| Where | Works | Meant to work, not yet | Refused |
+|---|---|---|---|
+| workspace, framework, parent directory | `[ ] % ~ @ + ^ - = { }`, non-ASCII | space `( ) ' &` `#` | tab, backslash, `"`, backquote, `$ ; \| < >`, `* ? ! : ,` |
+| module (`*.m`, `*.tst`) name | `[ ] % ~ @ + ^ - =`, non-ASCII | space `( ) ' &` `#` | the above and `{ }` |
+| the `mk/` directory's name | `[ ] % ~ @ + ^ - = # ! : , * ? { }`, non-ASCII | space `( ) ' &` | tab, backslash, `"`, backquote, `$ ; \| < >` |
+
+"Not yet" is refused today with a message that says so, so that the failure is
+a plain sentence and not a shell error, and the unquoted `rm -rf` of a path with
+a space in it never runs. A space is not only a failure: `clean` removes
+`${.CURDIR}/build/…` unquoted, so in `/home/me/my projects/ws` it would remove
+`/home/me/my` and `projects/ws/build` relative to wherever it runs. The check
+therefore runs for `clean` and `-V` queries too.
+
+### Where the check is
+
+- `mk.common.mk` (every role file reads it) runs `scripts/check-names.sh` first
+  thing. It reads the directory from the shell (`pwd -P`) and the `mk/` directory
+  from `BMK_MKDIR` in the environment — never `.CURDIR` or a command line: make
+  expands a variable's value again each time it is used, so a `$` in a directory
+  name is already gone when the makefile sees it.
+- `gen-fw-order.sh` and `gen-mod-order.sh` check each framework and module
+  directory they discover, before the first use of its name, so the message
+  comes from the parent and not from a shell error in the middle of a recipe.
+- `scripts/bmk-names.sh` holds the rules (what is refused, what is "not yet");
+  nothing else knows them.
+
+A refused name stops the build with one message, for example:
+
+```
+Bmake It cannot build in /work/ws/Fw/m od.m: the name 'm od.m' contains a space,
+which Bmake It is meant to support and does not yet. Letters, digits and
+. _ - + @ % ~ ^ [ ] = and non-ASCII letters work in a directory name; rename
+the directory (docs/spec/85-names-and-paths.md).
+```
+
+One case cannot be caught: a `$` in the `mk/` directory's own name. Make
+expands it in the `.include` that loads `mk.common.mk`, so bmake stops with
+"Could not find" before any Bmake It file runs.
+
+## Making the rest work (open)
+
+Each of these is a change, not a refusal, and each removes a "not yet" or a
+platform difference:
+
+1. **`=` (and `: ! * ? #`, in the make layer): relative targets.** The rules are
+   written with the absolute directory in the target (`${_OBJDIR}/x.o:
+   ${.CURDIR}/src/x.c`). A build always runs in the module directory, so
+   `build/<key>/obj/x.o: src/x.c` carries none of the path, and the characters
+   that make reads as syntax never reach a dependency line. Only the module's
+   own name remains, in `-C`, where bmake's `MAKEFLAGS` re-reads an `=`; `cd` and
+   a plain `bmake` in the directory avoid it.
+2. **Space, `( ) ' &`: quote the shell layer.** `${X:Q}` on the ~320 unquoted path
+   expansions in recipes, and a word-list representation for `SUBDIR_MODULES`,
+   `PREREQS` and the order files that does not split at a space.
+3. **`#`: the `${X:U<path>}` expressions** in `mk.local.mk` and the other places
+   a path is the default of a modifier.
+4. **`{ }` in module names:** encode the name in the variable name that
+   `.gen-mod-order.mk` writes (`MODULE_DEPS.<name>`).
+5. **A linker option with a path** (`-Wl,-rpath,<path>`) needs `-Xlinker` form
+   for a comma; a comma stays refused, so this only matters for 2.
+
+Every one of them is done by moving a character from "not yet" to "works" in
+`bmk-names.sh` and in the case's `MUST_FIX` list at the same time.
 
 ## The case
 
-`tests/cases/116-path-characters`: for each character, builds and cleans a tree
-with the character in the module name, in the workspace name, in every name
-at once, and with the `mk/` files installed under a name that carries it.
-Contract 1 and 2 are checked. The case ends SKIP where a known gap
-(`star question equals`, silent success) is open — whether it is depends on the
-bmake version: `=` builds nothing under bmake 20260406 and works under Debian's —
-and fails on any other violation. Contract 3 is not
-checked yet: it needs the wording of the message. A character the file system
-itself refuses (Windows: `" * ? < > | : \`) is skipped for that character.
+`tests/cases/116-path-characters`: for each of 36 characters, builds and cleans
+a tree with the character in the module name, in the workspace name (and a
+parent directory), in every name at once, and with the `mk/` files installed
+under a name that carries it. The expectation per place is the table above.
+A refusal must carry the message (`Bmake It cannot …`); any other failure
+(`raw`), or a build that says it succeeded and built nothing (`SILENT`), fails
+the case. The case ends SKIP while a meant-to-work character is still refused
+as "not yet", or builds nothing under this platform's bmake (`=`); it fails on
+any other deviation. A character the file system itself refuses (Windows:
+`" * ? < > | : \`) is skipped for that character. Measured with the earlier
+version of this case (no check yet): the same table on macOS, Linux glibc arm64
+and musl amd64.
