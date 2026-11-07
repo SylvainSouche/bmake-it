@@ -38,6 +38,15 @@ BMK_PROG=gen-mod-order
 # leftover-module-dir-skipped-and-cleaned-req: a leftover (no makefile, only
 # build output) is not a module -- say so and go on.
 # @impl 7854-6ad2-021e-2621
+# path-characters-refused-upfront-req: a name Bmake It cannot carry is refused
+# here, before the first use of it.
+# @impl 0f87-6aee-e982-0f20
+. "$(dirname "$0")/bmk-names.sh"
+for d in *.m *.tst; do
+    [ -d "$d" ] || continue
+    bmk_is_leftover "$d" && continue
+    bmk_refuse "$d" module
+done
 mods=""
 for d in *.m; do
     [ -d "$d" ] || continue

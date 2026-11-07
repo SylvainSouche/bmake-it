@@ -2003,6 +2003,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-path-characters-check": {
+    "active": true,
+    "id": "0f87-6aee-e982-0f20",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-pkg-config-matches-output-abi": {
     "active": true,
     "id": "7854-6ad1-10ad-4843",
@@ -3434,6 +3440,36 @@
   "pass-values-down-req": {
     "active": true,
     "id": "7854-6ae8-fb43-5b08",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "path-characters-contract-cand": {
+    "active": true,
+    "id": "0f87-6aee-de2f-6191",
+    "status": "accepted",
+    "type": "cand"
+  },
+  "path-characters-contract-dec": {
+    "active": true,
+    "id": "0f87-6aee-e80b-9d27",
+    "status": "recorded",
+    "type": "dec"
+  },
+  "path-characters-measured-obs": {
+    "active": true,
+    "id": "0f87-6aee-de2f-d91d",
+    "status": "recorded",
+    "type": "obs"
+  },
+  "path-characters-refused-upfront-req": {
+    "active": true,
+    "id": "0f87-6aee-e80b-538a",
+    "status": "confirmed",
+    "type": "req"
+  },
+  "path-characters-supported-req": {
+    "active": true,
+    "id": "0f87-6aee-e80b-ec3f",
     "status": "confirmed",
     "type": "req"
   },
