@@ -3437,6 +3437,18 @@
     "status": "confirmed",
     "type": "req"
   },
+  "path-characters-contract-cand": {
+    "active": true,
+    "id": "0f87-6aee-de2f-6191",
+    "status": "open",
+    "type": "cand"
+  },
+  "path-characters-measured-obs": {
+    "active": true,
+    "id": "0f87-6aee-de2f-d91d",
+    "status": "recorded",
+    "type": "obs"
+  },
   "per-level-local-mk-directory": {
     "active": true,
     "id": "0f87-6aa8-fee3-e68d",
