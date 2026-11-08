@@ -14,7 +14,10 @@ pack() { # pack <case name> <run.sh text>
 }
 
 # A case leaving a file and a directory behind: said, and gone.
-pack 1-leaves 'mktemp >/dev/null; mktemp -d >/dev/null'
+# An explicit template under $TMPDIR: macOS's mktemp ignores TMPDIR when given none
+# (or -t), so a bare mktemp leaves its file in the user's real temp directory and
+# the runner never sees it. Every script and case here makes temporary files this way.
+pack 1-leaves 'mktemp "${TMPDIR:-/tmp}/tmp.XXXXXX" >/dev/null; mktemp -d "${TMPDIR:-/tmp}/tmp.XXXXXX" >/dev/null'
 TMPDIR=$ROOT/t ARCHIVES_DIR=$ROOT/arch sh "$RUNNER" > run.log 2>&1 || { cat run.log; echo "the run failed"; exit 1; }
 grep -q 'left in its temporary directory: tmp\.' run.log || { cat run.log; echo "the leftover was not named"; exit 1; }
 grep -q '^temp-left=1 ' run.log || { cat run.log; echo "the summary does not count it"; exit 1; }
