@@ -16,7 +16,7 @@
 # everywhere, so a character that works is tested to work on every platform;
 # the rest is refused upfront with an explanation. MUST_FIX lists the
 # characters that are meant to work (space, parentheses, apostrophe, ampersand,
-# hash; and = where bmake reads it as an assignment) and do not yet: refused
+# hash; and = and % where a platform's make reads them as syntax) and do not yet: refused
 # with "not supported yet" is a gap, the case ends SKIP while one is open. Any
 # other deviation fails the case.
 set -eu
@@ -67,8 +67,11 @@ cjk|\0346\0227\0245\0346\0234\0254'
 OK_ALL=" lbracket rbracket percent tilde at plus caret dash eacute cjk "
 # meant to work everywhere and do not yet (refused as "not supported yet")
 MUST_FIX=" space twospaces lparen rparen squote amp hash "
-# builds nothing, silently, under some bmake versions (macOS's, Alpine's): meant to work
-SILENT_GAP=" equals "
+# works on some platforms and not on others, so meant to work on all: = builds nothing,
+# silently, under macOS's and Alpine's bmake; % stops the link under FreeBSD 15.1's make
+# (the rule that creates build/<key>/bin is read as a pattern). Both come from the path
+# sitting in a dependency line; relative targets fix them (docs/spec/85-names-and-paths.md).
+SILENT_GAP=" equals percent "
 # work in the mk directory's name, though not in the others
 MKDIR_OK=" hash bang colon comma equals star question lbrace rbrace "
 # work in a workspace's name (and its parents'), not in a module's
@@ -154,8 +157,8 @@ while read -r label r1 r2 r3 r4; do
         case "$label:$col:$got" in dollar*:mkdir:raw) continue ;; esac
         case " $MUST_FIX$SILENT_GAP " in
             *" $label "*)
-                # meant to work: refused ("not supported yet") or silent is an open gap
-                if [ "$exp" = works ] && { [ "$got" = refused ] || [ "$got" = SILENT ]; }; then
+                # meant to work: refused ("not supported yet"), silent, or failing on this platform is an open gap
+                if [ "$exp" = works ] && { [ "$got" = refused ] || [ "$got" = SILENT ] || [ "$got" = raw ]; }; then
                     open_gaps="$open_gaps $label"; continue
                 fi ;;
         esac

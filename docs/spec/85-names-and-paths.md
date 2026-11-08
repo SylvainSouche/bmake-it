@@ -101,7 +101,7 @@ A character is judged where it was measured, so the sets differ by place:
 
 | Where | Works | Meant to work, not yet | Refused |
 |---|---|---|---|
-| workspace, framework, parent directory | `[ ] % ~ @ + ^ - = { }`, non-ASCII | space `( ) ' &` `#` | tab, backslash, `"`, backquote, `$ ; \| < >`, `* ? ! : ,` |
+| workspace, framework, parent directory | `[ ] % ~ @ + ^ - = { }` (`%` stops the link under FreeBSD's make, `=` builds nothing under some bmakes: both are being fixed), non-ASCII | space `( ) ' &` `#` | tab, backslash, `"`, backquote, `$ ; \| < >`, `* ? ! : ,` |
 | module (`*.m`, `*.tst`) name | `[ ] % ~ @ + ^ - =`, non-ASCII | space `( ) ' &` `#` | the above and `{ }` |
 | the `mk/` directory's name | `[ ] % ~ @ + ^ - = # ! : , * ? { }`, non-ASCII | space `( ) ' &` | tab, backslash, `"`, backquote, `$ ; \| < >` |
 
@@ -143,7 +143,7 @@ expands it in the `.include` that loads `mk.common.mk`, so bmake stops with
 Each of these is a change, not a refusal, and each removes a "not yet" or a
 platform difference:
 
-1. **`=` (and `: ! * ? #`, in the make layer): relative targets.** The rules are
+1. **`=` and `%` (and `: ! * ? #`, in the make layer): relative targets.** The rules are
    written with the absolute directory in the target (`${_OBJDIR}/x.o:
    ${.CURDIR}/src/x.c`). A build always runs in the module directory, so
    `build/<key>/obj/x.o: src/x.c` carries none of the path, and the characters
@@ -162,6 +162,21 @@ platform difference:
 
 Every one of them is done by moving a character from "not yet" to "works" in
 `bmk-names.sh` and in the case's `MUST_FIX` list at the same time.
+
+### Measured on the BSDs (2026-11-08)
+
+The same case on FreeBSD 15.1 and NetBSD 10.2 (arm64 guests), run from the
+cache copied to the network drive:
+
+- **NetBSD 10.2**: the same table as macOS, including `=` silent and `%` working.
+- **FreeBSD 15.1**: the same, except that **`%` stops the link** in the workspace,
+  the module and every-name places (it works in the `mk/` name). The compile
+  works and the link fails with "cannot open output file …/bin/x": the rule that
+  creates `build/<key>/bin` has a target path containing `%`, which FreeBSD's make
+  reads as a pattern. So `%`, which works on macOS, NetBSD and Linux, is a
+  mixed-platform character like `=`, meant to work everywhere, and fixed by the
+  same relative targets. Until then the case lists it with `=` and ends SKIP
+  where it fails.
 
 ## The case
 

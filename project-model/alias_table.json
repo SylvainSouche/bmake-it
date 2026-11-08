@@ -3461,6 +3461,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "path-characters-percent-freebsd-obs": {
+    "active": true,
+    "id": "0f87-6af0-8766-9397",
+    "status": "recorded",
+    "type": "obs"
+  },
   "path-characters-refused-upfront-req": {
     "active": true,
     "id": "0f87-6aee-e80b-538a",
