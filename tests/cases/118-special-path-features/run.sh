@@ -25,15 +25,15 @@ sha256() { (sha256sum "$1" 2>/dev/null || shasum -a 256 "$1" 2>/dev/null) | awk 
 
 # --- A ----------------------------------------------------------------------
 A="$SP/A"
-mkdir -p "$A/parent/Lib/libutil.m/src" "$A/parent/Lib/include" "$A/child/App/app.m/src"
+mkdir -p "$A/parent/Lib/libspfutil.m/src" "$A/parent/Lib/include" "$A/child/App/app.m/src"
 printf 'PARENT_WS=\n.include <mk.workspace.mk>\n' > "$A/parent/makefile"
 printf 'PREREQS=\n.include <mk.framework.mk>\n' > "$A/parent/Lib/makefile"
-printf 'LIB=util\nLIB_SHARED=YES\nSHLIB_MAJOR=1\n.include <mk.lib.mk>\n' > "$A/parent/Lib/libutil.m/makefile"
+printf 'LIB=spfutil\nLIB_SHARED=YES\nSHLIB_MAJOR=1\n.include <mk.lib.mk>\n' > "$A/parent/Lib/libspfutil.m/makefile"
 printf 'int util(void);\n' > "$A/parent/Lib/include/util.h"
-printf '#include "util.h"\nint util(void) { return 7; }\n' > "$A/parent/Lib/libutil.m/src/u.c"
+printf '#include "util.h"\nint util(void) { return 7; }\n' > "$A/parent/Lib/libspfutil.m/src/u.c"
 printf 'PARENT_WS=%s\n.include <mk.workspace.mk>\n' "$(bmk_wl "$A/parent")" > "$A/child/makefile"
 printf 'PREREQS=Lib\n.include <mk.framework.mk>\n' > "$A/child/App/makefile"
-printf 'PROG=app\nLIBS=util\n.include <mk.prog.mk>\n' > "$A/child/App/app.m/makefile"
+printf 'PROG=app\nLIBS=spfutil\n.include <mk.prog.mk>\n' > "$A/child/App/app.m/makefile"
 printf '#include <stdio.h>\n#include "util.h"\nint main(void) { printf("%%d\\n", util()); return 0; }\n' > "$A/child/App/app.m/src/main.c"
 ( cd "$A/parent" && bmake >build.log 2>&1 ) || { cat "$A/parent/build.log" >&2; fail "A: the parent workspace did not build"; }
 ( cd "$A/child" && bmake >build.log 2>&1 ) || { tail -20 "$A/child/build.log" >&2; fail "A: the child did not build against its parent workspace"; }
