@@ -163,8 +163,8 @@ _REQ_TOOLS += cmake
 _REQ_TOOLS += meson ninja
 .    endif
 .  endif
-_REQ_GRAMMAR != find ${.CURDIR}/src \( -name '*.y' -o -name '*.yy' \) 2>/dev/null | head -1
-_REQ_LEXER   != find ${.CURDIR}/src \( -name '*.l' -o -name '*.ll' \) 2>/dev/null | head -1
+_REQ_GRAMMAR != find ${.CURDIR:Q}/src \( -name '*.y' -o -name '*.yy' \) 2>/dev/null | head -1
+_REQ_LEXER   != find ${.CURDIR:Q}/src \( -name '*.l' -o -name '*.ll' \) 2>/dev/null | head -1
 .  if !empty(_REQ_GRAMMAR)
 _REQ_TOOLS += ${YACC:Uyacc:[1]}
 .  endif

@@ -13,6 +13,6 @@ _MK_ATFBMK_MK_ = 1
 # clang for it too, clang-msvc-toolchain-req)
 ${_ATFB_LIBFILES}:
 	@env CC='${CC}' CXX='${CXX}' AR='${AR}' TOOLCHAIN='${_ATFB_MSVC:S/yes/msvc/:S/no/${TOOLCHAIN}/}' ATF_BMK_MODE='${_ATFB_MODE}' \
-		sh ${BMK_MKDIR}/../scripts/atf-build.sh '${_ATFB_DIR}'
+		sh ${BMK_MKDIR:Q}/../scripts/atf-build.sh ${_ATFB_ABS:Q}
 
 .endif

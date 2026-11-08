@@ -51,7 +51,7 @@ _CX_ERR := ${_PX_MSG}
 _CX_ERR := ${_TX_MSG}
 .    endif
 .    if ${_CX_REPORT} == "yes"
-.      error "${.CURDIR:T}: ${_CX_ERR} -- choosing this combination is an error (a '!' entry); see PLATFORMS=/TOOLCHAINS= in the makefile"
+.      error "${_CURNAME}: ${_CX_ERR} -- choosing this combination is an error (a '!' entry); see PLATFORMS=/TOOLCHAINS= in the makefile"
 .    endif
 .  elif ${_PX_STATE} == "skip" || ${_TX_STATE} == "skip"
 _BMK_BUILD = skip

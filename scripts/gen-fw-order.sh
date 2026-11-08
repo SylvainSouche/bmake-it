@@ -43,7 +43,7 @@ for d in */; do
         # path-characters-refused-upfront-req
         # @impl 0f87-6aee-e982-0f20
         bmk_refuse "$name" other
-        fws="$fws $name"
+        fws="$fws $(bmk_enc "$name")"
     fi
 done
 
@@ -66,8 +66,10 @@ if [ -n "${BMK_MKDIR:-}" ]; then
     bmk_find_sys_mk || exit 1
 fi
 
+# (fws, sorted and the dependency lists hold names written as one make word,
+# bmk_enc: a name with a space in it must stay one name)
 for name in $fws; do
-    prereqs=$(bmk_query "$name/makefile" PREREQS) || exit 1
+    prereqs=$(bmk_query "$(bmk_dec "$name")/makefile" '${_PREREQS_E}') || exit 1
     echo "$prereqs" > "$tmpdir/dep_${name}"
 done
 
@@ -103,7 +105,7 @@ while [ -n "$remaining" ] && [ "$progress" = "1" ]; do
 done
 
 if [ -n "$remaining" ]; then
-    echo "gen-fw-order.sh: dependency cycle detected among:$remaining" >&2
+    echo "gen-fw-order.sh: dependency cycle detected among:$(for _r in $remaining; do printf ' %s' "$(bmk_dec "$_r")"; done)" >&2
     exit 1
 fi
 

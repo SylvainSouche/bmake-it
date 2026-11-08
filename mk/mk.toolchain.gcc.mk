@@ -56,7 +56,7 @@ CXX = ${_GCC_CC:S/gcc$/g++/}
 _GCC_RT_DIR != _f=$$(${_GCC_CC} -print-file-name=libgcc_s.so 2>/dev/null); \
     case "$$_f" in /usr/lib/*|/lib/*) ;; /*) dirname "$$_f" ;; esac
 .      if !empty(_GCC_RT_DIR)
-LDFLAGS += -Wl,-rpath,${_GCC_RT_DIR}
+LDFLAGS += -Wl,-rpath,${_GCC_RT_DIR:Q}
 .      endif
 .    endif
 .  else

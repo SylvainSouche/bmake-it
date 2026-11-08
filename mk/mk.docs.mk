@@ -24,26 +24,26 @@ _MK_DOCS_MK_ = 1
 DOXYGEN ?= doxygen
 DOCS_DIR ?= docs
 _DOXYFILE = ${.CURDIR}/${DOCS_DIR}/Doxyfile
-_TAGFILE  = ${.CURDIR}/${DOCS_DIR}/${.CURDIR:T}.tag
+_TAGFILE  = ${.CURDIR}/${DOCS_DIR}/${_CURNAME}.tag
 _DOXFOOTER = ${.CURDIR}/${DOCS_DIR}/footer.html
 
 # TAGFILES entries for each PREREQS= framework whose own tag file already
 # exists -- sibling directory, so paths are relative to THIS framework.
 _DOXY_TAGFILES =
-.for _p in ${PREREQS}
-.  if exists(${.CURDIR}/../${_p}/${DOCS_DIR}/${_p}.tag)
+.for _p in ${_PREREQS_E}
+.  if exists(${.CURDIR}/../${_p:${_BMK_DEC}}/${DOCS_DIR}/${_p:${_BMK_DEC}}.tag)
 _DOXY_TAGFILES += ../${_p}/${DOCS_DIR}/${_p}.tag=../../${_p}/${DOCS_DIR}/html
 .  endif
 .endfor
 
 # --- Project metadata: override-able, else auto-detected, else omitted ---
-DOC_PROJECT_NAME ?= ${.CURDIR:T}
+DOC_PROJECT_NAME ?= ${_CURNAME}
 DOC_PROJECT_BRIEF ?=
 
 # Version: workspace-root VERSION file (one level up from a framework).
 .if !defined(DOC_PROJECT_VERSION)
 .  if exists(${.CURDIR}/../VERSION)
-DOC_PROJECT_VERSION != cat ${.CURDIR}/../VERSION 2>/dev/null | head -1
+DOC_PROJECT_VERSION != cat ${.CURDIR:Q}/../VERSION 2>/dev/null | head -1
 .  else
 DOC_PROJECT_VERSION =
 .  endif
@@ -68,7 +68,7 @@ DOC_LOGO =
 # (full text belongs in the LICENSE file itself, not duplicated per page).
 .if !defined(DOC_LICENSE_NOTICE)
 .  if exists(${.CURDIR}/../LICENSE)
-DOC_LICENSE_NOTICE != head -1 ${.CURDIR}/../LICENSE 2>/dev/null
+DOC_LICENSE_NOTICE != head -1 ${.CURDIR:Q}/../LICENSE 2>/dev/null
 .  else
 DOC_LICENSE_NOTICE =
 .  endif
@@ -102,58 +102,60 @@ DOC_FILE_PATTERNS ?= *.h *.hh *.hpp *.hxx *.h++
 DOC_WARN_IF_UNDOCUMENTED ?= NO
 DOC_EXTRACT_PRIVATE ?= NO
 
+# (a list of directories as encoded words; the Doxyfile gets each one quoted)
 _DOXY_INPUT =
 .if exists(${.CURDIR}/include)
-_DOXY_INPUT += ${.CURDIR}/include
+_DOXY_INPUT += ${.CURDIR:${_BMK_ENCW}}/include
 .endif
-.for _d in ${DOC_INPUT_EXTRA}
-_DOXY_INPUT += ${.CURDIR}/${_d}
+.for _d in ${DOC_INPUT_EXTRA:${_BMK_ENC}}
+_DOXY_INPUT += ${.CURDIR:${_BMK_ENCW}}/${_d}
 .endfor
+_DOXY_INPUT_SH = ${_DOXY_INPUT:@_w@${_w:${_BMK_DEC}:Q}@}
 
 # @impl 0f87-6aa9-025e-d5c5
 # @impl 0f87-6abe-3f73-763e
 # @impl 0f87-6acd-d9fe-4238
 docs:
 .if ${DOCS} == "no"
-	@echo "===> docs skipped for ${.CURDIR:T}: DOCS=no"
+	@echo "===> docs skipped for ${_CURNAME}: DOCS=no"
 .elif !exists(${.CURDIR}/include) && empty(DOC_INPUT_EXTRA)
-	@echo "===> docs skipped for ${.CURDIR:T}: no public include/ (local/include-only or imported-library framework)"
+	@echo "===> docs skipped for ${_CURNAME}: no public include/ (local/include-only or imported-library framework)"
 .else
-	@mkdir -p ${.CURDIR}/${DOCS_DIR}
-	@echo "PROJECT_NAME = ${DOC_PROJECT_NAME}" > ${_DOXYFILE}
+	@mkdir -p ${.CURDIR:Q}/${DOCS_DIR:Q}
+	@echo "PROJECT_NAME = ${DOC_PROJECT_NAME}" > ${_DOXYFILE:Q}
 .if !empty(DOC_PROJECT_VERSION)
-	@echo "PROJECT_NUMBER = ${DOC_PROJECT_VERSION}" >> ${_DOXYFILE}
+	@echo "PROJECT_NUMBER = ${DOC_PROJECT_VERSION}" >> ${_DOXYFILE:Q}
 .endif
 .if !empty(DOC_PROJECT_BRIEF)
-	@echo "PROJECT_BRIEF = \"${DOC_PROJECT_BRIEF}\"" >> ${_DOXYFILE}
+	@echo "PROJECT_BRIEF = \"${DOC_PROJECT_BRIEF}\"" >> ${_DOXYFILE:Q}
 .endif
 .if !empty(DOC_LOGO)
-	@echo "PROJECT_LOGO = ${DOC_LOGO}" >> ${_DOXYFILE}
+	@echo "PROJECT_LOGO = \"${DOC_LOGO}\"" >> ${_DOXYFILE:Q}
 .endif
-	@echo "OUTPUT_DIRECTORY = ${.CURDIR}/${DOCS_DIR}" >> ${_DOXYFILE}
-	@echo "INPUT = ${_DOXY_INPUT:M*}" >> ${_DOXYFILE}
+	@echo "OUTPUT_DIRECTORY = \"${.CURDIR}/${DOCS_DIR}\"" >> ${_DOXYFILE:Q}
+	@printf 'INPUT =' >> ${_DOXYFILE:Q}; for _i in ${_DOXY_INPUT_SH}; do case $$_i in *[[:space:]]*) printf ' "%s"' "$$_i" ;; *) printf ' %s' "$$_i" ;; esac >> ${_DOXYFILE:Q}; done; echo >> ${_DOXYFILE:Q}
 .if !empty(DOC_INPUT_EXTRA)
-	@echo "FILE_PATTERNS = ${DOC_FILE_PATTERNS}" >> ${_DOXYFILE}
+	@echo "FILE_PATTERNS = ${DOC_FILE_PATTERNS}" >> ${_DOXYFILE:Q}
 .endif
-	@echo "RECURSIVE = YES" >> ${_DOXYFILE}
-	@echo "GENERATE_HTML = YES" >> ${_DOXYFILE}
-	@echo "GENERATE_LATEX = NO" >> ${_DOXYFILE}
-	@echo "GENERATE_TAGFILE = ${_TAGFILE}" >> ${_DOXYFILE}
-	@echo "QUIET = YES" >> ${_DOXYFILE}
-	@echo "WARN_IF_UNDOCUMENTED = ${DOC_WARN_IF_UNDOCUMENTED}" >> ${_DOXYFILE}
+	@echo "RECURSIVE = YES" >> ${_DOXYFILE:Q}
+	@echo "GENERATE_HTML = YES" >> ${_DOXYFILE:Q}
+	@echo "GENERATE_LATEX = NO" >> ${_DOXYFILE:Q}
+	@echo "GENERATE_TAGFILE = \"${_TAGFILE}\"" >> ${_DOXYFILE:Q}
+	@echo "QUIET = YES" >> ${_DOXYFILE:Q}
+	@echo "WARN_IF_UNDOCUMENTED = ${DOC_WARN_IF_UNDOCUMENTED}" >> ${_DOXYFILE:Q}
 .if ${DOC_EXTRACT_PRIVATE} != "NO"
-	@echo "EXTRACT_PRIVATE = ${DOC_EXTRACT_PRIVATE}" >> ${_DOXYFILE}
+	@echo "EXTRACT_PRIVATE = ${DOC_EXTRACT_PRIVATE}" >> ${_DOXYFILE:Q}
 .endif
 .for _t in ${_DOXY_TAGFILES}
-	@echo "TAGFILES += ${_t}" >> ${_DOXYFILE}
+	@echo "TAGFILES += \"${_t:${_BMK_DEC}}\"" >> ${_DOXYFILE:Q}
 .endfor
 .if !empty(DOC_LICENSE_NOTICE)
-	@echo "<p>${DOC_LICENSE_NOTICE}</p>" > ${_DOXFOOTER}
-	@echo "</body></html>" >> ${_DOXFOOTER}
-	@echo "HTML_FOOTER = ${_DOXFOOTER}" >> ${_DOXYFILE}
+	@echo "<p>${DOC_LICENSE_NOTICE}</p>" > ${_DOXFOOTER:Q}
+	@echo "</body></html>" >> ${_DOXFOOTER:Q}
+	@echo "HTML_FOOTER = \"${_DOXFOOTER}\"" >> ${_DOXYFILE:Q}
 .endif
-	@${DOXYGEN} ${_DOXYFILE}
-	@echo "===> docs generated for ${.CURDIR:T} -> ${DOCS_DIR}/html/index.html"
+	@${DOXYGEN} ${_DOXYFILE:Q}
+	@echo "===> docs generated for ${_CURNAME} -> ${DOCS_DIR}/html/index.html"
 .endif
 
 .PHONY: docs

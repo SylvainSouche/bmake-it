@@ -29,10 +29,10 @@ _TOOLCHAIN_LDFLAGS = ${LDFLAGS}
 # then its own -- outer to inner, all included, in that order.
 # ---------------------------------------------------------------------------
 _LOCAL_MK_DIRS =
-.for _p in ${PARENT_WS}
+.for _p in ${_PARENT_WS_E}
 _LOCAL_MK_DIRS += ${_p}/mk
 .endfor
-_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+_LOCAL_MK_DIRS += ${.CURDIR:${_BMK_ENCW}}/../../mk ${.CURDIR:${_BMK_ENCW}}/../mk ${.CURDIR:${_BMK_ENCW}}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
@@ -43,7 +43,7 @@ _LOCAL_MK_PHASE = pre
 
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(LIB) || empty(LIB)
-_libdir != basename ${.CURDIR} .m
+_libdir != basename ${.CURDIR:Q} .m
 # Strip leading lib from directory name (libgreet.m → greet) for conventional -lgreet
 LIB != echo ${_libdir} | sed 's/^lib//'
 .endif
@@ -109,133 +109,9 @@ _CCLINK = ${CXX}
 _CCLINK = ${CC}
 .endif
 
-.if exists(${.CURDIR}/include)
-CFLAGS   += -I${.CURDIR}/include
-CXXFLAGS += -I${.CURDIR}/include
-.endif
-
 _FWDIR = ${.CURDIR}/..
-.if exists(${_FWDIR}/local/include)
-CFLAGS   += -I${_FWDIR}/local/include
-CXXFLAGS += -I${_FWDIR}/local/include
-.endif
-.if exists(${_FWDIR}/include)
-CFLAGS   += -I${_FWDIR}/include
-CXXFLAGS += -I${_FWDIR}/include
-.endif
-.if exists(${_FWDIR}/${BUILD_ROOT}/include)
-CFLAGS   += -I${_FWDIR}/${BUILD_ROOT}/include
-CXXFLAGS += -I${_FWDIR}/${BUILD_ROOT}/include
-.endif
-
-.if exists(${_FWDIR}/makefile)
-# @impl 0f87-6ad7-d974-4a81
-# ${MAKE}, not a command named bmake: NetBSD has no bmake (its make is /usr/bin/make),
-# and 2>/dev/null || true would hide the failure as an empty PREREQS.
-_PREREQS != ${MAKE} -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
-.  for _p in ${_PREREQS}
-# REQ-headers-resolved-from-source-req: a PREREQS framework is resolved
-# first within the current workspace, then falling back through PARENT_WS
-# workspaces in declared order if not found locally.
-# @impl 0f87-6a98-5e47-0c71
-.    if exists(${_FWDIR}/../${_p})
-_PREREQ_BASE.${_p} = ${_FWDIR}/..
-.    else
-.      for _pws in ${PARENT_WS}
-.        if !defined(_PREREQ_BASE.${_p}) && exists(${_pws}/${_p})
-_PREREQ_BASE.${_p} = ${_pws}
-.        endif
-.      endfor
-.    endif
-.    if defined(_PREREQ_BASE.${_p})
-# public-headers-system-req (D3): see mk.prog.mk's identical comment.
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
-_PREREQ_SYS.${_p} != ${MAKE} -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
-.      endif
-.      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
-_INCFLAG.${_p} = -isystem
-.      else
-_INCFLAG.${_p} = -I
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/include)
-CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
-CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include)
-CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
-LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
-.      endif
-.    endif
-.  endfor
-.endif
-
-# prog-only-framework-ld-warning-fix-req: see mk.prog.mk's identical
-# comment -- guarded the same way the PREREQS= loop just above already
-# is, so the first lib module in a framework (nothing copied-up yet)
-# doesn't produce a noisy, harmless `ld: warning: search path ... not
-# found`.
-# @impl 0f87-6abe-3f50-b644
-.if exists(${_FWDIR}/${BUILD_ROOT}/lib)
-LDFLAGS += -L${_FWDIR}/${BUILD_ROOT}/lib
-.endif
-_LIB_SEARCH_DIRS = ${_FWDIR}/${BUILD_ROOT}/lib
-.for _p in ${_PREREQS}
-.  if defined(_PREREQ_BASE.${_p}) && exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
-_LIB_SEARCH_DIRS += ${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
-.  endif
-.endfor
-
-# Runtime search path for LIBS= dependencies -- without this, a shared lib
-# built here that itself links another shared lib can't be *loaded* later
-# (link-time -L/-l success doesn't imply dyld/ld.so can find it at run
-# time). @rpath install names (macOS) and bare sonames (ELF) both need a
-# consumer-side -rpath to resolve outside a system lib directory. No
-# rpath concept on Windows -- DLL search order is PATH/same-dir based.
-# @impl 0f87-6aa9-448d-537c
-.if ${TARGET} != "win"
-.  for _d in ${_LIB_SEARCH_DIRS}
-LDFLAGS += -Wl,-rpath,${_d}
-.  endfor
-.endif
-
-# @impl 0f87-6a98-76c2-a96e
-# import-link-transitivity-req: -l${_l} alone only satisfies THIS
-# module's own direct reference -- ${_l}'s own transitive deps (its
-# lib${_l}.linkdeps, written by that module itself, whether compiled or
-# imported) are appended too, so a consumer never has to list them by
-# hand. No found-guard against the same name resolving in more than one
-# _LIB_SEARCH_DIRS entry -- duplicate -l/-L flags are harmless.
-# @impl 0f87-6ab5-8e46-cfb1
-.include "${BMK_MKDIR}/mk.delayload.mk"
-.for _l in ${LIBS}
-LDFLAGS += -l${_DELAY_LIB.${_l}:U${_l}}
-.  for _d in ${_LIB_SEARCH_DIRS}
-.    if exists(${_d}/lib${_l}.linkdeps)
-_LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
-LDFLAGS += ${_LINKDEPS.${_l}}
-.    endif
-.  endfor
-.endfor
-
-# relink-on-libs-change-req: see mk.prog.mk's identical comment -- each
-# LIBS= entry's actual resolved file (not just -l/-L flags) is a real
-# make prerequisite of the shared-lib link below, so a library rebuilt
-# elsewhere (including a PREREQS=-visible one in another framework)
-# triggers a genuine relink, not just a link-time existence check.
-# @impl 0f87-6aba-a303-153e
-# @impl 7854-6ad0-fb85-c2c6
-_LIBS_FILES =
-.for _l in ${LIBS}
-_LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
-	for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
-		if [ -f "$$_d/$$_f" ]; then echo "$$_d/$$_f"; break 2; fi; \
-	done; \
-done
-_LIBS_FILES += ${_LIB_FILE.${_l}}
-.endfor
+# where headers and libraries are found: the module's, its framework's, the PREREQS= frameworks'
+.include "${BMK_MKDIR}/mk.searchpaths.mk"
 
 # fetch-build-forwarding-fix-req: sibling FETCH_BUILD= modules' own
 # install prefixes, so a fetch-built module's cmake/meson/autotools
@@ -249,7 +125,7 @@ _LIBS_FILES += ${_LIB_FILE.${_l}}
 # doesn't apply to this particular module is harmless noise to a build
 # tool's own search path, not an error.
 # @impl 0f87-6aba-a53b-3097
-_FETCH_SEARCH_FW_DIRS = ${_FWDIR}
+_FETCH_SEARCH_FW_DIRS = ${_FWDIR:${_BMK_ENCW}}
 .for _p in ${_PREREQS}
 .  if defined(_PREREQ_BASE.${_p})
 _FETCH_SEARCH_FW_DIRS += ${_PREREQ_BASE.${_p}}/${_p}
@@ -270,20 +146,20 @@ _FETCH_SEARCH_FW_DIRS += ${_PREREQ_BASE.${_p}}/${_p}
 # framework was ever parsed) no sibling is scanned.
 # (The old build-then-copy-up double visit happened to absorb this
 # one-time mismatch inside the first workspace build.)
-_FETCH_CMAKE_PREFIX_PATH != _pp=""; \
-	_myfw=$$(cd ${_FWDIR} 2>/dev/null && pwd -P); \
-	_selfn=$$(basename "$$(cd ${.CURDIR} && pwd -P)"); \
+_FETCH_CMAKE_PREFIX_PATH != . ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; _pp=""; \
+	_myfw=$$(cd ${_FWDIR:Q} 2>/dev/null && pwd -P); \
+	_selfn=$$(bmk_enc "$$(basename "$$(cd ${.CURDIR:Q} && pwd -P)")"); \
 	_before=""; \
-	for _w in $$(sed -n 's/^MODULE_SUBDIR=//p' ${_FWDIR}/.gen-mod-order.mk 2>/dev/null | head -1); do \
+	for _w in $$(sed -n 's/^MODULE_SUBDIR=//p' ${_FWDIR:Q}/.gen-mod-order.mk 2>/dev/null | head -1); do \
 		[ "$$_w" = "$$_selfn" ] && break; \
 		_before="$$_before $$_w"; \
 	done; \
-	for _fw in ${_FETCH_SEARCH_FW_DIRS}; do \
+	for _fw in ${_FETCH_SEARCH_FW_DIRS:@_w@${_w:${_BMK_DEC}:Q}@}; do \
 		_fwreal=$$(cd "$$_fw" 2>/dev/null && pwd -P); \
 		for _d in "$$_fw"/*.m/work/_install; do \
 			[ -d "$$_d" ] || continue; \
 			if [ "$$_fwreal" = "$$_myfw" ]; then \
-				_mod=$$(basename "$$(dirname "$$(dirname "$$_d")")"); \
+				_mod=$$(bmk_enc "$$(basename "$$(dirname "$$(dirname "$$_d")")")"); \
 				case " $$_before " in *" $$_mod "*) ;; *) continue ;; esac; \
 			fi; \
 			_pp="$$_pp$$_d;"; \
@@ -402,8 +278,8 @@ _IMPORT_LIBS    = ${${_IMP_VAR}_LIBS}
 _IMPORT_LIBDIR  =
 .  elif defined(IMPORT_PREFIX) && !empty(IMPORT_PREFIX)
 _IMPORT_SOURCE  = hook:IMPORT_PREFIX=${IMPORT_PREFIX}
-_IMPORT_CFLAGS  = -I${IMPORT_PREFIX}/include
-_IMPORT_LIBS    = -L${IMPORT_PREFIX}/lib -l${LIB}
+_IMPORT_CFLAGS  = -I${IMPORT_PREFIX:Q}/include
+_IMPORT_LIBS    = -L${IMPORT_PREFIX:Q}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${IMPORT_PREFIX}/lib
 .  elif (defined(IMPORT_CFLAGS) && !empty(IMPORT_CFLAGS)) || (defined(IMPORT_LIBS) && !empty(IMPORT_LIBS))
 _IMPORT_SOURCE  = hook:IMPORT_CFLAGS/IMPORT_LIBS
@@ -435,8 +311,8 @@ _IMPORT_KIND    = source-build
 _IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
 _FETCH_INSTALL_PREFIX = ${.CURDIR}/work/_install
 _FETCH_BUILD_DIR = ${.CURDIR}/work/_build
-_IMPORT_CFLAGS  = -I${_FETCH_INSTALL_PREFIX}/include
-_IMPORT_LIBS    = -L${_FETCH_INSTALL_PREFIX}/lib -l${LIB}
+_IMPORT_CFLAGS  = -I${_FETCH_INSTALL_PREFIX:Q}/include
+_IMPORT_LIBS    = -L${_FETCH_INSTALL_PREFIX:Q}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${_FETCH_INSTALL_PREFIX}/lib
 .  elif ${IMPORT:C/:.*//} == "fetch-bin"
 # fetch-import-binary-req: same fetch/verify/extract/patch pipeline,
@@ -448,8 +324,8 @@ _IMPORT_FETCH_LABEL = ${IMPORT:C/^[^:]*://}
 _IMPORT_SOURCE  = fetch-bin:${_IMPORT_FETCH_LABEL}
 _IMPORT_KIND    = binary
 _IMPORT_WRKSRC  = ${.CURDIR}/work/_resolved
-_IMPORT_CFLAGS  = -I${_IMPORT_WRKSRC}/include
-_IMPORT_LIBS    = -L${_IMPORT_WRKSRC}/lib -l${LIB}
+_IMPORT_CFLAGS  = -I${_IMPORT_WRKSRC:Q}/include
+_IMPORT_LIBS    = -L${_IMPORT_WRKSRC:Q}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${_IMPORT_WRKSRC}/lib
 .  elif ${IMPORT:C/:.*//} == "pkg"
 _IMPORT_PKGNAME = ${IMPORT:C/^[^:]*://}
@@ -637,22 +513,22 @@ _IMPORT_LIBS    != ${_IMPORT_PC_ENV} ${_BMK_PKG_CONFIG} --libs --static ${_IMPOR
 # Cache a hit only; a miss removes any cache file (including a stale
 # "not found" an earlier version wrote), so the next build asks again.
 .      if ${_IMPORT_PC_FOUND} == "yes"
-_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR}/${BUILD_ROOT} && rm -f ${_IMPORT_CACHE_OLD} && { \
+_IMPORT_CACHE_WRITE != mkdir -p ${.CURDIR:Q}/${BUILD_ROOT} && rm -f ${_IMPORT_CACHE_OLD:Q} && { \
 	echo '_IC_FP = ${_IMPORT_FP}'; echo '_IC_FOUND = yes'; \
 	echo '_IC_VERSION = ${_IMPORT_VERSION}'; echo '_IC_SOURCE = ${_IMPORT_SOURCE}'; \
 	echo '_IC_CFLAGS = ${_IMPORT_CFLAGS}'; echo '_IC_LIBS = ${_IMPORT_LIBS}'; \
 	echo '_IC_LIBDIR = ${_IMPORT_LIBDIR}'; echo '_IC_INCDIR = ${_IMPORT_INCDIR:U}'; \
 	echo '_IC_PCFILE = ${_IMPORT_PCFILE:U}'; echo '_IC_PCMTIME = ${_IMPORT_PCMTIME:U}'; \
-	} > ${_IMPORT_CACHE_FILE}; echo ok
+	} > ${_IMPORT_CACHE_FILE:Q}; echo ok
 .      else
-_IMPORT_CACHE_WRITE != rm -f ${_IMPORT_CACHE_FILE} ${_IMPORT_CACHE_OLD}; echo ok
+_IMPORT_CACHE_WRITE != rm -f ${_IMPORT_CACHE_FILE:Q} ${_IMPORT_CACHE_OLD:Q}; echo ok
 .      endif
 .    endif
 .  elif ${IMPORT:C/:.*//} == "prefix"
 _IMPORT_PREFIX_VAL = ${IMPORT:C/^[^:]*://}
 _IMPORT_SOURCE  = prefix:${_IMPORT_PREFIX_VAL}
-_IMPORT_CFLAGS  = -I${_IMPORT_PREFIX_VAL}/include
-_IMPORT_LIBS    = -L${_IMPORT_PREFIX_VAL}/lib -l${LIB}
+_IMPORT_CFLAGS  = -I${_IMPORT_PREFIX_VAL:Q}/include
+_IMPORT_LIBS    = -L${_IMPORT_PREFIX_VAL:Q}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${_IMPORT_PREFIX_VAL}/lib
 .  endif
 
@@ -727,7 +603,7 @@ _IMPORT_ERR_HOW = it must be built for the MSVC runtime: Cygwin's packages are n
 .    else
 _IMPORT_ERR_HOW = install the library via your host's package manager
 .    endif
-.error "IMPORT=${IMPORT}: cannot resolve module ${.CURDIR:T} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), ${_IMPORT_ERR_PC}, and probing ${_IMPORT_PROBE_PREFIXES} -- ${_IMPORT_ERR_HOW} (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
+.error "IMPORT=${IMPORT}: cannot resolve module ${_CURNAME} (LIB=${LIB}) for target ${OS_ARCH} -- tried ${_IMP_VAR}_PREFIX/${_IMP_VAR}_CFLAGS+${_IMP_VAR}_LIBS (env), IMPORT_PREFIX/IMPORT_CFLAGS+IMPORT_LIBS (mk/ hooks), ${_IMPORT_ERR_PC}, and probing ${_IMPORT_PROBE_PREFIXES} -- ${_IMPORT_ERR_HOW} (see README.md Prerequisites) or set ${_IMP_VAR}_PREFIX=/path/to/prefix"
 .  endif
 
 # header-only-import-req: whatever DID resolve (pkg:/prefix:/env/hook/
@@ -779,8 +655,8 @@ _FETCH_PREREQ = work/.extract-fp
 # imgui.h into the framework's own public include dir, masking the gap
 # on every incremental build after the first.
 # @impl 0f87-6abe-3f03-19dd
-CFLAGS   += -I${_IMPORT_WRKSRC}
-CXXFLAGS += -I${_IMPORT_WRKSRC}
+CFLAGS   += -I${_IMPORT_WRKSRC:Q}
+CXXFLAGS += -I${_IMPORT_WRKSRC:Q}
 .else
 _SRC_BASE = src
 _FETCH_PREREQ =
@@ -802,12 +678,12 @@ _SHLIB_LDFLAGS = -dynamiclib -install_name @rpath/${SHLIB_NAME} -compatibility_v
 # TOOLCHAIN=msvc, understood natively by Cygwin/mingw gcc or clang).
 SHLIB_NAME     = ${LIB}.dll
 SHLIB_LINK     = ${LIB}.dll
-_SHLIB_LDFLAGS = -shared -Wl,--out-implib,${_LIBOUT_DIR}/${LIB}.lib
+_SHLIB_LDFLAGS = -shared -Wl,--out-implib,${_LIBOUT_DIR:Q}/${LIB}.lib
 # delay-load-default-by-library-req: the export list, for DATA marks and for
 # GNU ld's delay-import library. Under MSVC, msvc-cc-wrapper.sh writes the same
 # file when it generates the export list.
 .  if ${_DELAYLOAD_KIND} == "lld" || ${_DELAYLOAD_KIND} == "gnu"
-_SHLIB_LDFLAGS += -Wl,--output-def,${_OBJDIR}/${LIB}.def
+_SHLIB_LDFLAGS += -Wl,--output-def,${_OBJDIR:Q}/${LIB}.def
 .  endif
 .else
 SHLIB_NAME     = lib${LIB}.so.${SHLIB_MAJOR}
@@ -829,8 +705,8 @@ OBJS += ${OBJDIR}/${_s:R}.o
 .endfor
 
 _create_dirs:
-	@mkdir -p ${_OBJDIR} ${_LIBOUT_DIR} ${.CURDIR}/${INCDIR_LOCAL}
-	@rm -f ${_FWDIR}/${BUILD_ROOT}/.skipped/${LIB}
+	@mkdir -p ${_OBJDIR:Q} ${_LIBOUT_DIR:Q} ${.CURDIR:Q}/${INCDIR_LOCAL}
+	@rm -f ${_FWDIR:Q}/${BUILD_ROOT}/.skipped/${LIB}
 
 # nested-srcs-objdir-req: each compile rule below mkdir -p's its own
 # ${.TARGET:H} (the object's own subdirectory, from a nested SRCS=
@@ -845,28 +721,28 @@ _create_dirs:
 .  if ${_s:E} == "c"
 ${OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE:Q}/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
 ${OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE:Q}/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
 ${OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
 	@mkdir -p ${.TARGET:H}
-	${YACC} ${YFLAGS} -d -o ${.TARGET} ${_SRC_BASE}/${_s}
+	${YACC} ${YFLAGS} -d -o ${.TARGET} ${_SRC_BASE:Q}/${_s}
 	@if [ -f y.tab.h ]; then mv y.tab.h ${OBJDIR}/${_s:R}.h; fi
-	@mkdir -p ${.CURDIR}/${INCDIR_LOCAL}
-	@if [ -f ${_OBJDIR}/${_s:R}.h ]; then cp -f ${_OBJDIR}/${_s:R}.h ${.CURDIR}/${INCDIR_LOCAL}/; fi
+	@mkdir -p ${.CURDIR:Q}/${INCDIR_LOCAL}
+	@if [ -f ${_OBJDIR:Q}/${_s:R}.h ]; then cp -f ${_OBJDIR:Q}/${_s:R}.h ${.CURDIR:Q}/${INCDIR_LOCAL}/; fi
 ${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
 ${OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
 	@mkdir -p ${.TARGET:H}
-	${LEX} ${LFLAGS} -o ${.TARGET} ${_SRC_BASE}/${_s}
+	${LEX} ${LFLAGS} -o ${.TARGET} ${_SRC_BASE:Q}/${_s}
 ${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: see mk.prog.mk's identical comment.
 .  if exists(${_OBJDIR}/${_s:R}.d)
@@ -884,10 +760,10 @@ ${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 # dependency chain is evaluated; all: is itself .PHONY, so a phony
 # prerequisite here costs nothing extra.
 .  if ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs _fetch_import ${LIBDIR_LOCAL}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links _fetch_import ${LIBDIR_LOCAL}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
 	@:
 .  else
-all: _check_inputs_hash _create_dirs _fetch_import ${LIBDIR_LOCAL}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links _fetch_import ${LIBDIR_LOCAL}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
 	@:
 .  endif
 .elif ${_IMPORT_KIND:Uno} == "source-build"
@@ -895,16 +771,16 @@ all: _check_inputs_hash _create_dirs _fetch_import ${LIBDIR_LOCAL}/${STATIC_NAME
 # upstream build system (_fetch_build:, after _fetch_import:) and
 # installed into a module-local prefix, then staged exactly like a
 # fetch-bin: import -- no SRCS=/OBJS=/compile step of Bmake It's own.
-all: _check_inputs_hash _create_dirs _fetch_import _fetch_build _stage_import _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links _fetch_import _fetch_build _stage_import _write_linkdeps
 	@:
 .elif !empty(IMPORT)
-all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links _fetch_import _stage_import _write_linkdeps
 	@:
 .elif ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs ${LIBDIR_LOCAL}/${SHLIB_NAME} _promote_incl _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links ${LIBDIR_LOCAL}/${SHLIB_NAME} _promote_incl _write_linkdeps
 	@:
 .else
-all: _check_inputs_hash _create_dirs ${LIBDIR_LOCAL}/${STATIC_NAME} _promote_incl _write_linkdeps
+all: _check_inputs_hash _create_dirs _create_prereq_links ${LIBDIR_LOCAL}/${STATIC_NAME} _promote_incl _write_linkdeps
 	@:
 .endif
 
@@ -940,14 +816,14 @@ _OWN_LINKDEPS =
 # relink-on-libs-change fix; its own dirname is exactly this directory.
 # @impl 0f87-6abe-3f27-cde6
 .    if !empty(_LIB_FILE.${_l})
-_OWN_LINKDEPS += -L${_LIB_FILE.${_l}:H}
+_OWN_LINKDEPS += -L${_LIB_FILE_DIR.${_l}:Q}
 .      if ${TARGET} != "win"
-_OWN_LINKDEPS += -Wl,-rpath,${_LIB_FILE.${_l}:H}
+_OWN_LINKDEPS += -Wl,-rpath,${_LIB_FILE_DIR.${_l}:Q}
 .      endif
 .    endif
 _OWN_LINKDEPS += -l${_l}
 .    for _d in ${_LIB_SEARCH_DIRS}
-.      if exists(${_d}/lib${_l}.linkdeps)
+.      if exists(${_d:${_BMK_DEC}}/lib${_l}.linkdeps)
 _OWN_LINKDEPS += ${_LINKDEPS.${_l}}
 .      endif
 .    endfor
@@ -977,10 +853,10 @@ _BUILT_NOTE =
 # @impl 0f87-6abe-8e68-fc89
 _write_linkdeps:
 	@_new="${_OWN_LINKDEPS}"; \
-	if [ -f ${_LIBOUT_DIR}/lib${LIB}.linkdeps ] && [ "$$(cat ${_LIBOUT_DIR}/lib${LIB}.linkdeps)" = "$$_new" ]; then \
+	if [ -f ${_LIBOUT_DIR:Q}/lib${LIB}.linkdeps ] && [ "$$(cat ${_LIBOUT_DIR:Q}/lib${LIB}.linkdeps)" = "$$_new" ]; then \
 		exit 0; \
 	fi; \
-	echo "$$_new" > ${_LIBOUT_DIR}/lib${LIB}.linkdeps
+	printf '%s\n' "$$_new" > ${_LIBOUT_DIR:Q}/lib${LIB}.linkdeps
 
 # delay-load-default-by-library-req: what a module linking this library reads
 # (mk.delayload.mk). Written after the DLL exists, and rewritten only on a
@@ -998,12 +874,12 @@ _write_delayload: _stage_import
 _write_delayload: ${LIBDIR_LOCAL}/${SHLIB_NAME}
 .  endif
 _write_delayload:
-	@_dll=-; _data=?; _def=${_OBJDIR}/${LIB}.def; \
-	for _f in ${_LIBOUT_DIR}/${LIB}.dll ${_LIBOUT_DIR}/lib${LIB}*.dll; do \
+	@_dll=-; _data=?; _def=${_OBJDIR:Q}/${LIB}.def; \
+	for _f in ${_LIBOUT_DIR:Q}/${LIB}.dll ${_LIBOUT_DIR:Q}/lib${LIB}*.dll; do \
 		if [ -f "$$_f" ]; then _dll=$$(basename "$$_f"); break; fi; \
 	done; \
 	if [ "$$_dll" = - ]; then \
-		for _f in ${_LIBOUT_DIR}/lib${LIB}.dll.a ${_LIBOUT_DIR}/${LIB}.lib ${_LIBOUT_DIR}/lib${LIB}.a; do \
+		for _f in ${_LIBOUT_DIR:Q}/lib${LIB}.dll.a ${_LIBOUT_DIR:Q}/${LIB}.lib ${_LIBOUT_DIR:Q}/lib${LIB}.a; do \
 			[ -f "$$_f" ] || continue; \
 			${_WIN_DLL_OF}; \
 			[ -n "$$_n" ] && { _dll=$$_n; break; }; \
@@ -1018,10 +894,10 @@ _write_delayload:
 		if [ "$$_data" = 1 ]; then echo "error: DELAYLOAD=yes on ${LIB}: $$_dll exports data, and a DLL that exports data cannot be delay-loaded -- exports marked DATA in $$_def" >&2; exit 1; fi; \
 	fi; \
 	_new="${DELAYLOAD} $$_dll $$_data"; \
-	if [ -f ${_LIBOUT_DIR}/lib${LIB}.delayload ] && [ "$$(cat ${_LIBOUT_DIR}/lib${LIB}.delayload)" = "$$_new" ]; then \
+	if [ -f ${_LIBOUT_DIR:Q}/lib${LIB}.delayload ] && [ "$$(cat ${_LIBOUT_DIR:Q}/lib${LIB}.delayload)" = "$$_new" ]; then \
 		exit 0; \
 	fi; \
-	echo "$$_new" > ${_LIBOUT_DIR}/lib${LIB}.delayload
+	echo "$$_new" > ${_LIBOUT_DIR:Q}/lib${LIB}.delayload
 .PHONY: _write_delayload
 .endif
 
@@ -1135,10 +1011,10 @@ _IMPORT_STAGE_DLL = for _f in "${_IMPORT_LIBDIR}/lib${LIB}.dll.a" "${_IMPORT_LIB
 		done;
 .endif
 _stage_import:
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${_LIBOUT_DIR}; \
+	@mkdir -p ${_FWDIR:Q}/${BUILD_ROOT}/include ${_LIBOUT_DIR:Q}; \
 	_fp=$$(printf '%s' "IMPORT=${IMPORT} HEADERS=${IMPORT_HEADERS} LIB=${IMPORT_LIB} SRC=${_IMPORT_SOURCE} CFLAGS=${_IMPORT_CFLAGS} INCDIR=${_IMPORT_INCDIR:U} LIBDIR=${_IMPORT_LIBDIR}" | cksum); \
-	_out=${.CURDIR}/${BUILD_ROOT}/.stage-out; \
-	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fp)" = "$$_fp" ]; then \
+	_out=${.CURDIR:Q}/${BUILD_ROOT}/.stage-out; \
+	if [ -f ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fp ] && [ "$$(cat ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fp)" = "$$_fp" ]; then \
 		${_STAGE_OUT_CHECK}; \
 		[ -n "$$_miss" ] || exit 0; \
 		[ "$$_miss" = - ] || echo "===> IMPORT=${IMPORT}: staged $$_miss is gone (the import itself is unchanged) -- staging again"; \
@@ -1151,8 +1027,8 @@ _stage_import:
 			_matched=no; \
 			for _f in "$$_d"/$$_h; do \
 				if [ -e "$$_f" ]; then \
-					cp -a "$$_f" ${_FWDIR}/${BUILD_ROOT}/include/; \
-					echo ${_FWDIR}/${BUILD_ROOT}/include/"$$(basename "$$_f")" >> "$$_out.tmp"; \
+					cp -a "$$_f" ${_FWDIR:Q}/${BUILD_ROOT}/include/; \
+					echo ${_FWDIR:Q}/${BUILD_ROOT}/include/"$$(basename "$$_f")" >> "$$_out.tmp"; \
 					_matched=yes; \
 				fi; \
 			done; \
@@ -1210,7 +1086,7 @@ _stage_import:
 		${_IMPORT_STAGE_DLL} \
 	fi; \
 	mv "$$_out.tmp" "$$_out"; \
-	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fp; \
+	echo "$$_fp" > ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fp; \
 	echo "===> imported ${LIB} (${_IMPORT_SOURCE})"
 
 # fetch-import-source-req/fetch-import-binary-req/fetch-distinfo-
@@ -1253,15 +1129,15 @@ _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
 .else
-	@mkdir -p ${.CURDIR}/distfiles ${.CURDIR}/work
+	@mkdir -p ${.CURDIR:Q}/distfiles ${.CURDIR:Q}/work
 	@_fp=$$(printf '%s' "URL=${FETCH_URL} PATCHES=${FETCH_PATCHES}" | cksum); \
-	if [ -f ${.CURDIR}/work/.extract-fp ] && [ -d ${.CURDIR}/work/_resolved ] && [ "$$(cat ${.CURDIR}/work/.extract-fp)" = "$$_fp" ]; then \
+	if [ -f ${.CURDIR:Q}/work/.extract-fp ] && [ -d ${.CURDIR:Q}/work/_resolved ] && [ "$$(cat ${.CURDIR:Q}/work/.extract-fp)" = "$$_fp" ]; then \
 		exit 0; \
 	fi; \
 	_basename=""; _failed=""; \
 	for _url in ${FETCH_URL}; do \
 		_base=$$(basename "$$_url"); \
-		_dist=${.CURDIR}/distfiles/$$_base; \
+		_dist=${.CURDIR:Q}/distfiles/$$_base; \
 		if [ ! -f "$$_dist" ]; then \
 			echo "===> fetching $$_url"; \
 			_out="$$_dist.tmp"; \
@@ -1303,8 +1179,8 @@ _fetch_import:
 		echo "error: IMPORT=${IMPORT}: could not fetch any FETCH_URL:$$_failed" >&2; \
 		exit 1; \
 	fi; \
-	_dist=${.CURDIR}/distfiles/$$_basename; \
-	_distinfo=${.CURDIR}/distinfo; \
+	_dist=${.CURDIR:Q}/distfiles/$$_basename; \
+	_distinfo=${.CURDIR:Q}/distinfo; \
 	if [ ! -f "$$_distinfo" ]; then \
 		echo "error: IMPORT=${IMPORT}: no distinfo file at $$_distinfo -- run whatever generates it (see 26-fetched-external-sources.md) before fetching" >&2; \
 		exit 1; \
@@ -1326,41 +1202,41 @@ _fetch_import:
 		exit 1; \
 	fi; \
 	echo "===> verified $$_basename (sha256 ok)"; \
-	rm -rf ${.CURDIR}/work/_extracted ${.CURDIR}/work/_resolved; \
-	mkdir -p ${.CURDIR}/work/_extracted; \
+	rm -rf ${.CURDIR:Q}/work/_extracted ${.CURDIR:Q}/work/_resolved; \
+	mkdir -p ${.CURDIR:Q}/work/_extracted; \
 	case "$$_basename" in \
 		*.zip) _need unzip "extract $$_basename"; \
-			if unzip -q "$$_dist" -d ${.CURDIR}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=unzip ;; \
+			if unzip -q "$$_dist" -d ${.CURDIR:Q}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=unzip ;; \
 		*) _need tar "extract $$_basename"; \
-			if tar xf "$$_dist" -C ${.CURDIR}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=tar ;; \
+			if tar xf "$$_dist" -C ${.CURDIR:Q}/work/_extracted; then _rc=0; else _rc=$$?; fi; _x=tar ;; \
 	esac; \
 	if [ "$$_rc" != 0 ]; then \
 		echo "error: IMPORT=${IMPORT}: $$_x could not extract $$_dist (exit $$_rc, its message is above)" >&2; \
-		rm -rf ${.CURDIR}/work/_extracted; \
+		rm -rf ${.CURDIR:Q}/work/_extracted; \
 		exit 1; \
 	fi; \
-	if [ -z "$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1)" ]; then \
+	if [ -z "$$(find ${.CURDIR:Q}/work/_extracted -mindepth 1 -maxdepth 1)" ]; then \
 		echo "error: IMPORT=${IMPORT}: extracting $$_dist with $$_x produced no files" >&2; \
 		exit 1; \
 	fi; \
-	_n=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1 | wc -l | tr -d ' '); \
-	_only=$$(find ${.CURDIR}/work/_extracted -mindepth 1 -maxdepth 1); \
+	_n=$$(find ${.CURDIR:Q}/work/_extracted -mindepth 1 -maxdepth 1 | wc -l | tr -d ' '); \
+	_only=$$(find ${.CURDIR:Q}/work/_extracted -mindepth 1 -maxdepth 1); \
 	if [ "$$_n" = "1" ] && [ -d "$$_only" ]; then \
 		_wrksrc=$$_only; \
 	else \
-		_wrksrc=${.CURDIR}/work/_extracted; \
+		_wrksrc=${.CURDIR:Q}/work/_extracted; \
 	fi; \
-	cp -a "$$_wrksrc" ${.CURDIR}/work/_resolved; \
+	cp -a "$$_wrksrc" ${.CURDIR:Q}/work/_resolved; \
 	for _p in ${FETCH_PATCHES}; do \
 		_need patch "apply FETCH_PATCHES= ($$_p)"; \
 		echo "===> applying patch $$_p"; \
-		patch -p1 -d ${.CURDIR}/work/_resolved < ${.CURDIR}/patches/$$_p || { \
+		patch -p1 -d ${.CURDIR:Q}/work/_resolved < ${.CURDIR:Q}/patches/$$_p || { \
 			echo "error: IMPORT=${IMPORT}: patch $$_p failed to apply" >&2; exit 1; \
 		}; \
 	done; \
-	rm -rf ${_OBJDIR}; \
-	mkdir -p ${_OBJDIR}; \
-	echo "$$_fp" > ${.CURDIR}/work/.extract-fp; \
+	rm -rf ${_OBJDIR:Q}; \
+	mkdir -p ${_OBJDIR:Q}; \
+	echo "$$_fp" > ${.CURDIR:Q}/work/.extract-fp; \
 	echo "===> fetched+extracted $$_basename (${IMPORT})"
 .endif
 
@@ -1457,12 +1333,12 @@ _fetch_build:
 		_npfxpath="$$_npfxpath$$(realpath "$$_pp" 2>/dev/null || printf '%s' "$$_pp");"; \
 	done; \
 	_bcc=${CC:Q}; _bcxx=${CXX:Q}; \
-	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=$$_bcc CXX=$$_bcxx CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_ntoolchainldflags PREFIXPATH=$$_npfxpath DEPLOY=${_FETCH_MACOS_MIN_VERSION:U} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
-	if [ -f ${.CURDIR}/work/.build-fp ] && [ "$$(cat ${.CURDIR}/work/.build-fp)" = "$$_bfp" ]; then \
+	_bfp=$$(printf '%s' "BUILD=${FETCH_BUILD} ARGS=${FETCH_BUILD_ARGS} CMD=${FETCH_BUILD_CMD} CC=$$_bcc CXX=$$_bcxx CFLAGS=$$_ncflags CXXFLAGS=$$_ncxxflags LDFLAGS=$$_ntoolchainldflags PREFIXPATH=$$_npfxpath DEPLOY=${_FETCH_MACOS_MIN_VERSION:U} EXTRACT=$$(cat ${.CURDIR:Q}/work/.extract-fp 2>/dev/null)" | cksum); \
+	if [ -f ${.CURDIR:Q}/work/.build-fp ] && [ "$$(cat ${.CURDIR:Q}/work/.build-fp)" = "$$_bfp" ]; then \
 		exit 0; \
 	fi; \
-	_prefix=${_FETCH_INSTALL_PREFIX}; \
-	_builddir=${_FETCH_BUILD_DIR}; \
+	_prefix=${_FETCH_INSTALL_PREFIX:Q}; \
+	_builddir=${_FETCH_BUILD_DIR:Q}; \
 	rm -rf "$$_prefix" "$$_builddir"; \
 	mkdir -p "$$_prefix" "$$_builddir"; \
 	_njobs=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); \
@@ -1478,7 +1354,7 @@ _fetch_build:
 			echo "===> FETCH_BUILD=autotools: configure && make && make install"; \
 			_host=""; \
 			[ -n "$$_ct" ] && _host="--host=$$_ct"; \
-			( cd ${_IMPORT_WRKSRC} && \
+			( cd ${_IMPORT_WRKSRC:Q} && \
 			  ./configure --prefix="$$_prefix" $$_host ${FETCH_BUILD_ARGS} && \
 			  make -j"$$_njobs" && \
 			  make install ) || { echo "error: IMPORT=${IMPORT}: autotools build failed" >&2; exit 1; }; \
@@ -1486,7 +1362,7 @@ _fetch_build:
 		cmake) \
 			command -v cmake >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=cmake but cmake not found on PATH" >&2; exit 1; }; \
 			echo "===> FETCH_BUILD=cmake: configure && build && install"; \
-			( cmake -S ${_IMPORT_WRKSRC} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
+			( cmake -S ${_IMPORT_WRKSRC:Q} -B "$$_builddir" -DCMAKE_INSTALL_PREFIX="$$_prefix" \
 				${_FETCH_CMAKE_COMPILERS} \
 				-DCMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}" \
 				${FETCH_BUILD_ARGS} && \
@@ -1496,7 +1372,7 @@ _fetch_build:
 		meson) \
 			command -v meson >/dev/null 2>&1 || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD=meson but meson not found on PATH" >&2; exit 1; }; \
 			echo "===> FETCH_BUILD=meson: setup && compile && install"; \
-			( meson setup "$$_builddir" ${_IMPORT_WRKSRC} --prefix="$$_prefix" ${FETCH_BUILD_ARGS} && \
+			( meson setup "$$_builddir" ${_IMPORT_WRKSRC:Q} --prefix="$$_prefix" ${FETCH_BUILD_ARGS} && \
 			  meson compile -C "$$_builddir" && \
 			  meson install -C "$$_builddir" ) || { echo "error: IMPORT=${IMPORT}: meson build failed" >&2; exit 1; }; \
 			;; \
@@ -1505,8 +1381,8 @@ _fetch_build:
 				echo "error: IMPORT=${IMPORT}: FETCH_BUILD=custom requires FETCH_BUILD_CMD=" >&2; exit 1; \
 			fi; \
 			echo "===> FETCH_BUILD=custom: ${FETCH_BUILD_CMD}"; \
-			( cd ${_IMPORT_WRKSRC} && \
-			  BMK_FETCH_SRCDIR=${_IMPORT_WRKSRC} BMK_FETCH_BUILD_DIR="$$_builddir" BMK_FETCH_INSTALL_PREFIX="$$_prefix" \
+			( cd ${_IMPORT_WRKSRC:Q} && \
+			  BMK_FETCH_SRCDIR=${_IMPORT_WRKSRC:Q} BMK_FETCH_BUILD_DIR="$$_builddir" BMK_FETCH_INSTALL_PREFIX="$$_prefix" \
 			  sh -c '${FETCH_BUILD_CMD}' ) || { echo "error: IMPORT=${IMPORT}: FETCH_BUILD_CMD failed" >&2; exit 1; }; \
 			;; \
 		*) \
@@ -1514,7 +1390,7 @@ _fetch_build:
 			exit 1; \
 			;; \
 	esac; \
-	echo "$$_bfp" > ${.CURDIR}/work/.build-fp; \
+	echo "$$_bfp" > ${.CURDIR:Q}/work/.build-fp; \
 	echo "===> built via FETCH_BUILD=${FETCH_BUILD}, installed to $$_prefix"
 .endif
 
@@ -1531,10 +1407,10 @@ _fetch_build:
 # @impl 0f87-6abf-aeba-e6a2
 _stage_fetch_headers:
 .if !empty(IMPORT_HEADERS)
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include ${.CURDIR}/${BUILD_ROOT}; \
-	_fp=$$(printf '%s' "HEADERS=${IMPORT_HEADERS} WRK=${_IMPORT_WRKSRC} EXTRACT=$$(cat ${.CURDIR}/work/.extract-fp 2>/dev/null)" | cksum); \
-	_out=${.CURDIR}/${BUILD_ROOT}/.stage-fetch-out; \
-	if [ -f ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp ] && [ "$$(cat ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp)" = "$$_fp" ]; then \
+	@mkdir -p ${_FWDIR:Q}/${BUILD_ROOT}/include ${.CURDIR:Q}/${BUILD_ROOT}; \
+	_fp=$$(printf '%s' "HEADERS=${IMPORT_HEADERS} WRK=${_IMPORT_WRKSRC} EXTRACT=$$(cat ${.CURDIR:Q}/work/.extract-fp 2>/dev/null)" | cksum); \
+	_out=${.CURDIR:Q}/${BUILD_ROOT}/.stage-fetch-out; \
+	if [ -f ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fetch-fp ] && [ "$$(cat ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fetch-fp)" = "$$_fp" ]; then \
 		${_STAGE_OUT_CHECK}; \
 		[ -n "$$_miss" ] || exit 0; \
 		[ "$$_miss" = - ] || echo "===> IMPORT=${IMPORT}: staged $$_miss is gone (the fetched tree is unchanged) -- staging again"; \
@@ -1542,10 +1418,10 @@ _stage_fetch_headers:
 	: > "$$_out.tmp"; \
 	for _h in ${IMPORT_HEADERS}; do \
 		_found=no; \
-		for _d in ${_IMPORT_WRKSRC} ${_IMPORT_WRKSRC}/include; do \
+		for _d in ${_IMPORT_WRKSRC:Q} ${_IMPORT_WRKSRC:Q}/include; do \
 			if [ -e "$$_d/$$_h" ]; then \
-				cp -a "$$_d/$$_h" ${_FWDIR}/${BUILD_ROOT}/include/; \
-				echo ${_FWDIR}/${BUILD_ROOT}/include/"$$(basename "$$_h")" >> "$$_out.tmp"; \
+				cp -a "$$_d/$$_h" ${_FWDIR:Q}/${BUILD_ROOT}/include/; \
+				echo ${_FWDIR:Q}/${BUILD_ROOT}/include/"$$(basename "$$_h")" >> "$$_out.tmp"; \
 				echo "===> staged header $$_h from $$_d"; \
 				_found=yes; \
 				break; \
@@ -1557,7 +1433,7 @@ _stage_fetch_headers:
 		fi; \
 	done; \
 	mv "$$_out.tmp" "$$_out"; \
-	echo "$$_fp" > ${.CURDIR}/${BUILD_ROOT}/.stage-fetch-fp
+	echo "$$_fp" > ${.CURDIR:Q}/${BUILD_ROOT}/.stage-fetch-fp
 .endif
 
 # @impl 0f87-6a98-8b7f-9215
@@ -1572,19 +1448,19 @@ ${LIBDIR_LOCAL}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 .endfor
 .for _l in ${LIBS}
 	@_found=no; \
-	for _d in ${_LIB_SEARCH_DIRS}; do \
+	for _d in ${_LIB_SEARCH_DIRS_SH}; do \
 		for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
 			if [ -f "$$_d/$$_f" ]; then _found=yes; break 2; fi; \
 		done; \
 	done; \
 	if [ "$$_found" = no ]; then \
-		for _d in ${_LIB_SEARCH_DIRS}; do \
+		for _d in ${_LIB_SEARCH_DIRS_SH}; do \
 			if [ -f "$$_d/../.skipped/${_l}" ]; then \
-				echo "error: cannot link lib${LIB}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${.CURDIR:T} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
+				echo "error: cannot link lib${LIB}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${_CURNAME} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
 				exit 1; \
 			fi; \
 		done; \
-		echo "error: cannot link lib${LIB}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS}" >&2; \
+		echo "error: cannot link lib${LIB}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS:${_BMK_DEC}}" >&2; \
 		exit 1; \
 	fi
 .endfor
@@ -1595,7 +1471,7 @@ ${LIBDIR_LOCAL}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 # -framework X) is never split.
 # @impl 0f87-6abe-3f50-0560
 # @impl 0f87-6abe-8c3c-9ca3
-	@_ldflags=""; _seen=""; \
+	@_seen=""; set --; \
 	for _f in ${LDFLAGS}; do \
 		_skip=no; \
 		case "$$_f" in \
@@ -1605,19 +1481,23 @@ ${LIBDIR_LOCAL}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 				esac; \
 				[ "$$_skip" = no ] && _seen="$$_seen $$_f" ;; \
 		esac; \
-		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
+		[ "$$_skip" = no ] && set -- "$$@" "$$_f"; \
 	done; \
-	echo ${_CCLINK:Q} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags; \
-	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} $$_ldflags
+	echo ${_CCLINK:Q} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} "$$@"; \
+	${_CCLINK} ${_SHLIB_LDFLAGS} -o ${.TARGET} ${OBJS} "$$@"
 .if ${_DELAYLOAD_KIND} == "gnu"
 	@if command -v ${_MINGW_TRIPLE}-dlltool >/dev/null 2>&1; then \
-		${_MINGW_TRIPLE}-dlltool -d ${_OBJDIR}/${LIB}.def -D ${SHLIB_NAME} -y ${_LIBOUT_DIR}/lib${LIB}.delay.a; \
+		${_MINGW_TRIPLE}-dlltool -d ${_OBJDIR:Q}/${LIB}.def -D ${SHLIB_NAME} -y ${_LIBOUT_DIR:Q}/lib${LIB}.delay.a; \
 	fi
 .endif
 	@echo "===> built shared ${SHLIB_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
+# The archive is named relative to the module directory: LLVM's ar (FreeBSD's) writes
+# it through a temporary file whose name it makes by replacing every % in the path
+# with a random digit, so a % anywhere in the workspace's path -- as it was, absolute,
+# here -- stopped the build there (path-characters-supported-req).
 .if ${TARGET} != "win"
-	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR}/${SHLIB_LINK}
-	@${AR} rcs ${_LIBOUT_DIR}/${STATIC_NAME} ${OBJS}
+	@ln -sfn ${SHLIB_NAME} ${_LIBOUT_DIR:Q}/${SHLIB_LINK} 2>/dev/null || cp -f ${.TARGET} ${_LIBOUT_DIR:Q}/${SHLIB_LINK}
+	@${AR} rcs ${LIBDIR_LOCAL}/${STATIC_NAME} ${OBJS}
 .endif
 # win: SHLIB_LINK == SHLIB_NAME (no separate unversioned symlink target on
 # Windows), and STATIC_NAME == the import library link.exe's own
@@ -1633,13 +1513,13 @@ ${LIBDIR_LOCAL}/${STATIC_NAME}: ${OBJS}
 # @impl 0f87-6a98-7718-886d
 _promote_incl:
 .if defined(INCL) && !empty(INCL)
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/include
+	@mkdir -p ${_FWDIR:Q}/${BUILD_ROOT}/include
 .  for _h in ${INCL}
-	@if [ -f ${.CURDIR}/${INCDIR_LOCAL}/${_h} ]; then \
-		cp -f ${.CURDIR}/${INCDIR_LOCAL}/${_h} ${_FWDIR}/${BUILD_ROOT}/include/; \
+	@if [ -f ${.CURDIR:Q}/${INCDIR_LOCAL}/${_h} ]; then \
+		cp -f ${.CURDIR:Q}/${INCDIR_LOCAL}/${_h} ${_FWDIR:Q}/${BUILD_ROOT}/include/; \
 		echo "===> promoted ${_h}"; \
-	elif [ -f ${_OBJDIR}/${_h} ]; then \
-		cp -f ${_OBJDIR}/${_h} ${_FWDIR}/${BUILD_ROOT}/include/; \
+	elif [ -f ${_OBJDIR:Q}/${_h} ]; then \
+		cp -f ${_OBJDIR:Q}/${_h} ${_FWDIR:Q}/${BUILD_ROOT}/include/; \
 		echo "===> promoted ${_h}"; \
 	fi
 .  endfor
@@ -1647,17 +1527,17 @@ _promote_incl:
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all
-	@sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${_LIBOUT_DIR} ${_FWDIR}/${LIBDIR_LOCAL}
+	@sh ${BMK_MKDIR:Q}/../scripts/diff-aware-copy.sh ${_LIBOUT_DIR:Q} ${_FWDIR:Q}/${LIBDIR_LOCAL}
 	@echo "===> copy-up lib${LIB} → framework ${LIBDIR_LOCAL}/"
 
 clean:
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/build
+	rm -rf ${.CURDIR:Q}/build
 .else
-	rm -rf ${.CURDIR}/${BUILD_ROOT}
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}
 .endif
 	rm -f *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.dll 2>/dev/null || true
-	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
+	rm -f ${.CURDIR:Q}/.gen-mod-order.mk ${.CURDIR:Q}/.depend 2>/dev/null || true
 	# fetch-cache-never-committed-req: work/ (extraction scratch) is
 	# build-output-like -- always removed. distfiles/ (the downloaded
 	# archive itself) is a cache that's expensive to refetch, so it's
@@ -1665,14 +1545,14 @@ clean:
 	# own clean/distclean split. patches/ is committed source, never
 	# touched by clean.
 	# @impl 0f87-6ab6-4fe1-98d2
-	rm -rf ${.CURDIR}/work
+	rm -rf ${.CURDIR:Q}/work
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/distfiles
+	rm -rf ${.CURDIR:Q}/distfiles
 .endif
 # clean-leaves-no-empty-build-dirs-req: an empty build/ left here kept the
 # module directory alive after git switch. rmdir only removes it if empty.
 # @impl 7854-6ad2-03bb-077e
-	@rmdir ${.CURDIR}/build 2>/dev/null || true
+	@rmdir ${.CURDIR:Q}/build 2>/dev/null || true
 
 
 .include "${BMK_MKDIR}/mk.test.mk"
@@ -1683,7 +1563,7 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = lib
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs _promote_incl _stage_import _fetch_import _fetch_build _stage_fetch_headers _write_linkdeps help
+.PHONY: all clean help copy-up _create_dirs _create_prereq_links _promote_incl _stage_import _fetch_import _fetch_build _stage_fetch_headers _write_linkdeps help
 .else
 _SK_ROLE = module
 .include "${BMK_MKDIR}/mk.skipped.mk"

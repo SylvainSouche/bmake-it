@@ -8,9 +8,8 @@
 #
 #   refused  the shell or make reads the character as syntax, and no quoting
 #            can carry it through the whole chain of calls
-#   later    the character is meant to work (a space in C:\Program Files, an
-#            apostrophe in John's Documents) and does not yet: refused with
-#            that said, so it is a plain message and not a shell error
+#   (Space, ( ) ' & and # work: a name travels as a word with those written
+#   %XX, see bmk_enc below.)
 # @impl 0f87-6aee-e982-0f20
 
 BMK_TAB=$(printf '\t')
@@ -50,27 +49,6 @@ bmk_name_problem() {
             printf '%s, which make or the linker reads as syntax (it ends a rule, is matched as a pattern, or splits a linker option)' "$_w"
             return 1
         fi
-        if [ "$_role" = module ]; then
-            case $_n in
-                *\{*|*\}*) printf 'a brace, which cannot be part of a module name (the module order file is written with the name as a variable name)'; return 1 ;;
-            esac
-        fi
-    fi
-    # meant to work, not yet: refused with that said
-    case $_n in
-        *" "*) _w="a space" ;;
-        *\(*)  _w="a left parenthesis" ;;
-        *\)*)  _w="a right parenthesis" ;;
-        *\'*)  _w="an apostrophe" ;;
-        *\&*)  _w="an ampersand" ;;
-        *)     _w="" ;;
-    esac
-    if [ "$_role" != mkdir ]; then
-        case $_n in *\#*) _w="a hash sign" ;; esac
-    fi
-    if [ -n "$_w" ]; then
-        printf '%s, which Bmake It is meant to support and does not yet' "$_w"
-        return 1
     fi
     return 0
 }
@@ -104,4 +82,44 @@ bmk_refuse() {
 }
 
 # What does work, for the message.
-BMK_NAME_HELP="Letters, digits and . _ - + @ % ~ ^ [ ] = and non-ASCII letters work in a directory name; rename the directory (docs/spec/85-names-and-paths.md)."
+BMK_NAME_HELP="Letters, digits, spaces and . _ - + @ % ~ ^ [ ] { } = # ' & ( ) and non-ASCII letters work in a directory name; rename the directory (docs/spec/85-names-and-paths.md)."
+
+# A name travels through make as one word: make splits a value at a space,
+# reads # as a comment and ' as a quote, and a variable name cannot carry =,
+# so a name is written with each of those as %XX (percent-encoding; % itself
+# is %25). mk.common.mk does the same in make (_BMK_ENC, _BMK_DEC): the two
+# must agree, and case 117 checks that they do.
+# @impl 0f87-6af0-c379-4dfe
+#   bmk_enc <name>   the name as one make word
+#   bmk_dec <word>   the name back
+bmk_enc() {
+    printf '%s\n' "$1" | LC_ALL=C sed -e 's/%/%25/g' -e 's/ /%20/g' -e 's/#/%23/g' -e "s/'/%27/g" \
+        -e 's/&/%26/g' -e 's/(/%28/g' -e 's/)/%29/g' -e 's/=/%3D/g' -e 's/\[/%5B/g' -e 's/]/%5D/g' \
+        -e 's/~/%7E/g' -e 's/{/%7B/g' -e 's/}/%7D/g'
+}
+bmk_dec() {
+    printf '%s\n' "$1" | LC_ALL=C sed -e 's/%20/ /g' -e 's/%23/#/g' -e "s/%27/'/g" -e 's/%26/\&/g' \
+        -e 's/%28/(/g' -e 's/%29/)/g' -e 's/%3D/=/g' -e 's/%5B/[/g' -e 's/%5D/]/g' -e 's/%7E/~/g' \
+        -e 's/%7B/{/g' -e 's/%7D/}/g' -e 's/%25/%/g'
+}
+
+# bmk_wl <name>: the name as a user writes it in PREREQS= or PARENT_WS= -- a
+# backslash before a space, an apostrophe and a hash sign (make reads those as a
+# word end, a quote, the start of a comment).
+bmk_wl() {
+    printf '%s\n' "$1" | sed -e 's/ /\\ /g' -e "s/'/\\\\'/g" -e 's/#/\\#/g'
+}
+
+# bmk_atfsh_check <dir>: ATF's own shell library (libatf-sh.subr, ATF 0.23) cannot
+# run a test script from a directory whose path has a space in it -- it tests the
+# path unquoted -- so say so, before kyua reports every script "broken: Test
+# program did not exit cleanly". Compiled tests (atf-c, atf-c++) are not affected.
+# Prints the message and returns 1 when the directory has whitespace in its path.
+bmk_atfsh_check() {
+    case $1 in
+        *[[:space:]]*)
+            echo "error: Bmake It cannot run the shell-script tests (testcases/*.sh, TESTS_SH) in $1: the path has a space in it, and ATF's own shell library (libatf-sh.subr) does not handle one. Compiled tests (TESTS_C, TESTS_CXX, TEST_PROG) are not affected. Run bmake test from a workspace whose path has no space, or write the test in C or C++." >&2
+            return 1 ;;
+    esac
+    return 0
+}

@@ -15,6 +15,9 @@
 set -u
 list=$1
 [ -s "$list" ] || exit 0
+# <where> is a framework/module name written as one word (bmk_enc): a name with a
+# space in it must stay one field.
+. "$(dirname "$0")/bmk-names.sh"
 
 describe() {  # describe <how>
     case "$1" in
@@ -38,7 +41,7 @@ describe() {  # describe <how>
     echo "===> missing prerequisites -- nothing was built:"
     sort -u "$list" | while read -r where item; do
         entry=${item%%%*}; how=${item#*%}
-        [ "$where" = "*" ] && where="(bmake test)"
+        if [ "$where" = "*" ]; then where="(bmake test)"; else where=$(bmk_dec "$where"); fi
         printf '     %s: %s -- %s\n' "$where" "$entry" "$(describe "$how")"
     done
     if grep -q '%nopkgconfig=' "$list"; then

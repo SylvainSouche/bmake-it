@@ -45,7 +45,7 @@ _KYUAFILE = ${.CURDIR}/${BUILD_ROOT}/tests/Kyuafile
 # @impl 0f87-6aaa-697c-4c30
 .if !empty(TEST)
 .  if empty(TESTS_CXX:M${TEST}) && empty(TESTS_C:M${TEST}) && empty(TESTS_SH:M${TEST})
-.    error "TEST=${TEST}: no such test declared in ${.CURDIR:T} (TESTS_CXX=${TESTS_CXX} TESTS_C=${TESTS_C} TESTS_SH=${TESTS_SH})"
+.    error "TEST=${TEST}: no such test declared in ${_CURNAME} (TESTS_CXX=${TESTS_CXX} TESTS_C=${TESTS_C} TESTS_SH=${TESTS_SH})"
 .  endif
 _TEST_CXX_SEL = ${TESTS_CXX:M${TEST}}
 _TEST_C_SEL   = ${TESTS_C:M${TEST}}
@@ -109,7 +109,7 @@ _ATF_C_CFLAGS != ${_ATF_PC_ENV} pkg-config --cflags atf-c 2>/dev/null || echo ""
 # @impl 0f87-6aa9-448d-537c
 _TEST_RPATH =
 .if ${TARGET} != "win"
-_TEST_RPATH = -Wl,-rpath,${.CURDIR}/${BUILD_ROOT}/lib
+_TEST_RPATH = -Wl,-rpath,${.CURDIR:Q}/${BUILD_ROOT}/lib
 .endif
 
 # What the test binary links against to reach the code under test: a LIB
@@ -138,30 +138,30 @@ _TEST_LINK_OBJS = ${OBJS:N*/main.o}
 .endif
 
 _build_tests: ${_ATFB_LIBFILES:U}
-	@mkdir -p ${_TEST_BINDIR}
+	@mkdir -p ${_TEST_BINDIR:Q}
 .for _t in ${_TEST_CXX_SEL}
 	@echo "===> building test ${_t} (atf-c++)"
-	${CXX} ${CXXFLAGS} ${_ATF_CXX_CFLAGS} -I${.CURDIR}/include \
-		${.CURDIR}/tests/${_t}.cpp ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
+	${CXX} ${CXXFLAGS} ${_ATF_CXX_CFLAGS} -I${.CURDIR:Q}/include \
+		${.CURDIR:Q}/tests/${_t}.cpp ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR:Q}/${_t} \
+		-L${.CURDIR:Q}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_CXX_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${_TEST_C_SEL}
 	@echo "===> building test ${_t} (atf-c)"
-	${CC} ${CFLAGS} ${_ATF_C_CFLAGS} -I${.CURDIR}/include \
-		${.CURDIR}/tests/${_t}.c ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR}/${_t} \
-		-L${.CURDIR}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
+	${CC} ${CFLAGS} ${_ATF_C_CFLAGS} -I${.CURDIR:Q}/include \
+		${.CURDIR:Q}/tests/${_t}.c ${_TEST_LINK_OBJS} -o ${_TEST_BINDIR:Q}/${_t} \
+		-L${.CURDIR:Q}/${BUILD_ROOT}/lib ${_TEST_LINK_LIB} ${_TEST_RPATH} ${_ATF_C_LIBS} ${LDFLAGS}
 .endfor
 .for _t in ${_TEST_SH_SEL}
 	@echo "===> staging test ${_t} (atf-sh)"
-	cp ${.CURDIR}/tests/${_t}.sh ${_TEST_BINDIR}/${_t}
-	chmod +x ${_TEST_BINDIR}/${_t}
+	cp ${.CURDIR:Q}/tests/${_t}.sh ${_TEST_BINDIR:Q}/${_t}
+	chmod +x ${_TEST_BINDIR:Q}/${_t}
 .endfor
 
 _gen_kyuafile:
-	@echo 'syntax(2)' > ${_KYUAFILE}
-	@echo 'test_suite("${.CURDIR:T}")' >> ${_KYUAFILE}
+	@echo 'syntax(2)' > ${_KYUAFILE:Q}
+	@echo 'test_suite("'${_CURNAME:Q}'")' >> ${_KYUAFILE:Q}
 .for _t in ${_TEST_CXX_SEL} ${_TEST_C_SEL} ${_TEST_SH_SEL}
-	@echo 'atf_test_program{name="${_t}"}' >> ${_KYUAFILE}
+	@echo 'atf_test_program{name="${_t}"}' >> ${_KYUAFILE:Q}
 .endfor
 
 # test: build + run this module's declared (or TEST=-selected) tests,
@@ -180,34 +180,37 @@ _gen_kyuafile:
 # @impl 0f87-6aa9-0267-4adc
 # @impl 0f87-6aaa-72d2-8ffc
 test: _xtest_check all _build_tests _gen_kyuafile
-	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+.if !empty(_TEST_SH_SEL)
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; bmk_atfsh_check ${.CURDIR:Q} || exit 1
+.endif
+	@_rundir=${.CURDIR:Q}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rc=0; \
 	if [ "${_XTEST_MODE}" = remote ]; then \
 		echo "===> running the tests on ${_XTEST_RUNNER}"; \
-		sh ${_XTEST_SCRIPT} --runner '${_XTEST_RUNNER}' --tests ${_TEST_BINDIR} --out "$$_rundir" --kyua ${KYUA} \
+		sh ${_XTEST_SCRIPT:Q} --runner '${_XTEST_RUNNER}' --tests ${_TEST_BINDIR:Q} --out "$$_rundir" --kyua ${KYUA} \
 			$$([ "${REPORT}" = "yes" ] && echo --html) \
 			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" || _rc=$$?; \
 	else \
-	${_XTEST_LOCAL_ENV} (cd ${_TEST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
-	(cd ${_TEST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	${_XTEST_LOCAL_ENV} (cd ${_TEST_BINDIR:Q} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
+	(cd ${_TEST_BINDIR:Q} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
 	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
 	if [ "${REPORT}" = "yes" ] && [ "${_XTEST_MODE}" != remote ]; then \
-		(cd ${_TEST_BINDIR} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+		(cd ${_TEST_BINDIR:Q} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
 	fi; \
 	if [ "${REPORT}" = "yes" ]; then \
 		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \
 	fi; \
-	rm -rf ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
-	cp -a "$$_rundir" ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}/runs/latest; \
+	cp -a "$$_rundir" ${.CURDIR:Q}/${BUILD_ROOT}/runs/latest; \
 	exit $$_rc
 
 .elif !defined(_BMK_TST)
 test:
 .if !empty(TEST)
-	@echo "error: TEST=${TEST} requested but ${.CURDIR:T} declares no tests at all" >&2; exit 1
+	@echo "error: TEST=${TEST} requested but ${_CURNAME} declares no tests at all" >&2; exit 1
 .else
-	@echo "no TESTS_CXX/TESTS_C/TESTS_SH declared in ${.CURDIR:T}"
+	@echo "no TESTS_CXX/TESTS_C/TESTS_SH declared in ${_CURNAME}"
 .endif
 .endif
 
