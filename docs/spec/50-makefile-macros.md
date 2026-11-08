@@ -9,13 +9,13 @@ BSD-make-native equivalent, introduced by this project.
 
 | Macro | Meaning | Status |
 |---|---|---|
-| `PARENT_WS=<path1> <path2> ...` | Ordered, space-delimited list of **absolute** paths to parent workspaces, searched in order for anything not found locally | New (`REQ-workspace-parent-macro-absolute-req`) |
+| `PARENT_WS=<path1> <path2> ...` | Ordered, space-delimited list of **absolute** paths to parent workspaces, searched in order for anything not found locally. A space, an apostrophe or a hash sign in a path is written with a backslash before it, as in `PREREQS=` | New (`REQ-workspace-parent-macro-absolute-req`) |
 
 ## Framework makefile (`.include <mk.framework.mk>`)
 
 | Macro | Meaning | Status |
 |---|---|---|
-| `PREREQS=<fw1> <fw2> ...` | **Mandatory**, even empty (`PREREQS=`). Ordered, space-delimited list of frameworks this one may `LIBS=`-link against and see the public headers of. All entries implicitly public — no per-entry visibility qualifier. Also doubles as the framework auto-discovery signal | New (`REQ-framework-prereqs-macro-req`, `REQ-prereqs-mandatory-even-empty-req`) |
+| `PREREQS=<fw1> <fw2> ...` | **Mandatory**, even empty (`PREREQS=`). Ordered, space-delimited list of frameworks this one may `LIBS=`-link against and see the public headers of. A space, an apostrophe or a hash sign in a name is written with a backslash before it (`My\ Fw`, `John\'s`, `C\#`). All entries implicitly public — no per-entry visibility qualifier. Also doubles as the framework auto-discovery signal | New (`REQ-framework-prereqs-macro-req`, `REQ-prereqs-mandatory-even-empty-req`) |
 | `PUBLIC_HEADERS_SYSTEM=yes` | This framework's public headers reach every `PREREQS=`-consumer via `-isystem` instead of `-I` — for a framework that wraps or vendors third-party code, so a consumer isn't flooded with warnings originating from headers it doesn't own | New (`REQ-public-headers-system-req`) |
 | `PLATFORMS=[!][-]<os[_arch]> ...`, `TOOLCHAINS=[!][-]<toolchain> ...`, `REASON.<entry>=<text>` | Where this is built: a plain entry means only these (others skipped quietly), `-` excludes quietly, a leading `!` makes the entry an error instead of a skip. See `28-platform-toolchain-constraints.md` | New (`REQ-platform-list-grammar-req`, `REQ-platform-constraint-evaluation-req`, `REQ-constraint-reason-message-req`) |
 

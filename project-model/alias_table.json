@@ -677,6 +677,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "dependency-paths-without-space-or-paren-req": {
+    "active": true,
+    "id": "0f87-6af0-c35a-4161",
+    "status": "confirmed",
+    "type": "req"
+  },
   "deployed-config-read-by-builds-req": {
     "active": true,
     "id": "0f87-6acf-63e7-c3cd",
@@ -1595,6 +1601,12 @@
     "status": "verified",
     "type": "impl"
   },
+  "impl-dependency-paths-relative": {
+    "active": true,
+    "id": "0f87-6af0-c37a-26d0",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-docs-input-extra-warn-knobs": {
     "active": true,
     "id": "0f87-6acd-d9fe-4238",
@@ -1973,6 +1985,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-names-as-encoded-words": {
+    "active": true,
+    "id": "0f87-6af0-c379-4dfe",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-nested-invocation-reentrancy-guard": {
     "active": true,
     "id": "0f87-6a98-5f76-2a44",
@@ -2061,6 +2079,12 @@
     "active": true,
     "id": "0f87-6a9a-b8d2-c192",
     "status": "asserted",
+    "type": "impl"
+  },
+  "impl-recipe-paths-quoted": {
+    "active": true,
+    "id": "0f87-6af0-c379-1630",
+    "status": "verified",
     "type": "impl"
   },
   "impl-relink-on-libs-change": {
@@ -3191,6 +3215,12 @@
     "status": "recorded",
     "type": "obs"
   },
+  "names-travel-as-encoded-words-req": {
+    "active": true,
+    "id": "0f87-6af0-c35a-6527",
+    "status": "confirmed",
+    "type": "req"
+  },
   "native-curdir-req": {
     "active": true,
     "id": "7854-6ae8-7e86-7959",
@@ -3455,6 +3485,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "path-characters-bmake-limits-obs": {
+    "active": true,
+    "id": "0f87-6af0-c326-9a78",
+    "status": "recorded",
+    "type": "obs"
+  },
   "path-characters-contract-cand": {
     "active": true,
     "id": "0f87-6aee-de2f-6191",
@@ -3472,6 +3508,12 @@
     "id": "0f87-6aee-de2f-d91d",
     "status": "recorded",
     "type": "obs"
+  },
+  "path-characters-names-as-words-dec": {
+    "active": true,
+    "id": "0f87-6af0-c333-88a5",
+    "status": "recorded",
+    "type": "dec"
   },
   "path-characters-percent-freebsd-obs": {
     "active": true,
@@ -3736,6 +3778,12 @@
     "id": "0f87-6a9a-c666-229d",
     "status": "recorded",
     "type": "obs"
+  },
+  "recipe-paths-quoted-req": {
+    "active": true,
+    "id": "0f87-6af0-c35a-fbd5",
+    "status": "confirmed",
+    "type": "req"
   },
   "recipe-status-capture-errexit-safe-dec": {
     "active": true,

@@ -1,0 +1,68 @@
+.\" SPDX-License-Identifier: BSD-3-Clause
+.Dd November 8, 2026
+.Dt MK.SEARCHPATHS.MK 5
+.Os
+.Sh NAME
+.Nm mk.searchpaths.mk
+.Nd where a module finds headers and libraries
+.Sh DESCRIPTION
+Gives a program or library module its include paths and its library search path:
+the module's own
+.Pa include/ ,
+its framework's
+.Pa include/
+and
+.Pa local/include/ ,
+and those of every framework named in
+.Va PREREQS
+of its framework, then the library files
+.Va LIBS
+names.
+Not included directly by a makefile:
+.Xr mk.prog.mk 5
+and
+.Xr mk.lib.mk 5
+read it after they know their framework's directory.
+.Pp
+A path in a command, such as an
+.Fl I ,
+an
+.Fl L
+or a run path, is written for the shell: a directory with a space, a parenthesis,
+an apostrophe, an ampersand or a hash sign in its name is quoted.
+A path that make has to read in a dependency line, such as a header the compiler
+lists in a dependency file or a library a relink waits for, is another matter:
+make cannot write a space or a parenthesis there.
+Those paths are therefore relative to the module directory, which is where
+.Xr bmake 1
+always runs, so no part of the workspace's path is in them.
+A prerequisite framework whose name has a space or a parenthesis in it, or that
+lives in a
+.Va PARENT_WS
+directory whose path has one, is reached through a link in the module's own build
+directory,
+.Pa build/ Ns Ar key Ns Pa /prereqs/ Ns Ar name ,
+named with the name's encoded form (see
+.Xr mk.common.mk 5 ) ,
+which has neither.
+The links are made when the module is built, before anything is compiled.
+.Pp
+Library files are looked up in the module's framework first, then in the
+prerequisite frameworks, in the order of
+.Va PREREQS .
+.Sh TARGETS
+.Bl -tag -width Ds
+.It Cm _create_prereq_links
+Makes the links above.
+A prerequisite of the module's
+.Cm all
+target.
+.El
+.Sh SEE ALSO
+.Xr mk.common.mk 5 ,
+.Xr mk.framework.mk 5 ,
+.Xr mk.lib.mk 5 ,
+.Xr mk.prog.mk 5 ,
+.Xr bmake-it 7
+.Sh AUTHORS
+.An Sylvain Souche

@@ -24,6 +24,9 @@ imply.
 Required, even empty.
 The frameworks whose public headers and libraries this one may use, in order.
 A framework is recognised by setting it.
+A name with a space, an apostrophe or a hash sign in it is written with a
+backslash before that character:
+.Ql PREREQS = My\e Framework John\e's C\e# .
 .It Va PUBLIC_HEADERS_SYSTEM
 .Cm yes :
 consumers get this framework's headers with

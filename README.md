@@ -139,6 +139,19 @@ line) if you'd rather not touch shell configuration, but every `mk.*.mk`
 file already auto-computes it correctly from wherever it was actually
 found, whether that's a local relative path or `MAKESYSPATH`.
 
+### Names with a space or punctuation in them
+
+A workspace, framework or module directory (and any directory above them, and the
+one the `mk/` files are in) may have a space, parentheses, an apostrophe, an
+ampersand or a hash sign in its name: `My Projects/Fw (x86)/R&D.m`. Where you
+write such a name yourself — `PREREQS=` and `PARENT_WS=` — put a backslash before a
+space, an apostrophe and a hash sign: `PREREQS = My\ Framework John\'s`. A
+character that cannot be carried through every command Bmake It runs (a tab, a
+backslash, `" $ ; | < > * ? ! : ,` and a backquote) is
+refused before anything is built, by a message that names it. Give the `mk/`
+directory to bmake through `MAKESYSPATH` (or `-m`, if its name has a colon).
+Details and the reasons: [docs/spec/85-names-and-paths.md](docs/spec/85-names-and-paths.md).
+
 ## Quick start
 
 ```sh
