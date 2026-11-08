@@ -59,9 +59,10 @@ _XTEST_LOCAL_ENV = export QEMU_LD_PREFIX="${QEMU_LD_PREFIX:U${BMK_LINUX_SYSROOT}
 # @impl 7854-6ae8-7be4-0b3e
 # (the module's lib/, the LIBS= search chain, the framework's lib/ -- a
 # .tst module without TEST_PROG has no search chain of its own)
-_XTEST_WIN_DLLDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${_LIB_SEARCH_DIRS:U} ${_FWDIR:D${_FWDIR}/${BUILD_ROOT}/lib}
+# (a list of shell words, each directory quoted: joined with : and unquoted where it is used)
+_XTEST_WIN_DLLDIRS = ${.CURDIR:Q}/${BUILD_ROOT}/lib ${_LIB_SEARCH_DIRS:U:@_w@${_w:${_BMK_DEC}:Q}@} ${_FWDIR:D${_FWDIR:Q}/${BUILD_ROOT}/lib}
 .if ${_XTEST_MODE} == "local" && ${TARGET} == "win"
-_XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts:}${_RUN_MINGW_PATH:U}:$$PATH"; export PATH;
+_XTEST_LOCAL_ENV = PATH="${_XTEST_WIN_DLLDIRS:O:u:ts::S/\\//g}${_RUN_MINGW_PATH:U}:$$PATH"; export PATH;
 .endif
 # A native test program (MSVC, mingw) run by the Cygwin Kyua is handed
 # Cygwin paths (its result file under /tmp/kyua.*): ATFW_CYGROOT lets
@@ -92,7 +93,7 @@ _XTEST_LIBVAR = LD_LIBRARY_PATH
 # The directories the test programs load libraries from: the module's own and
 # every -Wl,-rpath the link used (the LIBS= chain). They are shipped and named
 # by ${_XTEST_LIBVAR} on the target; the rpath into the build host is not used.
-_XTEST_LIBDIRS = ${.CURDIR}/${BUILD_ROOT}/lib ${LDFLAGS:M-Wl,-rpath,*:S/^-Wl,-rpath,//}
+_XTEST_LIBDIRS = ${.CURDIR:Q}/${BUILD_ROOT}/lib ${LDFLAGS:M-Wl,-rpath,*:S/^-Wl,-rpath,//}
 # Windows links have no rpath: the DLL directories instead
 .if ${TARGET} == "win"
 _XTEST_LIBDIRS = ${_XTEST_WIN_DLLDIRS:O:u}

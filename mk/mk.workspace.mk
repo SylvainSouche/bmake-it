@@ -110,9 +110,9 @@ BUILD_REPORT_DIR ?= build-report
 all: _requires_preflight _build_frameworks _aggregate_ws
 .if ${REPORT} == "yes"
 	@_rdir=${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}; mkdir -p "$$_rdir"
-	@echo "<!DOCTYPE html><html><head><title>${_CURNAME} build dashboard</title>" > ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<!DOCTYPE html><html><head><title>${_CURNAME:S/&/\&amp;/gW} build dashboard</title>" > ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
-	@echo "<h1>${_CURNAME} build dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<h1>${_CURNAME:S/&/\&amp;/gW} build dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Log</th></tr>" >> ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
 	_total_fail=0; _total_pass=0; \
@@ -127,7 +127,7 @@ all: _requires_preflight _build_frameworks _aggregate_ws
 			else \
 				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
 			fi; \
-			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../../$$_log\">build.log</a></td></tr>" \
+			echo "<tr><td>$$(bmk_html "$$_f")</td><td>$$(bmk_html "$$_m")</td><td>$$_status</td><td><a href=\"../../../$$(bmk_enc "$$_log")\">build.log</a></td></tr>" \
 				>> ${.CURDIR:Q}/${BUILD_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html; \
 		done; \
 	done; \
@@ -442,7 +442,7 @@ docs:
 	@echo "<ul>" >> ${.CURDIR:Q}/${WS_DOCS_DIR:Q}/index.html
 .for _f in ${SUBDIR_FRAMEWORKS}
 	@if [ -d "${.CURDIR}/${_f:${_BMK_DEC}}/${DOCS_DIR}/html" ]; then \
-		echo "<li><a href=\"${_WS_DOCS_UP}${_f:${_BMK_DEC}}/${DOCS_DIR}/html/index.html\">${_f:${_BMK_DEC}}</a></li>" >> ${.CURDIR:Q}/${WS_DOCS_DIR:Q}/index.html; \
+		echo "<li><a href=\"${_WS_DOCS_UP}${_f}/${DOCS_DIR}/html/index.html\">${_f:${_BMK_DEC}:S/&/\&amp;/gW}</a></li>" >> ${.CURDIR:Q}/${WS_DOCS_DIR:Q}/index.html; \
 	fi
 .endfor
 	@echo "</ul>" >> ${.CURDIR:Q}/${WS_DOCS_DIR:Q}/index.html
@@ -510,9 +510,9 @@ test:
 .endfor
 .if ${REPORT} == "yes"
 	@mkdir -p ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}
-	@echo "<!DOCTYPE html><html><head><title>${_CURNAME} test dashboard</title>" > ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<!DOCTYPE html><html><head><title>${_CURNAME:S/&/\&amp;/gW} test dashboard</title>" > ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@echo "<style>body{font-family:sans-serif}table{border-collapse:collapse}td,th{border:1px solid #ccc;padding:6px 10px;text-align:left}.fail{color:#b00;font-weight:bold}.pass{color:#080}</style></head><body>" >> ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
-	@echo "<h1>${_CURNAME} test dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
+	@echo "<h1>${_CURNAME:S/&/\&amp;/gW} test dashboard <small>${RUN_ID} / ${OS_ARCH}</small></h1>" >> ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@echo "<table><tr><th>Framework</th><th>Module</th><th>Result</th><th>Reports</th></tr>" >> ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html
 	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
 	_total_fail=0; _total_pass=0; \
@@ -535,7 +535,7 @@ test:
 			else \
 				_status="<span class=\"pass\">PASS</span>"; _total_pass=$$((_total_pass+1)); \
 			fi; \
-			echo "<tr><td>$$_f</td><td>$$_m</td><td>$$_status</td><td><a href=\"../../../$$_html\">HTML</a> / <a href=\"../../../$$_xml\">JUnit XML</a></td></tr>" \
+			echo "<tr><td>$$(bmk_html "$$_f")</td><td>$$(bmk_html "$$_m")</td><td>$$_status</td><td><a href=\"../../../$$(bmk_enc "$$_html")\">HTML</a> / <a href=\"../../../$$(bmk_enc "$$_xml")\">JUnit XML</a></td></tr>" \
 				>> ${.CURDIR:Q}/${TEST_REPORT_DIR:Q}/${RUN_ID}/${OS_ARCH}/index.html; \
 		done; \
 	done; \

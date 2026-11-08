@@ -123,3 +123,9 @@ bmk_atfsh_check() {
     esac
     return 0
 }
+
+# bmk_html <text>: a name as HTML text -- the only character of those a name may carry
+# that HTML reads is the ampersand. (In a link a name is written as bmk_enc writes it.)
+bmk_html() {
+    printf '%s' "$1" | sed 's/&/\&amp;/g'
+}

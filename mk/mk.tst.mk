@@ -292,17 +292,17 @@ test: _xtest_check _tst_stage
 		echo "===> running the tests on ${_XTEST_RUNNER}"; \
 		sh ${_XTEST_SCRIPT:Q} --runner '${_XTEST_RUNNER}' --tests ${_TST_BINDIR:Q} --out "$$_rundir" --kyua ${KYUA} \
 			$$([ "${REPORT}" = "yes" ] && echo --html) \
-			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" \
+			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts::S/\\//g}" \
 			--ship "PATH=${_TST_PATH:S/:/ /g:N${_TST_BINDIR}:ts:}" \
 			--ship "BMK_SHAREDIR=${_TST_SHARE}" || _rc=$$?; \
 	else \
 	export PATH="${_TST_PATH}:$$PATH" BMK_SHAREDIR="${_TST_SHARE}"; \
-	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR:Q} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
-	(cd ${_TST_BINDIR:Q} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR:Q} && ${KYUA} test -r "$$_rundir/kyua.db" -k Kyuafile) || _rc=$$?; \
+	(cd ${_TST_BINDIR:Q} && ${KYUA} report-junit -r "$$_rundir/kyua.db" --output="$$_rundir/test-results.xml"); \
 	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
 	if [ "${REPORT}" = "yes" ] && [ "${_XTEST_MODE}" != remote ]; then \
-		(cd ${_TST_BINDIR:Q} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+		(cd ${_TST_BINDIR:Q} && ${KYUA} report-html -r "$$_rundir/kyua.db" --force --output="$$_rundir/test-report-html"); \
 	fi; \
 	if [ "${REPORT}" = "yes" ]; then \
 		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \

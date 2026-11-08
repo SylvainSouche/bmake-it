@@ -268,8 +268,8 @@ _IMP_VAR = ${LIB:tu}
 
 .  if defined(${_IMP_VAR}_PREFIX) && !empty(${_IMP_VAR}_PREFIX)
 _IMPORT_SOURCE  = env:${_IMP_VAR}_PREFIX=${${_IMP_VAR}_PREFIX}
-_IMPORT_CFLAGS  = -I${${_IMP_VAR}_PREFIX}/include
-_IMPORT_LIBS    = -L${${_IMP_VAR}_PREFIX}/lib -l${LIB}
+_IMPORT_CFLAGS  = -I${${_IMP_VAR}_PREFIX:Q}/include
+_IMPORT_LIBS    = -L${${_IMP_VAR}_PREFIX:Q}/lib -l${LIB}
 _IMPORT_LIBDIR  = ${${_IMP_VAR}_PREFIX}/lib
 .  elif defined(${_IMP_VAR}_CFLAGS) || defined(${_IMP_VAR}_LIBS)
 _IMPORT_SOURCE  = env:${_IMP_VAR}_CFLAGS/${_IMP_VAR}_LIBS
@@ -799,7 +799,7 @@ all: _check_inputs_hash _create_dirs _create_prereq_links ${LIBDIR_LOCAL}/${STAT
 # (unchanged mechanism), not _IMPORT_LIBS (undefined for the source
 # kind; there is no prebuilt artifact to derive link flags from).
 .if !empty(IMPORT) && ${_IMPORT_KIND:Uno} != "source"
-_OWN_LINKDEPS = ${_IMPORT_LIBS:N-l${LIB}:N-L${_IMPORT_LIBDIR}}
+_OWN_LINKDEPS = ${_IMPORT_LIBS:N-l${LIB}:N${:U-L${_IMPORT_LIBDIR}:Q:Q}}
 .else
 _OWN_LINKDEPS =
 .  for _l in ${LIBS}
@@ -1023,7 +1023,7 @@ _stage_import:
 	echo "===> IMPORT=${IMPORT}: resolved via ${_IMPORT_SOURCE}"; \
 	for _h in ${IMPORT_HEADERS}; do \
 		_found=no; \
-		for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//} ${_IMPORT_INCDIR:U}; do \
+		for _d in ${_IMPORT_CFLAGS:M-I*:S/-I//} ${_IMPORT_INCDIR:U:Q}; do \
 			_matched=no; \
 			for _f in "$$_d"/$$_h; do \
 				if [ -e "$$_f" ]; then \
@@ -1125,12 +1125,16 @@ _stage_import:
 # file:// URLs are copied (cp), never handed to a downloader: NetBSD's ftp(1) cannot
 # fetch one ("ftp_strdup: called with NULL argument", empty output) and a machine with
 # no curl/wget has nothing else. @impl 0f87-6ad7-1f32-4d7a
+# FETCH_URL= is a list of URLs, so a space cannot be in one: a directory with a space,
+# an apostrophe or a hash in its path is written in a file:// URL the way names are
+# written elsewhere (%20, %27, %23, ...), and decoded here (bmk_dec).
 _fetch_import:
 .if ${_IMPORT_KIND:Uno} != "source" && ${_IMPORT_KIND:Uno} != "binary" && ${_IMPORT_KIND:Uno} != "source-build"
 	@:
 .else
 	@mkdir -p ${.CURDIR:Q}/distfiles ${.CURDIR:Q}/work
-	@_fp=$$(printf '%s' "URL=${FETCH_URL} PATCHES=${FETCH_PATCHES}" | cksum); \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	_fp=$$(printf '%s' "URL=${FETCH_URL} PATCHES=${FETCH_PATCHES}" | cksum); \
 	if [ -f ${.CURDIR:Q}/work/.extract-fp ] && [ -d ${.CURDIR:Q}/work/_resolved ] && [ "$$(cat ${.CURDIR:Q}/work/.extract-fp)" = "$$_fp" ]; then \
 		exit 0; \
 	fi; \
@@ -1142,7 +1146,7 @@ _fetch_import:
 			echo "===> fetching $$_url"; \
 			_out="$$_dist.tmp"; \
 			if case "$$_url" in file://*) true ;; *) false ;; esac; then \
-				_dl=cp; _lpath="$${_url#file://}"; \
+				_dl=cp; _lpath="$$(bmk_dec "$${_url#file://}")"; \
 				case "$$_lpath" in localhost/*) _lpath="/$${_lpath#localhost/}" ;; esac; \
 				case "$$_lpath" in /[A-Za-z]:*) _lpath="$${_lpath#/}" ;; esac; \
 				if _msg=$$(cp "$$_lpath" "$$_out" 2>&1); then _rc=0; else _rc=$$?; fi; \
@@ -1308,9 +1312,21 @@ _fetch_build:
 	@:
 .else
 	@_ct="${_CROSS_FLAGS:U:M--target=*:C/--target=//}"; \
+	_modabs=${.CURDIR:Q}; \
+	_qw() { case "$$1" in *[!A-Za-z0-9_./=:,+@%-]*) printf "'%s'" "$$(printf '%s' "$$1" | sed "s/'/'\\\\''/g")" ;; *) printf '%s' "$$1" ;; esac; }; \
+	_absflags() { \
+		eval "set -- $$1"; _o=""; \
+		for _t in "$$@"; do \
+			case "$$_t" in \
+				-I[!/]*|-L[!/]*) _t="$${_t%"$${_t#-?}"}$$_modabs/$${_t#-?}" ;; \
+			esac; \
+			_o="$$_o $$(_qw "$$_t")"; \
+		done; \
+		printf '%s' "$$_o"; \
+	}; \
 	_normflags() { \
-		_out=""; \
-		for _t in $$1; do \
+		_out=""; eval "set -- $$1"; \
+		for _t in "$$@"; do \
 			case "$$_t" in \
 				-I/*|-L/*) \
 					_p=$${_t#-?}; \
@@ -1325,9 +1341,10 @@ _fetch_build:
 		done; \
 		printf '%s' "$$_out"; \
 	}; \
-	_ncflags=$$(_normflags "${CFLAGS}"); \
-	_ncxxflags=$$(_normflags "${CXXFLAGS}"); \
-	_ntoolchainldflags=$$(_normflags "${_TOOLCHAIN_LDFLAGS}"); \
+	_acflags=$$(_absflags "${CFLAGS}"); _acxxflags=$$(_absflags "${CXXFLAGS}"); _aldflags=$$(_absflags "${_TOOLCHAIN_LDFLAGS}"); \
+	_ncflags=$$(_normflags "$$_acflags"); \
+	_ncxxflags=$$(_normflags "$$_acxxflags"); \
+	_ntoolchainldflags=$$(_normflags "$$_aldflags"); \
 	_npfxpath=""; \
 	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do \
 		_npfxpath="$$_npfxpath$$(realpath "$$_pp" 2>/dev/null || printf '%s' "$$_pp");"; \
@@ -1343,7 +1360,7 @@ _fetch_build:
 	mkdir -p "$$_prefix" "$$_builddir"; \
 	_njobs=$$(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1); \
 	unset MAKEFLAGS MAKELEVEL MFLAGS MAKE 2>/dev/null || true; \
-	export CC=${CC:Q} CXX=${CXX:Q} CFLAGS=${CFLAGS:Q} CXXFLAGS=${CXXFLAGS:Q} LDFLAGS=${_TOOLCHAIN_LDFLAGS:Q}; \
+	export CC=${CC:Q} CXX=${CXX:Q} CFLAGS="$$_acflags" CXXFLAGS="$$_acxxflags" LDFLAGS="$$_aldflags"; \
 	export CMAKE_PREFIX_PATH="${_FETCH_CMAKE_PREFIX_PATH}"; \
 	_pcpath=""; \
 	for _pp in ${_FETCH_CMAKE_PREFIX_PATH:S/;/ /g}; do _pcpath="$$_pcpath$$_pp/lib/pkgconfig:"; done; \
