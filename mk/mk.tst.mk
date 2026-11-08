@@ -228,15 +228,17 @@ ${_BINOUT} ${OBJS}: ${_ATFB_LIBFILES}
 # TEST_SRCS= as part of `all` (a test's compile error surfaces at build
 # time), into the module's own bin/ -- never copied up.
 .  if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
-_TST_TESTBIN = ${.CURDIR}/${BUILD_ROOT}/bin/${TEST_PROG}
-${_TST_TESTBIN}: ${TEST_SRCS:S|^|${.CURDIR}/src/|} ${_LIBS_FILES} ${_ATFB_LIBFILES:U}
+# Relative to the module directory (module-rules-relative-targets-req).
+# @impl 0f87-6af0-8ab0-6f2f
+_TST_TESTBIN = ${BUILD_ROOT}/bin/${TEST_PROG}
+${_TST_TESTBIN}: ${TEST_SRCS:S|^|src/|} ${_LIBS_FILES} ${_ATFB_LIBFILES:U}
 	@mkdir -p ${.TARGET:H}
 .    if ${_TST_FLAVOR} == "cxx"
 	${CXX} ${CXXFLAGS} ${_TST_ATF_CFLAGS} -I${.CURDIR}/include \
-		${TEST_SRCS:S|^|${.CURDIR}/src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
+		${TEST_SRCS:S|^|src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
 .    else
 	${CC} ${CFLAGS} ${_TST_ATF_CFLAGS} -I${.CURDIR}/include \
-		${TEST_SRCS:S|^|${.CURDIR}/src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
+		${TEST_SRCS:S|^|src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
 .    endif
 	@echo "===> built test program ${TEST_PROG}"
 all: ${_TST_TESTBIN}

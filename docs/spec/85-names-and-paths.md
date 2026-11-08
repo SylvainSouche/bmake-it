@@ -138,12 +138,12 @@ One case cannot be caught: a `$` in the `mk/` directory's own name. Make
 expands it in the `.include` that loads `mk.common.mk`, so bmake stops with
 "Could not find" before any Bmake It file runs.
 
-## Making the rest work (open)
+## Making the rest work
 
 Each of these is a change, not a refusal, and each removes a "not yet" or a
 platform difference:
 
-1. **`=` and `%` (and `: ! * ? #`, in the make layer): relative targets.** The rules are
+1. **`=` and `%` (done 2026-11-08, `module-rules-relative-targets-req`): relative targets.** The rules are
    written with the absolute directory in the target (`${_OBJDIR}/x.o:
    ${.CURDIR}/src/x.c`). A build always runs in the module directory, so
    `build/<key>/obj/x.o: src/x.c` carries none of the path, and the characters
@@ -160,7 +160,12 @@ platform difference:
 5. **A linker option with a path** (`-Wl,-rpath,<path>`) needs `-Xlinker` form
    for a comma; a comma stays refused, so this only matters for 2.
 
-Every one of them is done by moving a character from "not yet" to "works" in
+Item 1 is done: the program, library and test-module rules name every target
+and prerequisite relative to the module directory, and the compiler is given the
+same relative names, so the `.d` file names a relative target. `=` and `%` then
+work in all four places on macOS, Debian (glibc), Alpine (musl, emulated amd64),
+FreeBSD 15.1 and NetBSD 10.2; the case lists no mixed-platform gap any more. The
+others remain. Every one of them is done by moving a character from "not yet" to "works" in
 `bmk-names.sh` and in the case's `MUST_FIX` list at the same time.
 
 ### Measured on the BSDs (2026-11-08)

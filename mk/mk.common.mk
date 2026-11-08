@@ -492,7 +492,9 @@ _DEP_CFLAGS = -MMD -MP
 # @impl 0f87-6ab5-867f-373b
 # ---------------------------------------------------------------------------
 INPUTS_HASH_EXTRA ?=
-_INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
+# Relative to the module directory (module-rules-relative-targets-req).
+# @impl 0f87-6af0-8ab0-6f2f
+_INPUTS_HASH_FILE = ${BUILD_ROOT}/.inputs-hash
 
 # msvc-cc-shell-quoting-req: the hashed string is handed to the shell with
 # :Q, never pasted inside "...": under TOOLCHAIN=msvc, CC carries
