@@ -215,19 +215,44 @@ Two more places where bmake gets in the way, found by the case:
 - **`bmake -V NAME`** prints the value as written, not expanded; a query that
   needs the expansion is `-V '${NAME}'`.
 
-### What is not covered
+### What the cases cover
 
-By the case: a build, `clean` and `install`, with a program, a shared library
-the program links, and two frameworks one of which lists the other. The same
-quoting is in the code that `docs`, `test`, `run`, fetching and importing use,
-but no case builds those with a special character in a name yet:
+Case 116: a build, `clean` and `install`, with a program, a shared library the
+program links, and two frameworks one of which lists the other, for every
+character. Case 118, in a directory named `sp dir (1) & co's #x`: a prerequisite
+framework in a `PARENT_WS` workspace (the parent written with backslashes);
+`IMPORT=` resolved by `<NAME>_PREFIX`; `IMPORT=fetch:` with a patch and a
+`file://` URL written percent-encoded; `FETCH_BUILD=cmake` (in a directory
+without the `#`, see below); `add-prereq` and `add-parent`; `bmake run`;
+`bmake test` with a compiled ATF test; `bmake docs`; and the HTML dashboards of
+`REPORT=yes`. Running the whole suite with its work directory under such a path
+(`TMPDIR="/tmp/sp dir (1) & co's #x" sh tests/harness/run-tests.sh`) found the
+bugs fixed with this page; the cases that still fail there write a path, without
+escaping it, into a file whose format needs it (see below), or run a shell-script
+test.
 
-- Doxygen's configuration is written with the paths in double quotes (a space);
-  its `TAGFILES` and the cross-test runner's library directories
-  (`mk.crosstest.mk`) are not.
-- HTML dashboards print a name as it is (a `&` is not written `&amp;`).
-- A header or library in a `PARENT_WS` directory whose path has a space is reached
-  through the link; the same directory given to `IMPORT=` is not.
+### Limits that belong to other tools
+
+- **`FETCH_URL=` is a list of URLs**, so a path with a space in a `file://` URL is
+  written `%20`, an apostrophe `%27`, a hash `%23`, and so on (the same encoding
+  as names); the fetch decodes it. Case 118 does so; a case that writes
+  `file://$PWD/...` raw does not work in such a directory.
+- **pkg-config cannot carry a space or an apostrophe in a package's prefix**: it
+  prints `-I/a b/include` unquoted and then cannot read it back ("Text ended
+  before matching quote"). An `IMPORT=pkg:` of a library installed under such a
+  prefix fails there, whatever Bmake It does; `<NAME>_PREFIX=` does not use it. A
+  `#` in the prefix is a comment in a `.pc` file.
+- **CMake's makefiles cannot have a `#` in the path** (make reads it as a comment):
+  `FETCH_BUILD=cmake` does not build in a workspace whose path has one.
+- **Kyua** names its results file after the directory; the tests are run with an
+  explicit results file (`-r`) so that a space or an apostrophe in the path does not
+  stop `report-junit` from finding it.
+
+### Not covered by a case
+
+- The cross-test runner's shipping of library directories to a remote host
+  (`mk.crosstest.mk`) quotes them; no case runs it with such a path.
+- Windows (Cygwin, MSVC, mingw): runs in CI, not by hand.
 
 ### Refused, for a reason that is not Bmake It's
 

@@ -3533,6 +3533,12 @@
     "status": "confirmed",
     "type": "req"
   },
+  "path-characters-tool-limits-obs": {
+    "active": true,
+    "id": "0f87-6af0-fdd7-0289",
+    "status": "recorded",
+    "type": "obs"
+  },
   "per-level-local-mk-directory": {
     "active": true,
     "id": "0f87-6aa8-fee3-e68d",
