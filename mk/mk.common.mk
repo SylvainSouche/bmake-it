@@ -14,6 +14,22 @@ _MK_COMMON_MK_ = 1
 .if !defined(BMK_MKDIR)
 BMK_MKDIR := ${.PARSEDIR}
 .endif
+
+# Stop, before anything else runs, in a directory whose name -- or whose mk
+# directory's name -- carries a character Bmake It cannot (yet) carry through
+# every command it runs: a space, a colon, an equals sign in a name used to
+# end in a shell error, a build that did nothing, or an unquoted rm -rf of the
+# wrong directory (path-characters-refused-upfront-req). The script reads the
+# directory from the shell and the mk directory from the environment, never from
+# a command line or a make variable (make expands a variable's value again each
+# time it is used, so a $ in a name would already be gone).
+# Not skipped for clean or a -V query: clean is the dangerous one.
+# @impl 0f87-6aee-e982-0f20
+.export BMK_MKDIR
+_BMK_PATH_CHECK != sh "$$BMK_MKDIR/../scripts/check-names.sh" 2>&1 || true
+.if !empty(_BMK_PATH_CHECK)
+.  error "${_BMK_PATH_CHECK}"
+.endif
 _BMK_PARSE_TIME_VARS = TOOLCHAIN ABI TARGET TARGET_ARCH OPENMP SANITIZE
 
 # ---------------------------------------------------------------------------
