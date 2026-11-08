@@ -1949,6 +1949,12 @@
     "status": "asserted",
     "type": "impl"
   },
+  "impl-module-rules-relative-targets": {
+    "active": true,
+    "id": "0f87-6af0-8ab0-6f2f",
+    "status": "verified",
+    "type": "impl"
+  },
   "impl-msvc-cc-shell-quoting": {
     "active": true,
     "id": "7854-6adf-d52c-bc05",
@@ -3063,6 +3069,12 @@
     "active": false,
     "id": "6f38-6a88-1892-f318",
     "status": "superseded",
+    "type": "req"
+  },
+  "module-rules-relative-targets-req": {
+    "active": true,
+    "id": "0f87-6af0-8ab0-36db",
+    "status": "confirmed",
     "type": "req"
   },
   "module-skipped-after-failed-prereq-req": {

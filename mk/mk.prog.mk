@@ -203,11 +203,17 @@ _LIBS_FILES += ${_LIB_FILE.${_l}}
 .endfor
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
-_BINOUT = ${.CURDIR}/${BINDIR_LOCAL}/${PROG}
+# Relative to the module directory -- bmake always runs there -- so that no
+# character of the directory's path (an '=' read as an assignment, a '%' read
+# as a pattern) ever sits in a target or prerequisite of a rule below
+# (path-characters-supported-req). The same holds for _INPUTS_HASH_FILE, and for
+# the compiler's -o: the .d file it writes names its target as it was given.
+# @impl 0f87-6af0-8ab0-6f2f
+_BINOUT = ${BINDIR_LOCAL}/${PROG}
 
 OBJS =
 .for _s in ${SRCS}
-OBJS += ${_OBJDIR}/${_s:R}.o
+OBJS += ${OBJDIR}/${_s:R}.o
 .endfor
 
 _create_dirs:
@@ -220,28 +226,28 @@ _create_dirs:
 # @impl 0f87-6aba-a54a-f741
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: src/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c src/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: src/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+${OBJDIR}/${_s:R}.c: src/${_s}
 	@mkdir -p ${.TARGET:H}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
-	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@if [ -f y.tab.h ]; then mv y.tab.h ${OBJDIR}/${_s:R}.h; fi
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+${OBJDIR}/${_s:R}.c: src/${_s}
 	@mkdir -p ${.TARGET:H}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: absent on the first build of this
 # source (no .o exists yet to have produced it), present and consulted

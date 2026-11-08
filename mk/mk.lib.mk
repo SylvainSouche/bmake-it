@@ -769,8 +769,8 @@ INPUTS_HASH_EXTRA += IMPORT=${_IMPORT_SOURCE} IMPORT_CFLAGS=${_IMPORT_CFLAGS} IM
 # @impl 0f87-6ab6-4fe1-98d2
 # @impl 0f87-6abe-3f12-1050
 .if ${_IMPORT_KIND:Uno} == "source"
-_SRC_BASE = ${_IMPORT_WRKSRC}
-_FETCH_PREREQ = ${.CURDIR}/work/.extract-fp
+_SRC_BASE = work/_resolved
+_FETCH_PREREQ = work/.extract-fp
 # fetch-root-include-req: the resolved work tree's own root is on the
 # include search path, so a nested SRCS= entry (Dear ImGui's own
 # backends/*.cpp, #include-ing "imgui.h" from the tree root) compiles
@@ -782,7 +782,7 @@ _FETCH_PREREQ = ${.CURDIR}/work/.extract-fp
 CFLAGS   += -I${_IMPORT_WRKSRC}
 CXXFLAGS += -I${_IMPORT_WRKSRC}
 .else
-_SRC_BASE = ${.CURDIR}/src
+_SRC_BASE = src
 _FETCH_PREREQ =
 .endif
 
@@ -821,9 +821,11 @@ STATIC_NAME = ${LIB}.lib
 STATIC_NAME = lib${LIB}.a
 .endif
 
+# Relative to the module directory (module-rules-relative-targets-req).
+# @impl 0f87-6af0-8ab0-6f2f
 OBJS =
 .for _s in ${SRCS}
-OBJS += ${_OBJDIR}/${_s:R}.o
+OBJS += ${OBJDIR}/${_s:R}.o
 .endfor
 
 _create_dirs:
@@ -841,30 +843,30 @@ _create_dirs:
 # @impl 0f87-6aba-a54a-f741
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
 	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
-${_OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
 	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_SRC_BASE}/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
-${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+${OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
 	@mkdir -p ${.TARGET:H}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${_SRC_BASE}/${_s}
-	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
+	@if [ -f y.tab.h ]; then mv y.tab.h ${OBJDIR}/${_s:R}.h; fi
 	@mkdir -p ${.CURDIR}/${INCDIR_LOCAL}
 	@if [ -f ${_OBJDIR}/${_s:R}.h ]; then cp -f ${_OBJDIR}/${_s:R}.h ${.CURDIR}/${INCDIR_LOCAL}/; fi
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
-${_OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
+${OBJDIR}/${_s:R}.c: ${_FETCH_PREREQ} ${_SRC_BASE}/${_s}
 	@mkdir -p ${.TARGET:H}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${_SRC_BASE}/${_s}
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -fPIC -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: see mk.prog.mk's identical comment.
 .  if exists(${_OBJDIR}/${_s:R}.d)
@@ -882,10 +884,10 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 # dependency chain is evaluated; all: is itself .PHONY, so a phony
 # prerequisite here costs nothing extra.
 .  if ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _fetch_import ${LIBDIR_LOCAL}/${SHLIB_NAME} _stage_fetch_headers _write_linkdeps
 	@:
 .  else
-all: _check_inputs_hash _create_dirs _fetch_import ${_LIBOUT_DIR}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
+all: _check_inputs_hash _create_dirs _fetch_import ${LIBDIR_LOCAL}/${STATIC_NAME} _stage_fetch_headers _write_linkdeps
 	@:
 .  endif
 .elif ${_IMPORT_KIND:Uno} == "source-build"
@@ -899,10 +901,10 @@ all: _check_inputs_hash _create_dirs _fetch_import _fetch_build _stage_import _w
 all: _check_inputs_hash _create_dirs _fetch_import _stage_import _write_linkdeps
 	@:
 .elif ${LIB_SHARED} == "YES"
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${SHLIB_NAME} _promote_incl _write_linkdeps
+all: _check_inputs_hash _create_dirs ${LIBDIR_LOCAL}/${SHLIB_NAME} _promote_incl _write_linkdeps
 	@:
 .else
-all: _check_inputs_hash _create_dirs ${_LIBOUT_DIR}/${STATIC_NAME} _promote_incl _write_linkdeps
+all: _check_inputs_hash _create_dirs ${LIBDIR_LOCAL}/${STATIC_NAME} _promote_incl _write_linkdeps
 	@:
 .endif
 
@@ -993,7 +995,7 @@ _write_linkdeps: _write_delayload
 .  if !empty(IMPORT) && ${_IMPORT_KIND:Uno} != "source"
 _write_delayload: _stage_import
 .  elif ${LIB_SHARED:Uno} == "YES"
-_write_delayload: ${_LIBOUT_DIR}/${SHLIB_NAME}
+_write_delayload: ${LIBDIR_LOCAL}/${SHLIB_NAME}
 .  endif
 _write_delayload:
 	@_dll=-; _data=?; _def=${_OBJDIR}/${LIB}.def; \
@@ -1560,7 +1562,7 @@ _stage_fetch_headers:
 
 # @impl 0f87-6a98-8b7f-9215
 # @impl 7854-6ad0-fb85-c2c6 (any of _LIB_FILE_FORMS, lib<n>.dll.a included)
-${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
+${LIBDIR_LOCAL}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 	@${_DELAYLOAD_NAMED}
 .for _l in ${_DELAYLOAD_ERRORS}
 	@echo "error: cannot delay-load ${_l} into lib${LIB}: "${_DELAY_ERR.${_l}:Q} >&2; exit 1
@@ -1624,7 +1626,7 @@ ${_LIBOUT_DIR}/${SHLIB_NAME}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 # import lib with a plain static archive of the same objects) so are
 # skipped entirely for win, not just no-ops.
 
-${_LIBOUT_DIR}/${STATIC_NAME}: ${OBJS}
+${LIBDIR_LOCAL}/${STATIC_NAME}: ${OBJS}
 	${AR} rcs ${.TARGET} ${OBJS}
 	@echo "===> built static ${STATIC_NAME}${_BUILT_NOTE:C/^(.)/ \1/}"
 

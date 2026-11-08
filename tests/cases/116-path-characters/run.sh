@@ -64,14 +64,13 @@ eacute|\0303\0251
 cjk|\0346\0227\0245\0346\0234\0254'
 
 # works in every place, on every platform
-OK_ALL=" lbracket rbracket percent tilde at plus caret dash eacute cjk "
+OK_ALL=" lbracket rbracket percent equals tilde at plus caret dash eacute cjk "
 # meant to work everywhere and do not yet (refused as "not supported yet")
 MUST_FIX=" space twospaces lparen rparen squote amp hash "
-# works on some platforms and not on others, so meant to work on all: = builds nothing,
-# silently, under macOS's and Alpine's bmake; % stops the link under FreeBSD 15.1's make
-# (the rule that creates build/<key>/bin is read as a pattern). Both come from the path
-# sitting in a dependency line; relative targets fix them (docs/spec/85-names-and-paths.md).
-SILENT_GAP=" equals percent "
+# (None now: = and % were mixed-platform characters -- = built nothing under macOS's and
+# Alpine's bmake, % stopped the link under FreeBSD's make -- until the rules were made
+# relative to the module directory, module-rules-relative-targets-req.)
+SILENT_GAP=" "
 # work in the mk directory's name, though not in the others
 MKDIR_OK=" hash bang colon comma equals star question lbrace rbrace "
 # work in a workspace's name (and its parents'), not in a module's
