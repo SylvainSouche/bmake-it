@@ -243,7 +243,10 @@ test.
   prefix fails there, whatever Bmake It does; `<NAME>_PREFIX=` does not use it. A
   `#` in the prefix is a comment in a `.pc` file.
 - **CMake's makefiles cannot have a `#` in the path** (make reads it as a comment):
-  `FETCH_BUILD=cmake` does not build in a workspace whose path has one.
+  `FETCH_BUILD=cmake` does not build in a workspace whose path has one. On a BSD the
+  generated makefiles are read by the BSD make, which cannot take a space, a
+  parenthesis or an apostrophe in them either (FreeBSD 15.1, NetBSD 10.2); case 118
+  skips that part there.
 - **Kyua** names its results file after the directory; the tests are run with an
   explicit results file (`-r`) so that a space or an apostrophe in the path does not
   stop `report-junit` from finding it.

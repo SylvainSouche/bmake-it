@@ -84,7 +84,10 @@ bin=$(find "$C/ws" -type f -name "$(prog_name app)" | head -1)
 [ "$(runs "$bin")" = "hello patched" ] || fail "C: the patch was not applied, or the library not linked"
 
 # --- D ----------------------------------------------------------------------
-if command -v cmake >/dev/null 2>&1; then
+# (on a BSD the generated makefiles are read by the BSD make, which cannot take such
+# paths in them: that is CMake's and make's, not ours)
+case $(uname -s) in FreeBSD|NetBSD|OpenBSD|DragonFly) _bsd=yes ;; *) _bsd=no ;; esac
+if command -v cmake >/dev/null 2>&1 && [ "$_bsd" = no ]; then
     D="$TOP/sp dir (1) & co's x"
     mkdir -p "$D/fake/upstream/foo-1.0" "$D/fake/dist" "$D/ws/Fw/app.m/src" "$D/ws/Fw/libfoo.m"
     printf 'cmake_minimum_required(VERSION 3.10)\nproject(foo C)\nadd_library(foo SHARED foo.c)\ninstall(TARGETS foo DESTINATION lib)\ninstall(FILES foo.h DESTINATION include)\n' > "$D/fake/upstream/foo-1.0/CMakeLists.txt"
@@ -105,7 +108,7 @@ if command -v cmake >/dev/null 2>&1; then
     if grep -q "FETCH_BUILD=cmake: configure" "$D/ws/Fw/libfoo.m/build2.log"; then fail "D: the unchanged second build ran cmake again"; fi
     rm -rf "$D"
 else
-    echo "D skipped: no cmake" >&2
+    echo "D skipped: no cmake, or a BSD make" >&2
 fi
 
 # --- E ----------------------------------------------------------------------
