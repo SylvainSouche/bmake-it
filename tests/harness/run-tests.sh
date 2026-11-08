@@ -163,6 +163,9 @@ for archive in "$ARCHIVES_DIR"/*.tar.gz "$ARCHIVES_DIR"/*.tgz; do
             # come from testlib.sh, never hardcoded for Unix in a case.
             # @impl 7854-6adf-8c28-260c
             export BMK_TESTLIB="$SCRIPT_DIR/testlib.sh"
+            # The make the wrapper `bmake` runs, for a case that must run it without
+            # the wrapper's options (NetBSD has no command named bmake to find).
+            export BMK_REAL_MAKE="$BMAKE"
             # Tool messages in one language: cases grep them ("undefined",
             # ...), and a French-locale linker says "référence indéfinie".
             export LC_ALL=C
