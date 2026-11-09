@@ -247,6 +247,15 @@ test.
   generated makefiles are read by the BSD make, which cannot take a space, a
   parenthesis or an apostrophe in them either (FreeBSD 15.1, NetBSD 10.2); case 118
   skips that part there.
+- **LLVM's linkers** (lld, lld-link, and LLVM's `ar`) make a temporary output
+  file by replacing every `%` in the output's name with a random character, so a
+  `%` anywhere in an output path fails. Bmake It names its outputs relative to the
+  module directory.
+- **On Windows**: `cl.exe` cannot follow a Cygwin link, so it reports a
+  prerequisite framework's real path, which the MSVC wrapper writes back through
+  the module's link; a `/LIBPATH:` with `=` in it finds nothing through `cl.exe`,
+  so such a directory goes by `LIB`; and under the C locale Cygwin hands a native
+  program a non-ASCII path garbled, so the MSVC wrappers run under `C.UTF-8`.
 - **Kyua** names its results file after the directory; the tests are run with an
   explicit results file (`-r`) so that a space or an apostrophe in the path does not
   stop `report-junit` from finding it.
@@ -255,7 +264,8 @@ test.
 
 - The cross-test runner's shipping of library directories to a remote host
   (`mk.crosstest.mk`) quotes them; no case runs it with such a path.
-- Windows (Cygwin, MSVC, mingw): runs in CI, not by hand.
+Windows (Cygwin llvm and gcc, mingw-w64, MSVC, clang/MSVC) was run by hand on
+2026-11-10: the whole suite passes on each.
 
 ### Refused, for a reason that is not Bmake It's
 

@@ -9,6 +9,13 @@
 # @impl 0f87-6a98-96de-1865
 set -eu
 
+# Under the C locale a native program gets a non-ASCII path garbled: see
+# msvc-cc-wrapper.sh.
+case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+    *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) ;;
+    *) LC_ALL=C.UTF-8 exec sh "$0" "$@" ;;
+esac
+
 # The MSVC environment, as msvc-cc-wrapper.sh takes it.
 [ -z "${BMK_MSVC_BIN:-}" ] || PATH="$BMK_MSVC_BIN:$PATH"
 [ -z "${BMK_MSVC_LIB:-}" ] || export LIB="$BMK_MSVC_LIB"
@@ -26,7 +33,7 @@ shift
 # (Cygwin's lld-link takes POSIX paths, lib.exe Windows ones: see
 # msvc-cc-wrapper.sh)
 if [ -n "${BMK_MSVC_LIBEXE:-}" ]; then
-    winpath() { cygpath -ua "$1"; }
+    winpath() { cygpath -u "$1"; }
 else
     winpath() { cygpath -w "$1"; }
 fi

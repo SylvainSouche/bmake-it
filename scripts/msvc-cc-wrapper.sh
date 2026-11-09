@@ -44,6 +44,14 @@ lang=c              # -x c|c++: the language of a source read from stdin
 from_stdin=no       # a "-" source
 export VSLANG=1033  # cl.exe's messages in English: /showIncludes is parsed
 
+# Under the C locale Cygwin does not hand a native program a non-ASCII path
+# intact (cl.exe: "Cannot open include file"). The locale is read when a Cygwin
+# process starts, so this script has to start again.
+case "${LC_ALL:-${LC_CTYPE:-${LANG:-}}}" in
+    *[Uu][Tt][Ff]-8*|*[Uu][Tt][Ff]8*) ;;
+    *) LC_ALL=C.UTF-8 exec sh "$0" "$@" ;;
+esac
+
 # The MSVC environment mk.toolchain.msvc.mk found (mk.vcvarsall.mk), when it
 # had to: handed over in exported variables, not as an `env PATH="..."`
 # prefix inside CC -- a CC with quotes and spaces breaks wherever it is
@@ -68,12 +76,39 @@ nativepath() {
     cygpath -w "$1"
 }
 if [ -n "${BMK_MSVC_CL:-}" ]; then
-    winpath() { cygpath -ua "$1"; }
+    # (not -a: LLVM makes its temporary output by replacing every % in the
+    # name, so an output's path must not carry the directories above it)
+    winpath() { cygpath -u "$1"; }
     dirsep=/
 else
     winpath() { cygpath -w "$1"; }
     dirsep='\\'
 fi
+# A /LIBPATH: with = in it finds nothing through cl.exe; link.exe reads LIB too.
+eqlibs=""
+add_libpath() {
+    case "$1:${BMK_MSVC_CL:-}" in
+        *=*:) eqlibs="$eqlibs$(winpath "$1");" ;;
+        *)    linkflags="$linkflags /LIBPATH:\"$(winpath "$1")\"" ;;
+    esac
+}
+# cl.exe cannot follow a Cygwin link, so it is given and reports a prerequisite
+# framework's real path. Where that has what a dependency line cannot hold, name
+# it through the link the module has for it (build/<key>/prereqs/, mk.searchpaths.mk).
+through_prereq_links() {
+    _pd=${depfile%%/obj/*}/prereqs
+    while IFS= read -r _h; do
+        case $_h in
+            *[\(\)\ ]*)
+                for _l in "$_pd"/*; do
+                    [ -L "$_l" ] || continue
+                    _t=$(realpath --relative-to=. "$_l")
+                    case $_h in "$_t"/*) _h=$_l${_h#"$_t"}; break ;; esac
+                done ;;
+        esac
+        printf '%s\n' "$_h"
+    done
+}
 dobjects=""         # the objects again, as dumpbin.exe (native) reads them
 
 # addflag <arg>: one argument to the compiler, whole. $cflags is read back by
@@ -213,10 +248,10 @@ while [ $# -gt 0 ]; do
             ;;
         -L)
             shift
-            linkflags="$linkflags /LIBPATH:\"$(winpath "$1")\""
+            add_libpath "$1"
             ;;
         -L*)
-            linkflags="$linkflags /LIBPATH:\"$(winpath "${arg#-L}")\""
+            add_libpath "${arg#-L}"
             ;;
         -Wl,/DEF:*|*.def)
             # The module gives its own export list: no generated one.
@@ -309,7 +344,10 @@ elif [ "$mode" = "compile" ]; then
         done
         IFS=$_ifs
         [ "$skip" = yes ] || printf '%s\n' "$h"
-    done | sort -u | cygpath -u -f - | sed 's/ /\\ /g')
+    # relative to the module directory, as gcc and clang write them: make cannot
+    # read a parenthesis in a dependency line (path-characters-supported-req)
+    done | sort -u | cygpath -u -f - | tr '\n' '\0' | xargs -0 -r realpath -s --relative-to=. -- \
+        | through_prereq_links | sed -e 's/ /\\ /g' -e 's/#/\\#/g')
     {
         printf '%s: %s' "$out" "$(printf '%s' "$srcfile" | sed 's/ /\\ /g')"
         printf '%s\n' "$hdrs" | while IFS= read -r h; do if [ -n "$h" ]; then printf ' \\\n  %s' "$h"; fi; done
@@ -321,6 +359,7 @@ elif [ "$mode" = "compile" ]; then
     exit 0
 else
     [ -n "$out" ] || { echo "msvc-cc-wrapper: link mode with no -o output" >&2; exit 1; }
+    [ -z "$eqlibs" ] || export LIB="$eqlibs${LIB:-}"
     # cl.exe leaves the objects of a compile-and-link in the current directory,
     # for a test program its module's source directory: beside the output, as
     # for a DLL below. @impl 7854-6ae9-ff93-1d73

@@ -678,12 +678,14 @@ _SHLIB_LDFLAGS = -dynamiclib -install_name @rpath/${SHLIB_NAME} -compatibility_v
 # TOOLCHAIN=msvc, understood natively by Cygwin/mingw gcc or clang).
 SHLIB_NAME     = ${LIB}.dll
 SHLIB_LINK     = ${LIB}.dll
-_SHLIB_LDFLAGS = -shared -Wl,--out-implib,${_LIBOUT_DIR:Q}/${LIB}.lib
+# (relative: LLVM's linker makes its temporary output by replacing every % in
+# the name, so an output's path must not carry the directories above the module)
+_SHLIB_LDFLAGS = -shared -Wl,--out-implib,${LIBDIR_LOCAL}/${LIB}.lib
 # delay-load-default-by-library-req: the export list, for DATA marks and for
 # GNU ld's delay-import library. Under MSVC, msvc-cc-wrapper.sh writes the same
 # file when it generates the export list.
 .  if ${_DELAYLOAD_KIND} == "lld" || ${_DELAYLOAD_KIND} == "gnu"
-_SHLIB_LDFLAGS += -Wl,--output-def,${_OBJDIR:Q}/${LIB}.def
+_SHLIB_LDFLAGS += -Wl,--output-def,${OBJDIR}/${LIB}.def
 .  endif
 .else
 SHLIB_NAME     = lib${LIB}.so.${SHLIB_MAJOR}
