@@ -89,10 +89,10 @@ BMK_MSVC_LIBEXE := ${_MSVC_LLD_LINK} /lib
 .endif
 
 # @impl 0f87-6a98-96de-1865
-CC  = sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
-CXX = sh ${BMK_MKDIR}/../scripts/msvc-cc-wrapper.sh
+CC  = sh ${BMK_MKDIR:Q}/../scripts/msvc-cc-wrapper.sh
+CXX = sh ${BMK_MKDIR:Q}/../scripts/msvc-cc-wrapper.sh
 LD  = ${CC}
-AR  = sh ${BMK_MKDIR}/../scripts/msvc-lib-wrapper.sh
+AR  = sh ${BMK_MKDIR:Q}/../scripts/msvc-lib-wrapper.sh
 AS  ?= as
 RANLIB = true
 

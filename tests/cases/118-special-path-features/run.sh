@@ -40,7 +40,10 @@ printf '#include <stdio.h>\n#include "util.h"\nint main(void) { printf("%%d\\n",
 if grep -q 'PARENT_WS entry does not exist' "$A/child/build.log"; then fail "A: the parent workspace path was read as several"; fi
 bin=$(find "$A/child/App" -type f -name "$(prog_name app)" | head -1)
 [ -n "$bin" ] || fail "A: no program"
-[ "$(runs "$bin")" = 7 ] || fail "A: the program did not run against the parent's library"
+# Windows has no run path: the parent's DLL is found through PATH
+_dll=$(find "$A/parent" -type f -name '*spfutil*.dll' | head -1)
+( [ -z "$_dll" ] || PATH="$(dirname "$_dll"):$PATH"
+  [ "$(runs "$bin")" = 7 ] ) || fail "A: the program did not run against the parent's library"
 ( cd "$A/child" && bmake clean >/dev/null 2>&1 )
 [ -z "$(find "$A/child" -type f -name "$(prog_name app)" -path '*/bin/*')" ] || fail "A: clean left the program"
 
@@ -131,7 +134,8 @@ grep -q '^PARENT_WS=.*other\\ (1)$' makefile || { cat makefile >&2; fail "E: add
 printf 'PREREQS=Lib\n.include <mk.framework.mk>\n' > App/makefile
 printf 'PARENT_WS=\n.include <mk.workspace.mk>\n' > makefile
 bmake >build.log 2>&1 || { tail -20 build.log >&2; fail "E: the workspace did not build"; }
-[ "$(bmake run PROGRAM=app 2>&1 | tail -1)" = 42 ] || fail "E: bmake run did not run the program"
+# (mingw-w64 and MSVC programs end a line with CRLF)
+[ "$(bmake run PROGRAM=app 2>&1 | tail -1 | tr -d '\r')" = 42 ] || fail "E: bmake run did not run the program"
 # a compiled ATF test through kyua
 if command -v kyua >/dev/null 2>&1 && { atf_bundled || atf_pc --exists atf-c 2>/dev/null; }; then
     printf 'TEST_PROG=math_test\nLIBS=math\n.include <mk.tst.mk>\n' > Lib/math.tst/makefile

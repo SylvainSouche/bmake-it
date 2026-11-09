@@ -119,7 +119,7 @@ mkws_rich() { # mkws_rich <root> <ws> <fw> <module>
     printf 'PROG=x\nLIBS=g\n.include <mk.prog.mk>\n' > "$1/$2/$_fw2/$4/makefile"
     printf '#include "greet.h"\nint main(void) { greet(); return 0; }\n' > "$1/$2/$_fw2/$4/src/main.c"
 }
-has_binary() { [ -n "$(find "$1" -type f -name x -path '*/bin/*' 2>/dev/null)" ]; }
+has_binary() { [ -n "$(find "$1" -type f \( -name x -o -name x.exe \) -path '*/bin/*' 2>/dev/null)" ]; }
 
 # bm <mk dir> [bmake args]: bmake told where the mk files are. MAKESYSPATH is a
 # colon-separated list, so a directory with a colon in its name goes by -m; and bmake
@@ -152,7 +152,7 @@ probe() {
         # install into a directory that carries the character too
         _dst="$TOP/dst$N${CHAR}dst"; rm -rf "$_dst"
         if ! ( cd "$1" && bm "$2" install DESTDIR="$_dst" >"$LOGP.install" 2>&1 ) \
-            || [ -z "$(find "$_dst" -type f -name x 2>/dev/null)" ]; then
+            || [ -z "$(find "$_dst" -type f \( -name x -o -name x.exe \) 2>/dev/null)" ]; then
             RESULT=install-failed; rm -rf "$_dst"; return 0
         fi
         rm -rf "$_dst"
@@ -165,6 +165,13 @@ probe() {
 # One character: its four places, the outcome of each in $TOP/res.<nn>.
 do_char() { # do_char <n> <label> <fmt>
     N=$1; label=$2
+    # On Windows a backslash is a path separator: the directory made is two
+    # directories, and no name carries the character.
+    case $(uname -s):$label in
+        CYGWIN*:backslash|MSYS*:backslash)
+            echo "$label skipped skipped skipped skipped" > "$TOP/res.$(printf %02d "$N")"
+            return 0 ;;
+    esac
     c=$(printf "%b" "$3")
     root="$TOP/t$N"; CHAR=$c; LOGP="$TOP/log.$N"
     one() { # one <column> <parent> <ws> <fw> <module> : the outcome of building that tree
