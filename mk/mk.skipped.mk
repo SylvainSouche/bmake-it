@@ -14,7 +14,7 @@
 # @impl 0f87-6ac0-d892-32c8
 
 _FWDIR = ${.CURDIR}/..
-_SK_NAME = ${.CURDIR:T}
+_SK_NAME = ${_CURNAME}
 _SK_ISLIB = ${_SK_NAME:Mlib*}
 .if ${_SK_ROLE} == "module"
 .  if defined(LIB) && !empty(LIB)
@@ -28,15 +28,15 @@ _SK_LIB = ${_SK_NAME:S/.m$//:S/^lib//}
 
 all:
 .if ${_SK_ROLE} == "module"
-	@echo "===> module ${.CURDIR:T} skipped: ${_BMK_SKIP_MSG}"
+	@echo "===> module ${_CURNAME} skipped: ${_BMK_SKIP_MSG}"
 .  if (defined(LIB) && !empty(LIB)) || !empty(_SK_ISLIB)
-	@mkdir -p ${_FWDIR}/${BUILD_ROOT}/.skipped; \
-	echo "${.CURDIR:T}: ${_BMK_SKIP_MSG}" > ${_FWDIR}/${BUILD_ROOT}/.skipped/${_SK_LIB}
+	@mkdir -p ${_FWDIR:Q}/${BUILD_ROOT}/.skipped; \
+	echo "${_CURNAME}: ${_BMK_SKIP_MSG}" > ${_FWDIR:Q}/${BUILD_ROOT}/.skipped/${_SK_LIB}
 .  endif
 .else
-	@echo "===> framework ${.CURDIR:T} skipped: ${_BMK_SKIP_MSG}"
-	@mkdir -p ${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; \
-	echo "${_BMK_SKIP_MSG}" > ${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded
+	@echo "===> framework ${_CURNAME} skipped: ${_BMK_SKIP_MSG}"
+	@mkdir -p ${.CURDIR:Q}/${BUILD_ROOT}/runs/${RUN_ID}; \
+	echo "${_BMK_SKIP_MSG}" > ${.CURDIR:Q}/${BUILD_ROOT}/runs/${RUN_ID}/build.excluded
 .endif
 
 # (_check_requires: an excluded framework has nothing to check -- the
@@ -46,11 +46,11 @@ copy-up _copy_up test docs add-prereq _fw_build_closure _check_requires:
 
 clean:
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/build
+	rm -rf ${.CURDIR:Q}/build
 .else
-	rm -rf ${.CURDIR}/${BUILD_ROOT}
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}
 .endif
 # @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
-	@rmdir ${.CURDIR}/build 2>/dev/null || true
+	@rmdir ${.CURDIR:Q}/build 2>/dev/null || true
 
 .PHONY: all copy-up test docs add-prereq _fw_build_closure clean

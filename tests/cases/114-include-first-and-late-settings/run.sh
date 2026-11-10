@@ -11,7 +11,7 @@
 set -eu
 cd ws/Fw/mod.m
 # the real bmake, past the harness wrapper (first on PATH), so BMK_MKDIR can be unset
-REAL=$(PATH=${PATH#*:} command -v bmake)
+REAL=${BMK_REAL_MAKE:-$(PATH=${PATH#*:} command -v bmake)}
 direct() { env -u BMK_MKDIR "$REAL" "$@"; }   # MAKESYSPATH still finds the mk files
 
 # 1. run directly, BMK_MKDIR unset: TARGET readable, BMK_MKDIR is the mk directory

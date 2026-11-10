@@ -18,10 +18,10 @@ BMK_MKDIR = ${.CURDIR}
 # then its own -- outer to inner, all included, in that order.
 # ---------------------------------------------------------------------------
 _LOCAL_MK_DIRS =
-.for _p in ${PARENT_WS}
+.for _p in ${_PARENT_WS_E}
 _LOCAL_MK_DIRS += ${_p}/mk
 .endfor
-_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+_LOCAL_MK_DIRS += ${.CURDIR:${_BMK_ENCW}}/../../mk ${.CURDIR:${_BMK_ENCW}}/../mk ${.CURDIR:${_BMK_ENCW}}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
@@ -32,7 +32,7 @@ _LOCAL_MK_PHASE = pre
 
 # @impl 0f87-6a98-5ff4-1b42
 .if !defined(PROG) || empty(PROG)
-PROG != basename ${.CURDIR} .m
+PROG != basename ${.CURDIR:Q} .m
 .endif
 
 # Windows requires the .exe extension for PATH lookup / shell execution --
@@ -68,150 +68,26 @@ _CCLINK = ${CXX}
 _CCLINK = ${CC}
 .endif
 
-.if exists(${.CURDIR}/include)
-CFLAGS   += -I${.CURDIR}/include
-CXXFLAGS += -I${.CURDIR}/include
-.endif
-
 _FWDIR = ${.CURDIR}/..
-.if exists(${_FWDIR}/local/include)
-CFLAGS   += -I${_FWDIR}/local/include
-CXXFLAGS += -I${_FWDIR}/local/include
-.endif
-.if exists(${_FWDIR}/include)
-CFLAGS   += -I${_FWDIR}/include
-CXXFLAGS += -I${_FWDIR}/include
-.endif
-.if exists(${_FWDIR}/${BUILD_ROOT}/include)
-CFLAGS   += -I${_FWDIR}/${BUILD_ROOT}/include
-CXXFLAGS += -I${_FWDIR}/${BUILD_ROOT}/include
-.endif
-
-.if exists(${_FWDIR}/makefile)
-# @impl 0f87-6ad7-d974-4a81
-# ${MAKE}, not a command named bmake: NetBSD has no bmake (its make is /usr/bin/make),
-# and 2>/dev/null || true would hide the failure as an empty PREREQS.
-_PREREQS != ${MAKE} -f ${_FWDIR}/makefile -V PREREQS 2>/dev/null || true
-.  for _p in ${_PREREQS}
-# REQ-headers-resolved-from-source-req: a PREREQS framework is resolved
-# first within the current workspace, then falling back through PARENT_WS
-# workspaces in declared order if not found locally.
-# @impl 0f87-6a98-5e47-0c71
-.    if exists(${_FWDIR}/../${_p})
-_PREREQ_BASE.${_p} = ${_FWDIR}/..
-.    else
-.      for _pws in ${PARENT_WS}
-.        if !defined(_PREREQ_BASE.${_p}) && exists(${_pws}/${_p})
-_PREREQ_BASE.${_p} = ${_pws}
-.        endif
-.      endfor
-.    endif
-.    if defined(_PREREQ_BASE.${_p})
-# public-headers-system-req (D3): a framework may opt its whole public
-# header surface into -isystem for consumers, typically because it
-# wraps/vendors third-party code -- an explicit, framework-level
-# declaration, not inferred from any module's own WARN= setting.
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/makefile)
-_PREREQ_SYS.${_p} != ${MAKE} -f ${_PREREQ_BASE.${_p}}/${_p}/makefile -V PUBLIC_HEADERS_SYSTEM 2>/dev/null || true
-.      endif
-.      if ${_PREREQ_SYS.${_p}:Uno} == "yes"
-_INCFLAG.${_p} = -isystem
-.      else
-_INCFLAG.${_p} = -I
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/include)
-CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
-CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/include
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include)
-CFLAGS   += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-CXXFLAGS += ${_INCFLAG.${_p}}${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/include
-.      endif
-.      if exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
-LDFLAGS  += -L${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
-.      endif
-.    endif
-.  endfor
-.endif
-
-# prog-only-framework-ld-warning-fix-req: guarded the same way the
-# PREREQS= loop just above already is -- a framework holding only a
-# PROG (no LIB module at all) never creates its own build/<KEY>/lib/,
-# so an unconditional -L here produced a harmless but noisy
-# `ld: warning: search path ... not found` on every single link (found
-# in real use, Viewer: a program-only framework). A sibling LIB module
-# in the SAME framework, when one exists, has already built and
-# copied-up by the time this module's own makefile parses (modules
-# build in order, one fully completing before the next starts), so
-# this dir reliably exists whenever it's actually needed.
-# @impl 0f87-6abe-3f50-b644
-.if exists(${_FWDIR}/${BUILD_ROOT}/lib)
-LDFLAGS += -L${_FWDIR}/${BUILD_ROOT}/lib
-.endif
-_LIB_SEARCH_DIRS = ${_FWDIR}/${BUILD_ROOT}/lib
-.for _p in ${_PREREQS}
-.  if defined(_PREREQ_BASE.${_p}) && exists(${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib)
-_LIB_SEARCH_DIRS += ${_PREREQ_BASE.${_p}}/${_p}/${BUILD_ROOT}/lib
-.  endif
-.endfor
-
-# Runtime search path for LIBS= -- link-time -L/-l success doesn't imply
-# the resulting binary can find the shared lib at run time (see mk.lib.mk
-# for the same reasoning). No rpath concept on Windows.
-# @impl 0f87-6aa9-448d-537c
-.if ${TARGET} != "win"
-.  for _d in ${_LIB_SEARCH_DIRS}
-LDFLAGS += -Wl,-rpath,${_d}
-.  endfor
-.endif
-
-# @impl 0f87-6a98-76c2-a96e
-# import-link-transitivity-req: see mk.lib.mk's identical comment -- a
-# PROG has no lib${LIB}.linkdeps of its own to write (nothing links
-# against a PROG), only the consumer-side read.
-# @impl 0f87-6ab5-8e46-cfb1
-.include "${BMK_MKDIR}/mk.delayload.mk"
-.for _l in ${LIBS}
-LDFLAGS += -l${_DELAY_LIB.${_l}:U${_l}}
-.  for _d in ${_LIB_SEARCH_DIRS}
-.    if exists(${_d}/lib${_l}.linkdeps)
-_LINKDEPS.${_l} != cat ${_d}/lib${_l}.linkdeps
-LDFLAGS += ${_LINKDEPS.${_l}}
-.    endif
-.  endfor
-.endfor
-
-# relink-on-libs-change-req: each LIBS= entry's *actual resolved file*
-# (not just its -l/-L flags) is a real make prerequisite of ${_BINOUT},
-# so a library rebuilt elsewhere -- including a PREREQS=-visible one in
-# another framework -- triggers a genuine relink here, not just a link-
-# time existence check (found empirically: a stale binary kept passing
-# because nothing in the prerequisite graph ever changed when a cross-
-# framework static library did). Empty when not yet built is fine --
-# the existing existence-check loop below still gives its own clear
-# error for that case; this only matters once the file DOES exist.
-# @impl 0f87-6aba-a303-153e
-# @impl 7854-6ad0-fb85-c2c6
-_LIBS_FILES =
-.for _l in ${LIBS}
-_LIB_FILE.${_l} != for _d in ${_LIB_SEARCH_DIRS}; do \
-	for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
-		if [ -f "$$_d/$$_f" ]; then echo "$$_d/$$_f"; break 2; fi; \
-	done; \
-done
-_LIBS_FILES += ${_LIB_FILE.${_l}}
-.endfor
+# where headers and libraries are found: the module's, its framework's, the PREREQS= frameworks'
+.include "${BMK_MKDIR}/mk.searchpaths.mk"
 
 _OBJDIR = ${.CURDIR}/${OBJDIR}
-_BINOUT = ${.CURDIR}/${BINDIR_LOCAL}/${PROG}
+# Relative to the module directory -- bmake always runs there -- so that no
+# character of the directory's path (an '=' read as an assignment, a '%' read
+# as a pattern) ever sits in a target or prerequisite of a rule below
+# (path-characters-supported-req). The same holds for _INPUTS_HASH_FILE, and for
+# the compiler's -o: the .d file it writes names its target as it was given.
+# @impl 0f87-6af0-8ab0-6f2f
+_BINOUT = ${BINDIR_LOCAL}/${PROG}
 
 OBJS =
 .for _s in ${SRCS}
-OBJS += ${_OBJDIR}/${_s:R}.o
+OBJS += ${OBJDIR}/${_s:R}.o
 .endfor
 
 _create_dirs:
-	@mkdir -p ${_OBJDIR} ${.CURDIR}/${BINDIR_LOCAL}
+	@mkdir -p ${_OBJDIR:Q} ${.CURDIR:Q}/${BINDIR_LOCAL}
 
 # nested-srcs-objdir-req: see mk.lib.mk's identical comment -- each
 # compile rule below mkdir -p's its own ${.TARGET:H} first, so a nested
@@ -220,28 +96,28 @@ _create_dirs:
 # @impl 0f87-6aba-a54a-f741
 .for _s in ${SRCS}
 .  if ${_s:E} == "c"
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: src/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -c src/${_s} -o ${.TARGET}
 .  elif !empty(_CXX_EXTS:M${_s:E})
-${_OBJDIR}/${_s:R}.o: ${.CURDIR}/src/${_s} ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: src/${_s} ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${.CURDIR}/src/${_s} -o ${.TARGET}
+	${CXX} ${CXXFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -c src/${_s} -o ${.TARGET}
 .  elif ${_s:E} == "y"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+${OBJDIR}/${_s:R}.c: src/${_s}
 	@mkdir -p ${.TARGET:H}
 	${YACC} ${YFLAGS} -d -o ${.TARGET} ${.ALLSRC}
-	@if [ -f y.tab.h ]; then mv y.tab.h ${_OBJDIR}/${_s:R}.h; fi
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+	@if [ -f y.tab.h ]; then mv y.tab.h ${OBJDIR}/${_s:R}.h; fi
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  elif ${_s:E} == "l"
-${_OBJDIR}/${_s:R}.c: ${.CURDIR}/src/${_s}
+${OBJDIR}/${_s:R}.c: src/${_s}
 	@mkdir -p ${.TARGET:H}
 	${LEX} ${LFLAGS} -o ${.TARGET} ${.ALLSRC}
-${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
+${OBJDIR}/${_s:R}.o: ${OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 	@mkdir -p ${.TARGET:H}
-	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${_OBJDIR}/${_s:R}.d} -c ${_OBJDIR}/${_s:R}.c -o ${.TARGET}
+	${CC} ${CFLAGS} ${_DEP_CFLAGS} ${_DEP_CFLAGS:D-MF ${OBJDIR}/${_s:R}.d} -c ${OBJDIR}/${_s:R}.c -o ${.TARGET}
 .  endif
 # header-dependency-tracking-req: absent on the first build of this
 # source (no .o exists yet to have produced it), present and consulted
@@ -253,7 +129,7 @@ ${_OBJDIR}/${_s:R}.o: ${_OBJDIR}/${_s:R}.c ${_INPUTS_HASH_FILE}
 .  endif
 .endfor
 
-all: _check_inputs_hash _create_dirs ${_BINOUT}
+all: _check_inputs_hash _create_dirs _create_prereq_links ${_BINOUT}
 	@:
 
 # @impl 0f87-6a98-8b7f-9215
@@ -268,19 +144,19 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 .endfor
 .for _l in ${LIBS}
 	@_found=no; \
-	for _d in ${_LIB_SEARCH_DIRS}; do \
+	for _d in ${_LIB_SEARCH_DIRS_SH}; do \
 		for _f in ${_LIB_FILE_FORMS:S/@/${_l}/g}; do \
 			if [ -f "$$_d/$$_f" ]; then _found=yes; break 2; fi; \
 		done; \
 	done; \
 	if [ "$$_found" = no ]; then \
-		for _d in ${_LIB_SEARCH_DIRS}; do \
+		for _d in ${_LIB_SEARCH_DIRS_SH}; do \
 			if [ -f "$$_d/../.skipped/${_l}" ]; then \
-				echo "error: cannot link ${PROG}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${.CURDIR:T} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
+				echo "error: cannot link ${PROG}: library ${_l} is not built here -- $$(cat "$$_d/../.skipped/${_l}") -- ${_CURNAME} depends on it, so give it the same PLATFORMS=/TOOLCHAINS=" >&2; \
 				exit 1; \
 			fi; \
 		done; \
-		echo "error: cannot link ${PROG}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS}" >&2; \
+		echo "error: cannot link ${PROG}: prerequisite library ${_l} (from LIBS=) has not been built yet -- searched: ${_LIB_SEARCH_DIRS:${_BMK_DEC}}" >&2; \
 		exit 1; \
 	fi
 .endfor
@@ -305,10 +181,13 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 # sort+uniq -- static link order can matter.
 # @impl 0f87-6abe-3f50-0560
 # @impl 0f87-6abe-8c3c-9ca3
+# recipe-paths-quoted-req: the flags are passed on as an argument list (set --, "$@"), not a
+# string split again at its spaces.
+# @impl 0f87-6af0-c379-1630
 # msvc-cc-shell-quoting-req: the link command is echoed with :Q, never
 # inside "..." (MSVC's INCLUDE=\"...;...\" in CC split the line).
 # @impl 7854-6adf-d52c-bc05
-	@_ldflags=""; _seen=""; \
+	@_seen=""; set --; \
 	for _f in ${LDFLAGS}; do \
 		_skip=no; \
 		case "$$_f" in \
@@ -318,29 +197,29 @@ ${_BINOUT}: ${OBJS} ${_LIBS_FILES} ${_DELAYLOAD_FILES}
 				esac; \
 				[ "$$_skip" = no ] && _seen="$$_seen $$_f" ;; \
 		esac; \
-		[ "$$_skip" = no ] && _ldflags="$$_ldflags $$_f"; \
+		[ "$$_skip" = no ] && set -- "$$@" "$$_f"; \
 	done; \
-	echo ${_CCLINK:Q} -o ${.TARGET} ${OBJS} $$_ldflags; \
-	${_CCLINK} -o ${.TARGET} ${OBJS} $$_ldflags
+	echo ${_CCLINK:Q} -o ${.TARGET} ${OBJS} "$$@"; \
+	${_CCLINK} -o ${.TARGET} ${OBJS} "$$@"
 	@echo "===> built ${PROG} → ${BINDIR_LOCAL}/${PROG}"
 
 # @impl 0f87-6a98-8ee9-ae83
 copy-up: all
-	@sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${BINDIR_LOCAL} ${_FWDIR}/${BINDIR_LOCAL}
+	@sh ${BMK_MKDIR:Q}/../scripts/diff-aware-copy.sh ${.CURDIR:Q}/${BINDIR_LOCAL} ${_FWDIR:Q}/${BINDIR_LOCAL}
 	@echo "===> copy-up ${PROG} → framework ${BINDIR_LOCAL}/"
 
 clean:
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/build
+	rm -rf ${.CURDIR:Q}/build
 .else
-	rm -rf ${.CURDIR}/${BUILD_ROOT}
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}
 .endif
 	rm -f ${PROG} *.o *.obj *.core *.dylib *.so *.so.* *.a *.lib *.exe 2>/dev/null || true
-	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.depend 2>/dev/null || true
+	rm -f ${.CURDIR:Q}/.gen-mod-order.mk ${.CURDIR:Q}/.depend 2>/dev/null || true
 # clean-leaves-no-empty-build-dirs-req: an empty build/ left here kept the
 # module directory alive after git switch. rmdir only removes it if empty.
 # @impl 7854-6ad2-03bb-077e
-	@rmdir ${.CURDIR}/build 2>/dev/null || true
+	@rmdir ${.CURDIR:Q}/build 2>/dev/null || true
 
 
 .include "${BMK_MKDIR}/mk.test.mk"
@@ -351,7 +230,7 @@ _LOCAL_MK_PHASE = local
 BMK_HELP_ROLE = prog
 .include "${BMK_MKDIR}/mk.help.mk"
 
-.PHONY: all clean help copy-up _create_dirs help
+.PHONY: all clean help copy-up _create_dirs _create_prereq_links help
 .else
 _SK_ROLE = module
 .include "${BMK_MKDIR}/mk.skipped.mk"

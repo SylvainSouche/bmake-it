@@ -57,7 +57,7 @@ _TST_ALLSRCS != find src -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp'
 # --- which sources build what -------------------------------------------
 .if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
 .  if empty(TEST_SRCS)
-.    error "${.CURDIR:T}: PROG= and TEST_PROG= are both set, so TEST_SRCS= must name the test program's sources (relative to src/); PROG is built from the rest"
+.    error "${_CURNAME}: PROG= and TEST_PROG= are both set, so TEST_SRCS= must name the test program's sources (relative to src/); PROG is built from the rest"
 .  endif
 _TST_USRCS =
 .  for _s in ${_TST_ALLSRCS}
@@ -67,7 +67,7 @@ _TST_USRCS += ${_s}
 .    endif
 .  endfor
 .  if empty(_TST_USRCS)
-.    error "${.CURDIR:T}: PROG=${PROG} has no sources left once TEST_SRCS=${TEST_SRCS} is taken out of src/"
+.    error "${_CURNAME}: PROG=${PROG} has no sources left once TEST_SRCS=${TEST_SRCS} is taken out of src/"
 .  endif
 SRCS = ${_TST_USRCS}
 _TST_TSRCS = ${TEST_SRCS}
@@ -162,10 +162,10 @@ _TST_TESTNAMES = ${TEST_PROG} ${_TST_SCRIPTS}
 # @impl 7854-6ae8-7be6-c5b1
 .  include "${BMK_MKDIR}/mk.common.mk"
 _LOCAL_MK_DIRS =
-.  for _p in ${PARENT_WS}
+.  for _p in ${_PARENT_WS_E}
 _LOCAL_MK_DIRS += ${_p}/mk
 .  endfor
-_LOCAL_MK_DIRS += ${.CURDIR}/../../mk ${.CURDIR}/../mk ${.CURDIR}/mk
+_LOCAL_MK_DIRS += ${.CURDIR:${_BMK_ENCW}}/../../mk ${.CURDIR:${_BMK_ENCW}}/../mk ${.CURDIR:${_BMK_ENCW}}/mk
 _LOCAL_MK_PHASE = pre
 .  include "${BMK_MKDIR}/mk.local.mk"
 .  include "${BMK_MKDIR}/mk.resolved.mk"
@@ -176,9 +176,9 @@ _FWDIR = ${.CURDIR}/..
 all:
 	@:
 clean:
-	rm -rf ${.CURDIR}/${BUILD_ROOT}
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}
 # @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
-	@rmdir ${.CURDIR}/build 2>/dev/null || true
+	@rmdir ${.CURDIR:Q}/build 2>/dev/null || true
 .PHONY: all clean
 .  else
 _SK_ROLE = module
@@ -196,9 +196,9 @@ _WSROOT = ${.CURDIR}/../..
 # workspace's, then each PARENT_WS's.
 _TST_PATH = ${_TST_BINDIR}:${_FWDIR}/${BINDIR_LOCAL}:${_WSROOT}/${BINDIR_LOCAL}
 _TST_SHARE = ${_FWDIR}/${SHAREDIR_LOCAL}:${_WSROOT}/${SHAREDIR_LOCAL}
-.  for _p in ${PARENT_WS}
-_TST_PATH := ${_TST_PATH}:${_p}/${BINDIR_LOCAL}
-_TST_SHARE := ${_TST_SHARE}:${_p}/${SHAREDIR_LOCAL}
+.  for _p in ${_PARENT_WS_E}
+_TST_PATH := ${_TST_PATH}:${_p:${_BMK_DEC}}/${BINDIR_LOCAL}
+_TST_SHARE := ${_TST_SHARE}:${_p:${_BMK_DEC}}/${SHAREDIR_LOCAL}
 .  endfor
 
 .  if !empty(TEST)
@@ -228,15 +228,17 @@ ${_BINOUT} ${OBJS}: ${_ATFB_LIBFILES}
 # TEST_SRCS= as part of `all` (a test's compile error surfaces at build
 # time), into the module's own bin/ -- never copied up.
 .  if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
-_TST_TESTBIN = ${.CURDIR}/${BUILD_ROOT}/bin/${TEST_PROG}
-${_TST_TESTBIN}: ${TEST_SRCS:S|^|${.CURDIR}/src/|} ${_LIBS_FILES} ${_ATFB_LIBFILES:U}
+# Relative to the module directory (module-rules-relative-targets-req).
+# @impl 0f87-6af0-8ab0-6f2f
+_TST_TESTBIN = ${BUILD_ROOT}/bin/${TEST_PROG}
+${_TST_TESTBIN}: ${TEST_SRCS:S|^|src/|} ${_LIBS_FILES} ${_ATFB_LIBFILES:U}
 	@mkdir -p ${.TARGET:H}
 .    if ${_TST_FLAVOR} == "cxx"
-	${CXX} ${CXXFLAGS} ${_TST_ATF_CFLAGS} -I${.CURDIR}/include \
-		${TEST_SRCS:S|^|${.CURDIR}/src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
+	${CXX} ${CXXFLAGS} ${_TST_ATF_CFLAGS} -Iinclude \
+		${TEST_SRCS:S|^|src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
 .    else
-	${CC} ${CFLAGS} ${_TST_ATF_CFLAGS} -I${.CURDIR}/include \
-		${TEST_SRCS:S|^|${.CURDIR}/src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
+	${CC} ${CFLAGS} ${_TST_ATF_CFLAGS} -Iinclude \
+		${TEST_SRCS:S|^|src/|} -o ${.TARGET} ${LDFLAGS} ${_TST_ATF_LIBS}
 .    endif
 	@echo "===> built test program ${TEST_PROG}"
 all: ${_TST_TESTBIN}
@@ -251,23 +253,23 @@ _TST_EXE =
 _TST_EXE = .exe
 .  endif
 _tst_stage: ${_TST_STAGE_DEPS}
-	@rm -rf ${_TST_BINDIR}; mkdir -p ${_TST_BINDIR}
+	@rm -rf ${_TST_BINDIR:Q}; mkdir -p ${_TST_BINDIR:Q}
 .  if ${_TST_HAS_PROG} == "yes" && ${_TST_HAS_TEST} == "yes"
-	cp ${_TST_TESTBIN} ${_TST_BINDIR}/${TEST_PROG}${_TST_EXE}
-	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
+	cp ${_TST_TESTBIN} ${_TST_BINDIR:Q}/${TEST_PROG}${_TST_EXE}
+	cp ${_BINOUT} ${_TST_BINDIR:Q}/${_BINOUT:T}
 .  elif ${_TST_HAS_TEST} == "yes"
-	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
+	cp ${_BINOUT} ${_TST_BINDIR:Q}/${_BINOUT:T}
 .  elif ${_TST_HAS_PROG} == "yes"
-	cp ${_BINOUT} ${_TST_BINDIR}/${_BINOUT:T}
+	cp ${_BINOUT} ${_TST_BINDIR:Q}/${_BINOUT:T}
 .  endif
 .  for _s in ${_TST_SCRIPTS}
-	cp ${.CURDIR}/testcases/${_s} ${_TST_BINDIR}/${_s}
-	chmod +x ${_TST_BINDIR}/${_s}
+	cp ${.CURDIR:Q}/testcases/${_s} ${_TST_BINDIR:Q}/${_s}
+	chmod +x ${_TST_BINDIR:Q}/${_s}
 .  endfor
-	@echo 'syntax(2)' > ${_TST_KYUAFILE}
-	@echo 'test_suite("${.CURDIR:T}")' >> ${_TST_KYUAFILE}
+	@echo 'syntax(2)' > ${_TST_KYUAFILE:Q}
+	@echo 'test_suite("'${_CURNAME:Q}'")' >> ${_TST_KYUAFILE:Q}
 .  for _t in ${_TST_SEL}
-	@echo 'atf_test_program{name="${_t}"}' >> ${_TST_KYUAFILE}
+	@echo 'atf_test_program{name="${_t}"}' >> ${_TST_KYUAFILE:Q}
 .  endfor
 
 .include "${BMK_MKDIR}/mk.crosstest.mk"
@@ -276,34 +278,37 @@ _tst_stage: ${_TST_STAGE_DEPS}
 test: _xtest_check _tst_stage
 .  if empty(_TST_SEL)
 .    if !empty(TEST)
-	@echo "error: TEST=${TEST} matches no test in ${.CURDIR:T}" >&2; exit 1
+	@echo "error: TEST=${TEST} matches no test in ${_CURNAME}" >&2; exit 1
 .    else
-	@echo "no tests in ${.CURDIR:T} (no TEST_PROG=, no testcases/*.sh)"
+	@echo "no tests in ${_CURNAME} (no TEST_PROG=, no testcases/*.sh)"
 .    endif
 .  else
-	@_rundir=${.CURDIR}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+.    if !empty(_TST_SEL:M*.sh)
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; bmk_atfsh_check ${.CURDIR:Q} || exit 1
+.    endif
+	@_rundir=${.CURDIR:Q}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
 	_rc=0; \
 	if [ "${_XTEST_MODE}" = remote ]; then \
 		echo "===> running the tests on ${_XTEST_RUNNER}"; \
-		sh ${_XTEST_SCRIPT} --runner '${_XTEST_RUNNER}' --tests ${_TST_BINDIR} --out "$$_rundir" --kyua ${KYUA} \
+		sh ${_XTEST_SCRIPT:Q} --runner '${_XTEST_RUNNER}' --tests ${_TST_BINDIR:Q} --out "$$_rundir" --kyua ${KYUA} \
 			$$([ "${REPORT}" = "yes" ] && echo --html) \
-			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts:}" \
+			--ship "${_XTEST_LIBVAR}=${_XTEST_LIBDIRS:ts::S/\\//g}" \
 			--ship "PATH=${_TST_PATH:S/:/ /g:N${_TST_BINDIR}:ts:}" \
 			--ship "BMK_SHAREDIR=${_TST_SHARE}" || _rc=$$?; \
 	else \
 	export PATH="${_TST_PATH}:$$PATH" BMK_SHAREDIR="${_TST_SHARE}"; \
-	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR} && ${KYUA} test -k Kyuafile) || _rc=$$?; \
-	(cd ${_TST_BINDIR} && ${KYUA} report-junit --output="$$_rundir/test-results.xml"); \
+	${_XTEST_LOCAL_ENV} (cd ${_TST_BINDIR:Q} && ${KYUA} test -r "$$_rundir/kyua.db" -k Kyuafile) || _rc=$$?; \
+	(cd ${_TST_BINDIR:Q} && ${KYUA} report-junit -r "$$_rundir/kyua.db" --output="$$_rundir/test-results.xml"); \
 	fi; \
 	echo "===> test results: ${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml"; \
 	if [ "${REPORT}" = "yes" ] && [ "${_XTEST_MODE}" != remote ]; then \
-		(cd ${_TST_BINDIR} && ${KYUA} report-html --force --output="$$_rundir/test-report-html"); \
+		(cd ${_TST_BINDIR:Q} && ${KYUA} report-html -r "$$_rundir/kyua.db" --force --output="$$_rundir/test-report-html"); \
 	fi; \
 	if [ "${REPORT}" = "yes" ]; then \
 		echo "===> full HTML report: ${BUILD_ROOT}/runs/${RUN_ID}/test-report-html/index.html"; \
 	fi; \
-	rm -rf ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
-	cp -a "$$_rundir" ${.CURDIR}/${BUILD_ROOT}/runs/latest; \
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT}/runs/latest; \
+	cp -a "$$_rundir" ${.CURDIR:Q}/${BUILD_ROOT}/runs/latest; \
 	exit $$_rc
 .  endif
 

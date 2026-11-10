@@ -21,17 +21,18 @@
 # @impl 0f87-6aa9-0275-667f
 # @impl 0f87-6ab5-88d0-e665
 
+# (_LOCAL_MK_DIRS holds directories as encoded words, see mk.common.mk)
 .for _d in ${_LOCAL_MK_DIRS}
-.  if exists(${_d}/${_LOCAL_MK_PHASE}.mk)
-.    include "${_d}/${_LOCAL_MK_PHASE}.mk"
+.  if exists(${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.mk)
+.    include "${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.mk"
 .  endif
-.  if exists(${_d}/${_LOCAL_MK_PHASE}.${TOOLCHAIN}.mk)
-.    include "${_d}/${_LOCAL_MK_PHASE}.${TOOLCHAIN}.mk"
+.  if exists(${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TOOLCHAIN}.mk)
+.    include "${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TOOLCHAIN}.mk"
 .  endif
-.  if exists(${_d}/${_LOCAL_MK_PHASE}.${TARGET}.mk)
-.    include "${_d}/${_LOCAL_MK_PHASE}.${TARGET}.mk"
+.  if exists(${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TARGET}.mk)
+.    include "${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TARGET}.mk"
 .  endif
-.  if exists(${_d}/${_LOCAL_MK_PHASE}.${TARGET}_${TARGET_ARCH}.mk)
-.    include "${_d}/${_LOCAL_MK_PHASE}.${TARGET}_${TARGET_ARCH}.mk"
+.  if exists(${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TARGET}_${TARGET_ARCH}.mk)
+.    include "${_d:${_BMK_DEC}}/${_LOCAL_MK_PHASE}.${TARGET}_${TARGET_ARCH}.mk"
 .  endif
 .endfor

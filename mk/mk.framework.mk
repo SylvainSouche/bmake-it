@@ -24,6 +24,9 @@ BMK_MKDIR = ${.CURDIR}
 .if !defined(PREREQS)
 .  error "PREREQS= must be defined (even if empty) in a framework makefile"
 .endif
+# PREREQS as encoded words (see "Names and paths in word lists" in mk.common.mk):
+# what the order generators and the modules ask for, and what every loop below walks.
+_PREREQS_E = ${PREREQS:${_BMK_ENC}}
 
 # ---------------------------------------------------------------------------
 # Local customization hooks (local-mk-hook-files-and-cascade-order-req)
@@ -31,10 +34,10 @@ BMK_MKDIR = ${.CURDIR}
 # own mk/, then its own -- outer to inner, all included, in that order.
 # ---------------------------------------------------------------------------
 _LOCAL_MK_DIRS =
-.for _p in ${PARENT_WS}
+.for _p in ${_PARENT_WS_E}
 _LOCAL_MK_DIRS += ${_p}/mk
 .endfor
-_LOCAL_MK_DIRS += ${.CURDIR}/../mk ${.CURDIR}/mk
+_LOCAL_MK_DIRS += ${.CURDIR:${_BMK_ENCW}}/../mk ${.CURDIR:${_BMK_ENCW}}/mk
 
 _LOCAL_MK_PHASE = pre
 .include "${BMK_MKDIR}/mk.local.mk"
@@ -76,7 +79,7 @@ _ORDER_MK   = ${.CURDIR}/.gen-mod-order.mk
 # stderr is NOT captured now, so the generator's explanation reaches the
 # terminal as written, and a failure stops this framework right here.
 # @impl 7854-6ad0-c2da-1218
-_order_generated != cd ${.CURDIR} && 	BMK_MKDIR='${BMK_MKDIR}' 	MAKESYSPATH='${BMK_MKDIR}:${.SYSPATH:U:ts:}' 	BMK_SYS_MK='${BMK_SYS_MK:U}' 	BMAKE='${MAKE}' 	sh ${_GEN_SCRIPT} ${_ORDER_MK} || echo "FAILED:$$?"
+_order_generated != cd ${.CURDIR:Q} && BMK_MKDIR=${BMK_MKDIR:Q} MAKESYSPATH=${BMK_MKDIR:Q}:${.SYSPATH:U:ts::Q} BMK_SYS_MK=${BMK_SYS_MK:U:Q} BMAKE=${MAKE:Q} sh ${_GEN_SCRIPT:Q} ${_ORDER_MK:Q} || echo "FAILED:$$?"
 # order-failure-in-query-is-warning-req: a -V query still answers (as for
 # REQUIRES=/constraint errors); only a build stops.
 # @impl 7854-6ad0-c7d9-13f6
@@ -109,11 +112,11 @@ SUBDIR_MODULES =
 # leftover-module-dir-skipped-and-cleaned-req: a *.tst without a makefile
 # (a leftover after git switch) is not a test module.
 # @impl 7854-6ad2-021e-2621
-SUBDIR_TESTMODS != for _t in *.tst; do [ -f "$$_t/makefile" ] && echo "$$_t"; done; true
+SUBDIR_TESTMODS != . ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; for _t in *.tst; do [ -f "$$_t/makefile" ] && bmk_enc "$$_t"; done; true
 
 # Surface order in verbose builds
 .if make(all) || make(_build_modules)
-.  info framework modules (build order): ${SUBDIR_MODULES}
+.  info framework modules (build order): ${SUBDIR_MODULES:${_BMK_DEC}}
 .endif
 
 # ---------------------------------------------------------------------------
@@ -127,7 +130,7 @@ SUBDIR_TESTMODS != for _t in *.tst; do [ -f "$$_t/makefile" ] && echo "$$_t"; do
 # (build-workspace-aggregation-req-v2, report-flag-uniform-trigger-v2).
 # ---------------------------------------------------------------------------
 all: _check_requires _create_fw_dirs _build_modules _aggregate _check_build_failures
-	@echo "===> framework ${.CURDIR:T} complete for ${OS_ARCH}"
+	@echo "===> framework ${_CURNAME} complete for ${OS_ARCH}"
 
 # requires-preflight-req: before any module is built, ask every module that
 # can lack something (MODULE_CHECK, from gen-mod-order.sh: a REQUIRES=, an
@@ -140,16 +143,19 @@ all: _check_requires _create_fw_dirs _build_modules _aggregate _check_build_fail
 # @impl 7854-6ae3-0b4f-513f
 _check_requires:
 .if ${BMK_REQUIRES_CHECKED:U} != "yes"
-	@if [ -n "${BMK_REQUIRES_LIST:U}" ]; then _list="${BMK_REQUIRES_LIST:U}"; else _list=$$(mktemp); fi; \
-	for _m in ${MODULE_CHECK:U} ${SUBDIR_TESTMODS}; do \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	if [ -n "${BMK_REQUIRES_LIST:U}" ]; then _list="${BMK_REQUIRES_LIST:U}"; else _list=$$(mktemp); fi; \
+	for _mw in ${MODULE_CHECK:U} ${SUBDIR_TESTMODS}; do \
+		_m=$$(bmk_dec "$$_mw"); \
+		_where=$$(bmk_enc ${_CURNAME:Q}/"$$_m"); \
 		_err=$$(mktemp); \
-		if _r=$$(${MAKE} -C ${.CURDIR}/$$_m -V '$${_REQUIRES_REPORT}' BMK_REQUIRES_CHECK=yes \
+		if _r=$$(${MAKE} -C ${.CURDIR:Q}/"$$_m" -V '$${_REQUIRES_REPORT}' BMK_REQUIRES_CHECK=yes \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" 2>"$$_err"); then \
-			for _e in $$_r; do echo "${.CURDIR:T}/$$_m $$_e" >> "$$_list"; done; \
+			BMK_MKDIR=${BMK_MKDIR:Q} PARENT_WS="${PARENT_WS}" 2>"$$_err"); then \
+			for _e in $$_r; do echo "$$_where $$_e" >> "$$_list"; done; \
 		else \
 			_msg=$$(grep -v '^[[:space:]]' "$$_err" | head -1 | tr ' ' '\037'); \
-			echo "${.CURDIR:T}/$$_m ?%query=$$_msg" >> "$$_list"; \
+			echo "$$_where ?%query=$$_msg" >> "$$_list"; \
 		fi; \
 		rm -f "$$_err"; \
 	done; \
@@ -161,7 +167,7 @@ _check_requires:
 		fi ;; \
 	esac; \
 	if [ -z "${BMK_REQUIRES_LIST:U}" ]; then \
-		_rc=0; sh ${BMK_MKDIR}/../scripts/requires-report.sh "$$_list" || _rc=$$?; rm -f "$$_list"; exit $$_rc; \
+		_rc=0; sh ${BMK_MKDIR:Q}/../scripts/requires-report.sh "$$_list" || _rc=$$?; rm -f "$$_list"; exit $$_rc; \
 	fi
 .else
 	@:
@@ -177,16 +183,19 @@ _check_requires:
 # already writes into the framework's own real exit code.
 # @impl 0f87-6ab5-81a2-7bb0
 _check_build_failures:
-	@_failed=""; \
-	for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
-		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
-			_failed="$$_failed $$_m"; \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	_failed=""; \
+	for _mw in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
+		_m=$$(bmk_dec "$$_mw"); \
+		if [ -f ${.CURDIR:Q}/"$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+			_failed="$$_failed $$_mw"; \
 		fi; \
 	done; \
 	if [ -n "$$_failed" ]; then \
-		echo "===> framework ${.CURDIR:T} BUILD FAILED:$$_failed" >&2; \
-		for _m in $$_failed; do \
-			_sk="${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped"; \
+		echo "===> framework ${_CURNAME} BUILD FAILED:$$(for _mw in $$_failed; do printf ' %s' "$$(bmk_dec "$$_mw")"; done)" >&2; \
+		for _mw in $$_failed; do \
+			_m=$$(bmk_dec "$$_mw"); \
+			_sk=${.CURDIR:Q}/"$$_m/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped"; \
 			if [ -f "$$_sk" ]; then \
 				echo "     $$_m -- skipped: its prerequisite $$(cat "$$_sk") failed" >&2; \
 			else \
@@ -214,64 +223,70 @@ _check_build_failures:
 # fail again on that module's missing headers ("'GLFW/glfw3.h' file not
 # found" for imgui after glfw's REQUIRES failed, 2026-10-29).
 # @impl 7854-6ae3-0a48-eaaa
+# recipe-paths-quoted-req: as in mk.workspace.mk, a module name is decoded once into _mn.
+# @impl 0f87-6af0-c379-1630
 _build_modules:
 .for _m in ${SUBDIR_MODULES}
-	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	_mn=${_m:${_BMK_DEC}:Q}; _fw=${.CURDIR:Q}; \
+	_rundir="$$_fw/$$_mn/${BUILD_ROOT}/runs/${RUN_ID}"; mkdir -p "$$_rundir"; \
 	_skip=""; _root=""; \
-	for _d in ${MODULE_DEPS.${_m}:U}; do \
-		if [ -f "${.CURDIR}/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
-			_skip=$$_d; _root=$$(cat "${.CURDIR}/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped" 2>/dev/null || true); \
+	for _dw in ${MODULE_DEPS.${_m}:U}; do \
+		_d=$$(bmk_dec "$$_dw"); \
+		if [ -f "$$_fw/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.failed" ]; then \
+			_skip=$$_d; _root=$$(cat "$$_fw/$$_d/${BUILD_ROOT}/runs/${RUN_ID}/build.skipped" 2>/dev/null || true); \
 			[ -n "$$_root" ] || _root=$$_d; break; \
 		fi; \
 	done; \
 	if [ -n "$$_skip" ]; then \
 		_why="prerequisite module $$_skip failed"; [ "$$_root" = "$$_skip" ] || _why="$$_why (root cause: $$_root)"; \
-		echo "===> module ${_m} skipped: $$_why" | tee "$$_rundir/build.log"; \
+		echo "===> module $$_mn skipped: $$_why" | tee "$$_rundir/build.log"; \
 		echo "$$_root" > "$$_rundir/build.skipped"; touch "$$_rundir/build.failed"; \
-		rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
+		rm -rf "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"; cp -a "$$_rundir" "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"; \
 		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
 		exit 0; \
 	fi; \
 	rm -f "$$_rundir/build.skipped"; \
-	echo "===> building module ${_m}"; \
+	echo "===> building module $$_mn"; \
 	_rcfile=$$(mktemp); \
-	{ ${MAKE} -C ${_m} all copy-up \
+	{ ${MAKE} -C "$$_mn" all copy-up \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+		BMK_MKDIR=${BMK_MKDIR:Q} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
 	  && echo 0 > "$$_rcfile" || echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
 		rm -f "$$_rundir/build.failed"; \
 	else \
 		touch "$$_rundir/build.failed"; \
-		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		echo "===> module $$_mn build FAILED -- see $$_mn/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
 		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
 	fi; \
-	rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
-	cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest
+	rm -rf "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"; \
+	cp -a "$$_rundir" "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"
 .endfor
 # tst-modules-built-not-shipped-dec: .tst modules are built too, after every
 # .m module is built and copied up (they link its libraries), but with `all`
 # only -- no copy-up, so a test is never aggregated into the framework or
 # workspace bin/lib and never shipped.
 .for _m in ${SUBDIR_TESTMODS}
-	@echo "===> building module ${_m}"
-	@_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+	@echo "===> building module ${_m:${_BMK_DEC}}"
+	@_mn=${_m:${_BMK_DEC}:Q}; _fw=${.CURDIR:Q}; \
+	_rundir="$$_fw/$$_mn/${BUILD_ROOT}/runs/${RUN_ID}"; mkdir -p "$$_rundir"; \
 	_rcfile=$$(mktemp); \
-	{ ${MAKE} -C ${_m} all \
+	{ ${MAKE} -C "$$_mn" all \
 		TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-		BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
+		BMK_MKDIR=${BMK_MKDIR:Q} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" RUN_ID="${RUN_ID}" \
 	  && echo 0 > "$$_rcfile" || echo $$? > "$$_rcfile"; } 2>&1 | tee "$$_rundir/build.log"; \
 	_rc=$$(cat "$$_rcfile"); rm -f "$$_rcfile"; \
 	if [ "$$_rc" -eq 0 ]; then \
 		rm -f "$$_rundir/build.failed"; \
 	else \
 		touch "$$_rundir/build.failed"; \
-		echo "===> module ${_m} build FAILED -- see ${_m}/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
+		echo "===> module $$_mn build FAILED -- see $$_mn/${BUILD_ROOT}/runs/${RUN_ID}/build.log" >&2; \
 		if [ "${FAIL_FAST}" = "yes" ]; then exit 1; fi; \
 	fi; \
-	rm -rf ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest; \
-	cp -a "$$_rundir" ${.CURDIR}/${_m}/${BUILD_ROOT}/runs/latest
+	rm -rf "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"; \
+	cp -a "$$_rundir" "$$_fw/$$_mn/${BUILD_ROOT}/runs/latest"
 .endfor
 
 # test: recurse into every module (test-workspace-aggregation-req). A
@@ -309,13 +324,13 @@ _fw_test_build: _fw_build_closure
 _fw_build_closure: _check_requires _fw_build_prereqs _create_fw_dirs _build_modules _aggregate _check_build_failures
 
 _fw_build_prereqs:
-.for _p in ${PREREQS}
-	@if [ -f "${.CURDIR}/../${_p}/makefile" ]; then \
+.for _p in ${_PREREQS_E}
+	@if [ -f ${.CURDIR:Q}/../${_p:${_BMK_DEC}:Q}/makefile ]; then \
 		case " ${BMK_CLOSURE} " in *" ${_p} "*) exit 0 ;; esac; \
-		${MAKE} -C ${.CURDIR}/../${_p} _fw_build_closure \
+		${MAKE} -C ${.CURDIR:Q}/../${_p:${_BMK_DEC}:Q} _fw_build_closure \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
-			RUN_ID="${RUN_ID}" BMK_CLOSURE="${BMK_CLOSURE} ${.CURDIR:T}" || exit 1; \
+			BMK_MKDIR=${BMK_MKDIR:Q} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
+			RUN_ID="${RUN_ID}" BMK_CLOSURE="${BMK_CLOSURE} ${_CURNAME:${_BMK_ENCW}}" || exit 1; \
 	fi
 .endfor
 
@@ -324,8 +339,9 @@ _fw_build_prereqs:
 # sh -e, which would stop the loop at the first failing module.
 _run_tests:
 .for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}
-	@if [ -n "${TEST}" ]; then \
-		_has=$$(${MAKE} -C ${_m} -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH} $${_TST_TESTNAMES}' 2>/dev/null); \
+	@_mn=${_m:${_BMK_DEC}:Q}; \
+	if [ -n "${TEST}" ]; then \
+		_has=$$(${MAKE} -C "$$_mn" -V '$${TESTS_CXX} $${TESTS_C} $${TESTS_SH} $${_TST_TESTNAMES}' 2>/dev/null); \
 		case " $$_has " in \
 			*" ${TEST} "*) _run=yes ;; \
 			*) _run=no ;; \
@@ -334,11 +350,11 @@ _run_tests:
 		_run=yes; \
 	fi; \
 	if [ "$$_run" = yes ]; then \
-		_rundir=${.CURDIR}/${_m}/${BUILD_ROOT}/runs/${RUN_ID}; mkdir -p "$$_rundir"; \
+		_rundir=${.CURDIR:Q}/"$$_mn/${BUILD_ROOT}/runs/${RUN_ID}"; mkdir -p "$$_rundir"; \
 		_trc=0; \
-		${MAKE} -C ${_m} test \
+		${MAKE} -C "$$_mn" test \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			BMK_MKDIR=${BMK_MKDIR} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
+			BMK_MKDIR=${BMK_MKDIR:Q} PARENT_WS="${PARENT_WS}" SANITIZE="${SANITIZE}" FAIL_FAST="${FAIL_FAST}" \
 			REPORT="${REPORT}" TEST="${TEST}" RUN_ID="${RUN_ID}" || _trc=$$?; \
 		if [ "$$_trc" -ne 0 ]; then \
 			touch "$$_rundir/test.failed"; \
@@ -354,15 +370,18 @@ _run_tests:
 # its own shell command, so the marker is what survives to this final step.
 # @impl 0f87-6ab5-81a2-7bb0
 _check_test_failures:
-	@_failed=""; \
-	for _m in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
-		if [ -f "${.CURDIR}/$$_m/${BUILD_ROOT}/runs/${RUN_ID}/test.failed" ]; then \
-			_failed="$$_failed $$_m"; \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	_failed=""; \
+	for _mw in ${SUBDIR_MODULES} ${SUBDIR_TESTMODS}; do \
+		_m=$$(bmk_dec "$$_mw"); \
+		if [ -f ${.CURDIR:Q}/"$$_m/${BUILD_ROOT}/runs/${RUN_ID}/test.failed" ]; then \
+			_failed="$$_failed $$_mw"; \
 		fi; \
 	done; \
 	if [ -n "$$_failed" ]; then \
-		echo "===> framework ${.CURDIR:T} TEST FAILED:$$_failed" >&2; \
-		for _m in $$_failed; do \
+		echo "===> framework ${_CURNAME} TEST FAILED:$$(for _mw in $$_failed; do printf ' %s' "$$(bmk_dec "$$_mw")"; done)" >&2; \
+		for _mw in $$_failed; do \
+			_m=$$(bmk_dec "$$_mw"); \
 			echo "     $$_m -- see $$_m/${BUILD_ROOT}/runs/${RUN_ID}/test-results.xml" >&2; \
 		done; \
 		exit 1; \
@@ -388,20 +407,20 @@ _check_test_failures:
 # newly on the compile line).
 # @impl 0f87-6abe-8e68-a7a7
 _create_fw_dirs:
-	@mkdir -p ${.CURDIR}/${BINDIR_LOCAL} ${.CURDIR}/${LIBDIR_LOCAL} \
-	          ${.CURDIR}/${SHAREDIR_LOCAL} ${.CURDIR}/${INCDIR_LOCAL}
+	@mkdir -p ${.CURDIR:Q}/${BINDIR_LOCAL} ${.CURDIR:Q}/${LIBDIR_LOCAL} \
+	          ${.CURDIR:Q}/${SHAREDIR_LOCAL} ${.CURDIR:Q}/${INCDIR_LOCAL}
 
 # Aggregate resources (share/ overlay)
 _aggregate:
 	@# share/ 3-layer overlay: common → <os> → <os>_<arch>
 	@if [ -d share/common ]; then \
-		cp -a share/common/. ${.CURDIR}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
+		cp -a share/common/. ${.CURDIR:Q}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
 	fi
 	@if [ -d share/${TARGET} ]; then \
-		cp -a share/${TARGET}/. ${.CURDIR}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
+		cp -a share/${TARGET}/. ${.CURDIR:Q}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
 	fi
 	@if [ -d share/${TARGET}_${TARGET_ARCH} ]; then \
-		cp -a share/${TARGET}_${TARGET_ARCH}/. ${.CURDIR}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
+		cp -a share/${TARGET}_${TARGET_ARCH}/. ${.CURDIR:Q}/${SHAREDIR_LOCAL}/ 2>/dev/null || true; \
 	fi
 
 # Copy framework outputs up to workspace
@@ -409,11 +428,11 @@ _aggregate:
 # _copy_up: the same copy without building first -- what the workspace asks
 # for when only test modules failed (tst-failure-does-not-block-copy-up-req,
 # mk.workspace.mk).
-_FW_COPY_UP = _WS=${.CURDIR}/..; \
-	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${BINDIR_LOCAL} $$_WS/${BINDIR_LOCAL}; \
-	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${LIBDIR_LOCAL} $$_WS/${LIBDIR_LOCAL}; \
-	sh ${BMK_MKDIR}/../scripts/diff-aware-copy.sh ${.CURDIR}/${SHAREDIR_LOCAL} $$_WS/${SHAREDIR_LOCAL}; \
-	echo "===> framework ${.CURDIR:T} copy-up → workspace"
+_FW_COPY_UP = _FWD=${.CURDIR:Q}; _WS="$$_FWD/.."; \
+	sh ${BMK_MKDIR:Q}/../scripts/diff-aware-copy.sh "$$_FWD/${BINDIR_LOCAL}" "$$_WS/${BINDIR_LOCAL}"; \
+	sh ${BMK_MKDIR:Q}/../scripts/diff-aware-copy.sh "$$_FWD/${LIBDIR_LOCAL}" "$$_WS/${LIBDIR_LOCAL}"; \
+	sh ${BMK_MKDIR:Q}/../scripts/diff-aware-copy.sh "$$_FWD/${SHAREDIR_LOCAL}" "$$_WS/${SHAREDIR_LOCAL}"; \
+	echo "===> framework ${_CURNAME} copy-up → workspace"
 copy-up: all
 	@${_FW_COPY_UP}
 _copy_up:
@@ -427,13 +446,13 @@ _copy_up:
 # @impl 7854-6ad2-021e-2621
 clean:
 	@# modules: clean each *.m without relying on order generation
-	@BMK_PROG=clean; . ${BMK_MKDIR}/../scripts/bmk-query.sh; \
+	@BMK_PROG=clean; . ${BMK_MKDIR:Q}/../scripts/bmk-query.sh; \
 	for _m in *.m *.tst; do \
 		[ -d "$$_m" ] || continue; \
 		if [ -f "$$_m/makefile" ]; then \
 			${MAKE} -C "$$_m" clean \
 				TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-				${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR} || true; \
+				${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR:Q} || true; \
 		elif bmk_is_leftover "$$_m"; then \
 			rm -rf "$$_m"; \
 			echo "===> removed leftover $$_m (no makefile, only build output)"; \
@@ -442,26 +461,28 @@ clean:
 		fi; \
 	done
 .if ${CLEAN_ALL_TARGETS} == "yes"
-	rm -rf ${.CURDIR}/build ${.CURDIR}/distrib
+	rm -rf ${.CURDIR:Q}/build ${.CURDIR:Q}/distrib
 	@# belt-and-suspenders: any nested build trees or gen files under this framework
-	@find ${.CURDIR} -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
+	@find ${.CURDIR:Q} -type d -name build -prune -exec rm -rf {} + 2>/dev/null || true
 .else
-	rm -rf ${.CURDIR}/${BUILD_ROOT} ${.CURDIR}/${DISTRIB_ROOT}
+	rm -rf ${.CURDIR:Q}/${BUILD_ROOT} ${.CURDIR:Q}/${DISTRIB_ROOT}
 .endif
-	rm -f ${.CURDIR}/.gen-mod-order.mk ${.CURDIR}/.gen-fw-order.mk ${.CURDIR}/.depend
-	@find ${.CURDIR} -name '.gen-*.mk' -delete 2>/dev/null || true
+	rm -f ${.CURDIR:Q}/.gen-mod-order.mk ${.CURDIR:Q}/.gen-fw-order.mk ${.CURDIR:Q}/.depend
+	@find ${.CURDIR:Q} -name '.gen-*.mk' -delete 2>/dev/null || true
 # @impl 7854-6ad2-03bb-077e (clean-leaves-no-empty-build-dirs-req)
-	@rmdir ${.CURDIR}/build ${.CURDIR}/distrib 2>/dev/null || true
+	@rmdir ${.CURDIR:Q}/build ${.CURDIR:Q}/distrib 2>/dev/null || true
 
 # @impl 0f87-6a98-7918-e195
 add-prereq:
 .if !defined(FW) || empty(FW)
 	@echo "usage: make add-prereq FW=<name>" >&2; exit 1
 .endif
-	@if grep -q '^PREREQS' makefile; then \
-		sed -i.bak -e "s|^PREREQS=\\(.*\\)|PREREQS=\\1 ${FW}|" makefile; \
+	@. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; _w=$$(bmk_wl ${FW:Q}); \
+	_r=$$(printf '%s' "$$_w" | sed -e 's/[\\&|]/\\&/g'); \
+	if grep -q '^PREREQS' makefile; then \
+		sed -i.bak -e "s|^PREREQS=\\(.*\\)|PREREQS=\\1 $$_r|" makefile; \
 	else \
-		echo "PREREQS=${FW}" >> makefile; \
+		printf 'PREREQS=%s\n' "$$_w" >> makefile; \
 	fi
 	@echo "Appended ${FW} to PREREQS"
 

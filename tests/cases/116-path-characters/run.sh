@@ -20,7 +20,7 @@
 # with "not supported yet" is a gap, the case ends SKIP while one is open. Any
 # other deviation fails the case.
 set -eu
-REAL=$(PATH=${PATH#*:} command -v bmake)   # past the harness wrapper, to choose BMK_MKDIR
+REAL=${BMK_REAL_MAKE:-$(PATH=${PATH#*:} command -v bmake)}   # past the harness wrapper, to choose BMK_MKDIR
 MKSRC=$BMK_MKDIR
 TOP=$(pwd)
 
@@ -64,18 +64,17 @@ eacute|\0303\0251
 cjk|\0346\0227\0245\0346\0234\0254'
 
 # works in every place, on every platform
-OK_ALL=" lbracket rbracket percent tilde at plus caret dash eacute cjk "
-# meant to work everywhere and do not yet (refused as "not supported yet")
-MUST_FIX=" space twospaces lparen rparen squote amp hash "
-# works on some platforms and not on others, so meant to work on all: = builds nothing,
-# silently, under macOS's and Alpine's bmake; % stops the link under FreeBSD 15.1's make
-# (the rule that creates build/<key>/bin is read as a pattern). Both come from the path
-# sitting in a dependency line; relative targets fix them (docs/spec/85-names-and-paths.md).
-SILENT_GAP=" equals percent "
+OK_ALL=" lbracket rbracket percent equals tilde at plus caret dash eacute cjk space twospaces lparen rparen squote amp hash lbrace rbrace "
+# meant to work everywhere and do not yet (refused as "not supported yet"): none now.
+# Space, parentheses, apostrophe, ampersand and hash joined OK_ALL when the shell and
+# word-list layers were fixed, and braces with them (a name is an encoded word in a
+# variable name now) (path-characters-supported-req); = and % were mixed-platform
+# characters until the rules were made relative to the module directory
+# (module-rules-relative-targets-req).
+MUST_FIX=" "
+SILENT_GAP=" "
 # work in the mk directory's name, though not in the others
-MKDIR_OK=" hash bang colon comma equals star question lbrace rbrace "
-# work in a workspace's name (and its parents'), not in a module's
-BRACE=" lbrace rbrace "
+MKDIR_OK=" bang colon comma star question "
 
 # want <label> <column> -> works | refused
 want() {
@@ -84,12 +83,16 @@ want() {
         mkdir)
             case "$OK_ALL$MKDIR_OK$MUST_FIX" in *"$_l"*) echo works; return ;; esac ;;
         workspace)
-            case "$OK_ALL$MUST_FIX$SILENT_GAP$BRACE" in *"$_l"*) echo works; return ;; esac ;;
+            case "$OK_ALL$MUST_FIX$SILENT_GAP" in *"$_l"*) echo works; return ;; esac ;;
         *)
             case "$OK_ALL$MUST_FIX$SILENT_GAP" in *"$_l"*) echo works; return ;; esac ;;
     esac
     echo refused
 }
+
+# a name as it is written in a word list (PREREQS=, PARENT_WS=): a backslash before a
+# space, an apostrophe or a hash sign (make reads those as a word end, a quote, a comment)
+wl() { printf '%s' "$1" | sed -e 's/ /\\ /g' -e "s/'/\\\\'/g" -e 's/#/\\#/g'; }
 
 mkws() { # mkws <root> <ws> <fw> <module> : a workspace with one module
     mkdir -p "$1/$2/$3/$4/src"
@@ -98,50 +101,123 @@ mkws() { # mkws <root> <ws> <fw> <module> : a workspace with one module
     printf 'PROG=x\n.include <mk.prog.mk>\n' > "$1/$2/$3/$4/makefile"
     echo 'int main(void) { return 0; }' > "$1/$2/$3/$4/src/main.c"
 }
-has_binary() { [ -n "$(find "$1" -type f -name x -path '*/bin/*' 2>/dev/null)" ]; }
+
+# A fuller tree, for the places that are meant to work: a library in one
+# framework, a program in a second framework that lists the first in PREREQS=
+# and links the library; both modules carry the name's character. It reaches the
+# library and program rules, the PREREQS= word list, the include and library
+# search paths, the shared library and its run path, the copy-up and install.
+mkws_rich() { # mkws_rich <root> <ws> <fw> <module>
+    _fw2="B$3"
+    mkdir -p "$1/$2/$3/lib$4/src" "$1/$2/$3/include" "$1/$2/$_fw2/$4/src"
+    printf 'PARENT_WS=\n.include <mk.workspace.mk>\n' > "$1/$2/makefile"
+    printf 'PREREQS=\n.include <mk.framework.mk>\n' > "$1/$2/$3/makefile"
+    printf 'PREREQS=%s\n.include <mk.framework.mk>\n' "$(wl "$3")" > "$1/$2/$_fw2/makefile"
+    printf 'LIB=g\nLIB_SHARED=YES\nSHLIB_MAJOR=1\n.include <mk.lib.mk>\n' > "$1/$2/$3/lib$4/makefile"
+    printf 'void greet(void);\n' > "$1/$2/$3/include/greet.h"
+    printf '#include "greet.h"\nvoid greet(void) {}\n' > "$1/$2/$3/lib$4/src/g.c"
+    printf 'PROG=x\nLIBS=g\n.include <mk.prog.mk>\n' > "$1/$2/$_fw2/$4/makefile"
+    printf '#include "greet.h"\nint main(void) { greet(); return 0; }\n' > "$1/$2/$_fw2/$4/src/main.c"
+}
+has_binary() { [ -n "$(find "$1" -type f \( -name x -o -name x.exe \) -path '*/bin/*' 2>/dev/null)" ]; }
+
+# bm <mk dir> [bmake args]: bmake told where the mk files are. MAKESYSPATH is a
+# colon-separated list, so a directory with a colon in its name goes by -m; and bmake
+# passes a -m with a space in it to the sub-makes cut in two, so the others go by
+# MAKESYSPATH. (Both are bmake's own: documented in docs/spec/85-names-and-paths.md.)
+bm() {
+    _mk=$1; shift
+    case $_mk in
+        *:*) env -u BMK_MKDIR MAKESYSPATH="${MAKESYSPATH#*:}" "$REAL" -m "$_mk" -m "${MAKESYSPATH#*:}" BMK_MKDIR="$_mk" "$@" ;;
+        *)   env -u BMK_MKDIR MAKESYSPATH="$_mk:${MAKESYSPATH#*:}" "$REAL" BMK_MKDIR="$_mk" "$@" ;;
+    esac
+}
 
 # probe <ws dir> <mk dir> : leaves the outcome in $RESULT
 probe() {
     RESULT=works
-    if ! ( cd "$1" && env -u BMK_MKDIR MAKESYSPATH="$2:${MAKESYSPATH#*:}" "$REAL" -m "$2" -m "${MAKESYSPATH#*:}" BMK_MKDIR="$2" >"$TOP/out.log" 2>&1 ); then
-        if grep -q 'Bmake It cannot' "$TOP/out.log"; then RESULT=refused; else RESULT=raw; fi
+    if ! ( cd "$1" && bm "$2" >"$LOGP.out" 2>&1 ); then
+        if grep -q 'Bmake It cannot' "$LOGP.out"; then RESULT=refused; else RESULT=raw; fi
+        # BMK_CASE_VERBOSE=1: say what a failure was (for working on one character)
+        if [ "$RESULT" = raw ] && [ -n "${BMK_CASE_VERBOSE:-}" ]; then
+            { echo "---- failed in $1:"; grep -v '^===>' "$LOGP.out" | head -14; } >&2
+            for _l in "$1"/*/*/build/*/runs/*/build.log "$1"/*/build/*/runs/*/build.log; do
+                [ -f "$_l" ] && { echo "---- $_l:"; head -8 "$_l"; } >&2
+            done
+        fi
         return 0
     fi
     has_binary "$1" || { RESULT=SILENT; return 0; }
-    ( cd "$1" && env -u BMK_MKDIR MAKESYSPATH="$2:${MAKESYSPATH#*:}" "$REAL" -m "$2" -m "${MAKESYSPATH#*:}" BMK_MKDIR="$2" clean >"$TOP/clean.log" 2>&1 ) || RESULT=clean-failed
+    if [ -n "${RICH:-}" ]; then
+        # install into a directory that carries the character too
+        _dst="$TOP/dst$N${CHAR}dst"; rm -rf "$_dst"
+        if ! ( cd "$1" && bm "$2" install DESTDIR="$_dst" >"$LOGP.install" 2>&1 ) \
+            || [ -z "$(find "$_dst" -type f \( -name x -o -name x.exe \) 2>/dev/null)" ]; then
+            RESULT=install-failed; rm -rf "$_dst"; return 0
+        fi
+        rm -rf "$_dst"
+    fi
+    ( cd "$1" && bm "$2" clean >"$LOGP.clean" 2>&1 ) || RESULT=clean-failed
     if has_binary "$1"; then RESULT=clean-left-output; fi
     return 0
 }
 
-n=0
-: > "$TOP/results"
-printf '%-13s %-9s %-9s %-9s %-9s\n' character 'all names' module workspace 'mk dir'
-printf '%s\n' "$CHARS" | while IFS='|' read -r label fmt; do
-    n=$((n + 1))
-    c=$(printf "%b" "$fmt")
-    root="$TOP/t$n"
-    # place <where>: a tree whose <where> names carry the character
-    one() { # one <parent> <ws> <fw> <module> : the outcome of building that tree
-        rm -rf "$root"
-        if ! mkws "$root/$1" "$2" "$3" "$4" 2>/dev/null; then RESULT=skipped; return 0; fi
-        probe "$root/$1/$2" "$MKSRC"
+# One character: its four places, the outcome of each in $TOP/res.<nn>.
+do_char() { # do_char <n> <label> <fmt>
+    N=$1; label=$2
+    # On Windows a backslash is a path separator: the directory made is two
+    # directories, and no name carries the character.
+    case $(uname -s):$label in
+        CYGWIN*:backslash|MSYS*:backslash)
+            echo "$label skipped skipped skipped skipped" > "$TOP/res.$(printf %02d "$N")"
+            return 0 ;;
+    esac
+    c=$(printf "%b" "$3")
+    root="$TOP/t$N"; CHAR=$c; LOGP="$TOP/log.$N"
+    one() { # one <column> <parent> <ws> <fw> <module> : the outcome of building that tree
+        rm -rf "$root"; RICH=
+        # the fuller tree where the build is meant to work, the small one where it is refused
+        if [ "$(want "$label" "$1")" = works ]; then RICH=1; _mk=mkws_rich; else _mk=mkws; fi
+        if ! $_mk "$root/$2" "$3" "$4" "$5" 2>/dev/null; then RESULT=skipped; return 0; fi
+        probe "$root/$2/$3" "$MKSRC"
     }
-    one "p${c}p" "w${c}w" "F${c}F" "m${c}m.m"; r_all=$RESULT
-    one plain ws Fw "m${c}m.m";                  r_mod=$RESULT
-    one "p${c}p" ws Fw mod.m;                    r_ws=$RESULT
+    one names "p${c}p" "w${c}w" "F${c}F" "m${c}m.m"; r_all=$RESULT
+    one module plain ws Fw "m${c}m.m";               r_mod=$RESULT
+    one workspace "p${c}p" ws Fw mod.m;              r_ws=$RESULT
     # the mk files installed in a directory that carries it
-    inst="$TOP/i$n/i${c}i"
+    inst="$TOP/i$N/i${c}i"
     if mkdir -p "$inst" 2>/dev/null && cp -R "$MKSRC" "$inst/mk" && cp -R "$MKSRC/../scripts" "$inst/scripts" \
         && { [ ! -d "$MKSRC/../include" ] || cp -R "$MKSRC/../include" "$inst/include"; }; then
-        rm -rf "$root"; mkws "$root" plain Fw mod.m
+        rm -rf "$root"; RICH=; _mk=mkws
+        if [ "$(want "$label" mkdir)" = works ]; then RICH=1; _mk=mkws_rich; fi
+        $_mk "$root" plain Fw mod.m
         probe "$root/plain" "$inst/mk"; r_mk=$RESULT
     else
         r_mk=skipped
     fi
-    printf '%-13s %-9s %-9s %-9s %-9s\n' "$label" "$r_all" "$r_mod" "$r_ws" "$r_mk"
-    echo "$label $r_all $r_mod $r_ws $r_mk" >> "$TOP/results"
-    rm -rf "$root" "$TOP/i$n"
-done
+    echo "$label $r_all $r_mod $r_ws $r_mk" > "$TOP/res.$(printf %02d "$N")"
+    rm -rf "$root" "$TOP/i$N"
+}
+
+# The characters are independent, so a few go at a time (BMK_CASE_JOBS, default 4).
+JOBS=${BMK_CASE_JOBS:-4}
+n=0; running=0
+printf '%s\n' "$CHARS" | {
+    while IFS='|' read -r label fmt; do
+        n=$((n + 1))
+        # BMK_CASE_CHARS="space hash": only these (a way to work on one character; the suite runs all)
+        case " ${BMK_CASE_CHARS:-$label} " in *" $label "*) ;; *) continue ;; esac
+        do_char "$n" "$label" "$fmt" &
+        running=$((running + 1))
+        if [ "$running" -ge "$JOBS" ]; then wait; running=0; fi
+    done
+    wait
+}
+printf '%-13s %-9s %-9s %-9s %-9s\n' character 'all names' module workspace 'mk dir'
+cat "$TOP"/res.* > "$TOP/results"
+while read -r label r1 r2 r3 r4; do
+    printf '%-13s %-9s %-9s %-9s %-9s\n' "$label" "$r1" "$r2" "$r3" "$r4"
+done < "$TOP/results"
 
 viol=''; open_gaps=''
 while read -r label r1 r2 r3 r4; do

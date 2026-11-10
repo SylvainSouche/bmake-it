@@ -41,7 +41,7 @@ _CX_SELECTED = ${_CX_TNAMES:[-1]}
 .if !empty(_CX_POS) && (!empty(_CX_NEGQ) || !empty(_CX_NEGL))
 .  if ${_CX_HIER} != "yes"
 .    if ${_CX_REPORT} == "yes"
-.      error "${.CURDIR:T}: ${_CX_AXIS}=${_CX_LIST}: positive and negative entries cannot be mixed here (these names have no hierarchy, so no negative entry can be a subset of a positive one)"
+.      error "${_CURNAME}: ${_CX_AXIS}=${_CX_LIST}: positive and negative entries cannot be mixed here (these names have no hierarchy, so no negative entry can be a subset of a positive one)"
 .    endif
 .  else
 .    for _n in ${_CX_NEGQ} ${_CX_NEGL}
@@ -55,7 +55,7 @@ _cx_ok = yes
 .        endif
 .      endfor
 .      if ${_cx_ok} != "yes" && ${_CX_REPORT} == "yes"
-.        error "${.CURDIR:T}: ${_CX_AXIS}=${_CX_LIST}: -${_n} is not a subset of any positive entry (${_CX_POS:M*}); a negative entry is only allowed beside positive ones when it narrows one, e.g. 'linux -linux_arm64'"
+.        error "${_CURNAME}: ${_CX_AXIS}=${_CX_LIST}: -${_n} is not a subset of any positive entry (${_CX_POS:M*}); a negative entry is only allowed beside positive ones when it narrows one, e.g. 'linux -linux_arm64'"
 .      endif
 .    endfor
 .  endif
@@ -73,11 +73,11 @@ _cx_known = yes
 .        endif
 .      endfor
 .      if ${_cx_known} != "yes"
-.        warning "${.CURDIR:T}: ${_CX_AXIS}: unknown platform '${_x}' (known: macos linux freebsd netbsd win, optionally _<arch>)"
+.        warning "${_CURNAME}: ${_CX_AXIS}: unknown platform '${_x}' (known: macos linux freebsd netbsd win, optionally _<arch>)"
 .      endif
 .    else
 .      if !exists(${BMK_MKDIR}/mk.toolchain.${_x}.mk)
-.        warning "${.CURDIR:T}: ${_CX_AXIS}: unknown toolchain '${_x}'"
+.        warning "${_CURNAME}: ${_CX_AXIS}: unknown toolchain '${_x}'"
 .      endif
 .    endif
 .  endfor

@@ -85,7 +85,11 @@ _ATF_BUNDLED = yes
 _ATFB_MODE = posix
 .endif
 .if ${_ATF_BUNDLED} == "yes"
-_ATFB_DIR = ${.CURDIR}/../${BUILD_ROOT}/atf
+# Relative to the module directory, as a dependency line may name it
+# (path-characters-supported-req); _ATFB_ABS is the same place, absolute, for
+# the script that builds it.
+_ATFB_DIR = ../${BUILD_ROOT}/atf
+_ATFB_ABS = ${.CURDIR}/../${BUILD_ROOT}/atf
 _ATFB_CXXRT =
 # (scripts/atf-build.sh stages the public headers into ${_ATFB_DIR}/include,
 # as an install would -- with MSVC's missing unistd.h)

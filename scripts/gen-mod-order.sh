@@ -55,7 +55,9 @@ for d in *.m; do
         continue
     fi
     name="${d%.m}"
-    mods="$mods $name"
+    # (mods, sorted, the dependency lists and the order file hold names written
+    # as one make word, bmk_enc: a name with a space in it must stay one name)
+    mods="$mods $(bmk_enc "$name")"
 done
 
 if [ -z "$mods" ]; then
@@ -71,7 +73,8 @@ if [ -n "${BMK_MKDIR:-}" ]; then
 fi
 
 # @impl 7854-6ad0-c7d9-13f6
-for name in $mods; do
+for en in $mods; do
+    name=$(bmk_dec "$en")
     if [ ! -f "${name}.m/makefile" ]; then
         echo "gen-mod-order: error: module directory $(pwd)/${name}.m has no makefile but is not just build output (it holds: $(ls -A "${name}.m" | tr '\n' ' ')) -- every *.m directory is a module and needs one" >&2
         exit 1
@@ -87,15 +90,15 @@ for name in $mods; do
     if [ -z "$_chk" ] && find "${name}.m/src" \( -name '*.y' -o -name '*.yy' -o -name '*.l' -o -name '*.ll' \) 2>/dev/null | grep -q .; then
         _chk=grammar
     fi
-    [ -z "$_chk" ] || echo "${name}.m" >> "$tmpdir/check"
-    ids="$name"
+    [ -z "$_chk" ] || echo "${en}.m" >> "$tmpdir/check"
+    ids="$en"
     [ -n "$libid" ] && ids="$ids $libid lib${libid}"
     [ -n "$progid" ] && ids="$ids $progid"
     if [ -n "${BMK_DEBUG:-}" ]; then
         echo "gen-mod-order: $name LIBS=[$libs] LIB=[$libid] PROG=[$progid]" >&2
     fi
-    echo "$libs" > "$tmpdir/dep_${name}"
-    echo "$ids" > "$tmpdir/ids_${name}"
+    echo "$libs" > "$tmpdir/dep_${en}"
+    echo "$ids" > "$tmpdir/ids_${en}"
 done
 
 is_satisfied() {
@@ -146,7 +149,7 @@ while [ -n "$remaining" ] && [ "$progress" = "1" ]; do
 done
 
 if [ -n "$remaining" ]; then
-    echo "gen-mod-order.sh: dependency cycle detected among:$remaining" >&2
+    echo "gen-mod-order.sh: dependency cycle detected among:$(for _r in $remaining; do printf ' %s' "$(bmk_dec "$_r")"; done)" >&2
     exit 1
 fi
 

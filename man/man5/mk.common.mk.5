@@ -222,6 +222,47 @@ A flag that depends on the target can also go in a hook file such as
 .Pa mk/pre.win.mk ,
 see
 .Xr mk.local.mk 5 .
+.Ss Names with a space or other punctuation in them
+A workspace, framework or module directory may have a space, a parenthesis, an
+apostrophe, an ampersand or a hash sign in its name (and so may the directories
+above the workspace and the one the
+.Pa mk/
+files are in).
+Make splits a value at a space, reads a hash sign as a comment and an apostrophe
+as a quote, so inside Bmake It such a name is one
+.Dq word
+written with each of those as
+.Ql %XX
+.Pq Ql %
+itself is
+.Ql %25 ;
+a name without them is unchanged.
+This file defines the make side
+.Pq Va _BMK_ENC , _BMK_ENCW , _BMK_DEC ,
+.Pa scripts/bmk-names.sh
+the shell side.
+You write a name in
+.Va PREREQS
+or
+.Va PARENT_WS
+with a backslash before a space, an apostrophe and a hash sign.
+A character that no quoting carries through every command is refused before
+anything is built, with a message that names it, see
+.Pa docs/spec/85-names-and-paths.md .
+.Pp
+Give the
+.Pa mk/
+directory to
+.Xr bmake 1
+with
+.Ev MAKESYSPATH ,
+or with
+.Fl m
+if its name has a colon in it:
+.Xr bmake 1
+passes a
+.Fl m
+with a space to the sub-makes in two pieces.
 .Sh SEE ALSO
 .Xr mk.local.mk 5 ,
 .Xr mk.toolchain.gcc.mk 5 ,

@@ -33,6 +33,44 @@ _BMK_PATH_CHECK != sh "$$BMK_MKDIR/../scripts/check-names.sh" 2>&1 || true
 _BMK_PARSE_TIME_VARS = TOOLCHAIN ABI TARGET TARGET_ARCH OPENMP SANITIZE
 
 # ---------------------------------------------------------------------------
+# Names and paths in word lists (path-characters-supported-req)
+#
+# Make splits a value at a space, reads # as a comment and ' as a quote, and a
+# variable name cannot carry =. A directory name that has any of these --
+# "My Framework", "C#", "John's", "R&D", "Fw (x86)" -- is therefore written, in
+# every word list and in every variable name made from it, with each of them
+# as %XX (percent-encoding; % itself is %25): SUBDIR_FRAMEWORKS, SUBDIR_MODULES,
+# the module dependency lists, _PREREQS_E, _PARENT_WS_E. A name without those
+# characters is unchanged, so nothing else looks different.
+#   ${name:${_BMK_DEC}}      the name back, for a message or a path in make
+#   ${name:${_BMK_DEC}:Q}    ... quoted for the shell, for a recipe
+#   ${list:${_BMK_ENC}}      a list as the user writes it (a space, an apostrophe
+#                            written \ and \') as encoded words
+#   ${path:${_BMK_ENCW}}     ONE string, spaces and all (a directory), as one word
+# scripts/bmk-names.sh does the same in the shell (bmk_enc, bmk_dec); case 117
+# checks that the two agree. The user writes a name with a space in PREREQS= or
+# PARENT_WS= as My\ Framework, an apostrophe as John\'s, a hash as C\#.
+# @impl 0f87-6af0-c379-4dfe
+# ---------------------------------------------------------------------------
+_BMK_E1 = S/%/%25/g:S/\\ /%20/g:S/\\'/%27/g:S/'/%27/g:S/\#/%23/g:S/&/%26/g:S/(/%28/g:S/)/%29/g:S/=/%3D/g
+_BMK_E2 = S/[/%5B/g:S/]/%5D/g:S/~/%7E/g:S/{/%7B/g:S/}/%7D/g
+_BMK_ENC = ${_BMK_E1}:${_BMK_E2}
+_BMK_W1 = S/%/%25/gW:S/ /%20/gW:S/'/%27/gW:S/\#/%23/gW:S/&/%26/gW:S/(/%28/gW:S/)/%29/gW:S/=/%3D/gW
+_BMK_W2 = S/[/%5B/gW:S/]/%5D/gW:S/~/%7E/gW:S/{/%7B/gW:S/}/%7D/gW
+_BMK_ENCW = ${_BMK_W1}:${_BMK_W2}
+# (the space comes back last, and % after it as one word (W): every modifier after
+# a space is in the value splits it again and joins the pieces with ONE space, so
+# a name with two adjacent spaces would lose one)
+_BMK_D1 = S/%23/\#/g:S/%27/'/g:S/%26/\&/g:S/%28/(/g:S/%29/)/g:S/%3D/=/g
+_BMK_D2 = S/%5B/[/g:S/%5D/]/g:S/%7E/~/g:S/%7B/{/g:S/%7D/}/g:S/%20/ /g:S/%25/%/gW
+_BMK_DEC = ${_BMK_D1}:${_BMK_D2}
+_PARENT_WS_E = ${PARENT_WS:${_BMK_ENC}}
+# The directory's own name. ${.CURDIR:T} alone is wrong with a space in the path:
+# a modifier works on each word of a value, so it returns the last piece of every
+# word ("p Fw" for /tmp/p p/Fw); :tW makes the whole path one word.
+_CURNAME = ${.CURDIR:tW:T}
+
+# ---------------------------------------------------------------------------
 # Host detection → default TARGET / TARGET_ARCH / TOOLCHAIN
 # ---------------------------------------------------------------------------
 # Computed unconditionally (not just when TARGET is unset): the host OS is
@@ -200,8 +238,8 @@ SHAREDIR_LOCAL = ${BUILD_ROOT}/share
 # 2026-10-29). Fixed to its value now, it keeps what the system and the
 # module gave it and gets each addition once.
 CXXFLAGS := ${CXXFLAGS:U}
-CFLAGS   += -I${BMK_MKDIR}/../include
-CXXFLAGS += -I${BMK_MKDIR}/../include
+CFLAGS   += -I${BMK_MKDIR:Q}/../include
+CXXFLAGS += -I${BMK_MKDIR:Q}/../include
 
 # ---------------------------------------------------------------------------
 # Host tool-search prefixes (REQ-toolchain-mk-must-set-explicit-cc-paths-req-v5)
@@ -343,7 +381,7 @@ OS_ARCH := ${_TARGET_KEY}
 # @impl 7854-6ae8-7e86-7959
 NATIVE_CURDIR := ${.CURDIR}
 .if (${_BMK_MSVC_ABI} == "yes" || ${_BMK_WIN_MINGW:Uno} == "yes") && !empty(.MAKE.OS:U:tl:Mcygwin*)
-NATIVE_CURDIR != cygpath -m '${.CURDIR}'
+NATIVE_CURDIR != cygpath -m ${.CURDIR:Q}
 .endif
 
 # pkg-config-matches-output-abi-req: the pkg-config IMPORT=pkg: and REQUIRES=
@@ -492,7 +530,9 @@ _DEP_CFLAGS = -MMD -MP
 # @impl 0f87-6ab5-867f-373b
 # ---------------------------------------------------------------------------
 INPUTS_HASH_EXTRA ?=
-_INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
+# Relative to the module directory (module-rules-relative-targets-req).
+# @impl 0f87-6af0-8ab0-6f2f
+_INPUTS_HASH_FILE = ${BUILD_ROOT}/.inputs-hash
 
 # msvc-cc-shell-quoting-req: the hashed string is handed to the shell with
 # :Q, never pasted inside "...": under TOOLCHAIN=msvc, CC carries
@@ -505,7 +545,7 @@ _INPUTS_HASH_FILE = ${.CURDIR}/${BUILD_ROOT}/.inputs-hash
 _INPUTS_HASH_STR = CC=${CC} CXX=${CXX} CFLAGS=${CFLAGS} CXXFLAGS=${CXXFLAGS} LDFLAGS=${LDFLAGS} SANITIZE=${SANITIZE} TOOLCHAIN=${TOOLCHAIN} MSVC=${BMK_MSVC_BIN:U} EXTRA=${INPUTS_HASH_EXTRA}
 .PHONY: _check_inputs_hash
 _check_inputs_hash:
-	@mkdir -p ${.CURDIR}/${BUILD_ROOT}
+	@mkdir -p ${.CURDIR:Q}/${BUILD_ROOT}
 	@_new=$$(printf '%s' ${_INPUTS_HASH_STR:Q} | cksum); \
 	if [ ! -f ${_INPUTS_HASH_FILE} ] || [ "$$(cat ${_INPUTS_HASH_FILE} 2>/dev/null)" != "$$_new" ]; then \
 		echo "$$_new" > ${_INPUTS_HASH_FILE}; \
@@ -731,7 +771,7 @@ run:
 .if !defined(PROGRAM) || empty(PROGRAM)
 	@echo "usage: make run PROGRAM=<name> [ARGS=<args>]" >&2; exit 1
 .endif
-	@_d=${.CURDIR}; \
+	@_d=${.CURDIR:Q}; \
 	while [ ! -f "$$_d/makefile" ] || ! grep -q 'mk\.workspace\.mk' "$$_d/makefile" 2>/dev/null; do \
 		_parent=$$(dirname "$$_d"); \
 		if [ "$$_parent" = "$$_d" ]; then \
@@ -742,19 +782,21 @@ run:
 	if [ "$$_d" != "${.CURDIR}" ]; then \
 		exec ${MAKE} -C "$$_d" run PROGRAM=${PROGRAM} ARGS="${ARGS}" \
 			TARGET=${TARGET} TARGET_ARCH=${TARGET_ARCH} TOOLCHAIN=${TOOLCHAIN} \
-			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR} BMK_RUN_CWD="${.CURDIR}"; \
+			${ABI:DABI=${ABI}} BMK_MKDIR=${BMK_MKDIR:Q} BMK_RUN_CWD="${.CURDIR}"; \
 	fi; \
 	_bins="$$_d/${BINDIR_LOCAL}"; _libs="$$_d/${LIBDIR_LOCAL}"; _shares="$$_d/${SHAREDIR_LOCAL}"; \
-	for _p in ${PARENT_WS}; do \
+	. ${BMK_MKDIR:Q}/../scripts/bmk-names.sh; \
+	for _pw in ${_PARENT_WS_E}; do \
+		_p=$$(bmk_dec "$$_pw"); \
 		_bins="$$_bins:$$_p/${BINDIR_LOCAL}"; _libs="$$_libs:$$_p/${LIBDIR_LOCAL}"; _shares="$$_shares:$$_p/${SHAREDIR_LOCAL}"; \
 	done; \
 	PATH="$$_bins${_RUN_MINGW_PATH}$${PATH:+:$$PATH}"; \
 	if ! command -v "${PROGRAM}" >/dev/null 2>&1; then \
-		exec sh ${BMK_MKDIR}/../scripts/run-not-found.sh "$$_d" "$$_bins" "${PROGRAM}" "${BUILD_ROOT}"; \
+		exec sh ${BMK_MKDIR:Q}/../scripts/run-not-found.sh "$$_d" "$$_bins" "${PROGRAM}" "${BUILD_ROOT}"; \
 	fi; \
 	${_RUN_LIBSET}; \
 	export PATH BMK_BINDIR="$$_bins" BMK_LIBDIR="$$_libs" BMK_SHAREDIR="$$_shares" BMK_TARGET="${OS_ARCH}" BMK_LIBVAR="${_RUN_LDPATH_VAR}" BMK_LIBVAL; \
-	_rx=$$(cd ${BMK_MKDIR}/../scripts && pwd)/run-exec.sh; \
+	_rx=$$(cd ${BMK_MKDIR:Q}/../scripts && pwd)/run-exec.sh; \
 	cd "${BMK_RUN_CWD:U${.CURDIR}}"; \
 	exec sh "$$_rx" "$$_d/${BUILD_ROOT}/.run-shell" ${PROGRAM} ${ARGS}
 

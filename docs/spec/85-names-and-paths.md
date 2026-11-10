@@ -6,10 +6,17 @@ directory above the workspace, or the directory the `mk/` files are installed in
 macOS (bmake 20260406, `/bin/sh`), 2026-11-07; the harness case
 `116-path-characters` repeats the measurement on every platform the suite runs
 on. Contract: `path-characters-contract-dec`, `path-characters-supported-req`,
-`path-characters-refused-upfront-req`. Measurements:
+`path-characters-refused-upfront-req`; how the supported characters get through:
+`path-characters-names-as-words-dec`. Measurements:
 `path-characters-measured-obs`.
 
-## The result in one table
+The first half of this page is the measurement that led to the contract; the
+second half ("The contract", "How the supported characters get through") is what
+Bmake It does now. **Now: a space, `( ) ' & #` and the others the first table
+marks "works" are all supported in every place; what the table shows failing is
+refused, or fixed, as the second half says.**
+
+## The result in one table (before the fix)
 
 A tiny workspace (one framework, one module) built and cleaned with each
 character in the module name, in the workspace name (with a parent directory
@@ -78,11 +85,13 @@ Two further observations:
 
 ## What bmake offers, and what it cannot do
 
-`${X:Q}` quotes a value for the shell and would fix layers 3 to 5 for space,
-quotes, `$`, `;` `&` `|` `<` `>` `(` `)`. It does nothing for layers 1, 2, 6
+`${X:Q}` quotes a value for the shell and fixes layers 3 to 5 for space,
+apostrophe, `;` `&` `|` `<` `>` `(` `)` (and, in a recipe, `$` and quotes, which
+are refused here for other reasons). It does nothing for layers 1, 2, 6
 and 7 (`= : ! # * ? { } ,`), which are make's own syntax or another program's, so
-quoting everything cannot make every name work. The way out for those is to
-refuse them.
+quoting everything cannot make every name work. For `=`, `%`, `#`, space and
+parentheses the way out is to keep the name out of the place make reads it
+(relative paths, encoded words, a link); for the others it is to refuse them.
 
 ## The contract (decided)
 
@@ -92,25 +101,20 @@ is fixed, not refused — `=` works under Debian's bmake and builds nothing unde
 macOS's and Alpine's, so the build is made to work there. **What works nowhere
 is tested upfront and refused with an explanation**, before any build step.
 There is one exception to refusing: characters evidently expected to work are
-supported even though they fail today. Decided: **space, parentheses `( )`,
-apostrophe `'`, ampersand `&` and hash `#`** (`C:\Program Files (x86)`,
+supported even though they failed at first. Decided: **space, parentheses
+`( )`, apostrophe `'`, ampersand `&` and hash `#`** (`C:\Program Files (x86)`,
 `John's Documents`, `R&D`, `C# projects`). A comma is not in that set and is
 refused. No outcome is ever a silent success.
 
+All of them now work, in every place, on every platform the suite runs on.
+
 A character is judged where it was measured, so the sets differ by place:
 
-| Where | Works | Meant to work, not yet | Refused |
-|---|---|---|---|
-| workspace, framework, parent directory | `[ ] % ~ @ + ^ - = { }` (`%` stops the link under FreeBSD's make, `=` builds nothing under some bmakes: both are being fixed), non-ASCII | space `( ) ' &` `#` | tab, backslash, `"`, backquote, `$ ; \| < >`, `* ? ! : ,` |
-| module (`*.m`, `*.tst`) name | `[ ] % ~ @ + ^ - =`, non-ASCII | space `( ) ' &` `#` | the above and `{ }` |
-| the `mk/` directory's name | `[ ] % ~ @ + ^ - = # ! : , * ? { }`, non-ASCII | space `( ) ' &` | tab, backslash, `"`, backquote, `$ ; \| < >` |
-
-"Not yet" is refused today with a message that says so, so that the failure is
-a plain sentence and not a shell error, and the unquoted `rm -rf` of a path with
-a space in it never runs. A space is not only a failure: `clean` removes
-`${.CURDIR}/build/…` unquoted, so in `/home/me/my projects/ws` it would remove
-`/home/me/my` and `projects/ws/build` relative to wherever it runs. The check
-therefore runs for `clean` and `-V` queries too.
+| Where | Works | Refused |
+|---|---|---|
+| workspace, framework, parent directory | space `( ) ' & #` `[ ] % ~ @ + ^ - = { }`, non-ASCII | tab, backslash, `"`, backquote, `$ ; \| < >`, `* ? ! : ,` |
+| module (`*.m`, `*.tst`) name | space `( ) ' & #` `[ ] % ~ @ + ^ - = { }`, non-ASCII | the above |
+| the `mk/` directory's name | space `( ) ' & #` `[ ] % ~ @ + ^ - = { } ! : , * ?`, non-ASCII | tab, backslash, `"`, backquote, `$ ; \| < >` |
 
 ### Where the check is
 
@@ -122,48 +126,160 @@ therefore runs for `clean` and `-V` queries too.
 - `gen-fw-order.sh` and `gen-mod-order.sh` check each framework and module
   directory they discover, before the first use of its name, so the message
   comes from the parent and not from a shell error in the middle of a recipe.
-- `scripts/bmk-names.sh` holds the rules (what is refused, what is "not yet");
-  nothing else knows them.
+- `scripts/bmk-names.sh` holds the rules (what is refused); nothing else knows
+  them.
 
 A refused name stops the build with one message, for example:
 
 ```
-Bmake It cannot build in /work/ws/Fw/m od.m: the name 'm od.m' contains a space,
-which Bmake It is meant to support and does not yet. Letters, digits and
-. _ - + @ % ~ ^ [ ] = and non-ASCII letters work in a directory name; rename
-the directory (docs/spec/85-names-and-paths.md).
+Bmake It cannot build in /work/ws/Fw/m|od.m: the name 'm|od.m' contains a vertical bar,
+which the shell reads as syntax (no quoting carries it through every command Bmake It runs).
+Letters, digits, spaces and . _ - + @ % ~ ^ [ ] = # ' & ( ) and non-ASCII letters work in
+a directory name; rename the directory (docs/spec/85-names-and-paths.md).
 ```
 
 One case cannot be caught: a `$` in the `mk/` directory's own name. Make
 expands it in the `.include` that loads `mk.common.mk`, so bmake stops with
 "Could not find" before any Bmake It file runs.
 
-## Making the rest work (open)
+## How the supported characters get through
 
-Each of these is a change, not a refusal, and each removes a "not yet" or a
-platform difference:
+Three changes, one per layer that read a name.
 
-1. **`=` and `%` (and `: ! * ? #`, in the make layer): relative targets.** The rules are
-   written with the absolute directory in the target (`${_OBJDIR}/x.o:
-   ${.CURDIR}/src/x.c`). A build always runs in the module directory, so
-   `build/<key>/obj/x.o: src/x.c` carries none of the path, and the characters
-   that make reads as syntax never reach a dependency line. Only the module's
-   own name remains, in `-C`, where bmake's `MAKEFLAGS` re-reads an `=`; `cd` and
-   a plain `bmake` in the directory avoid it.
-2. **Space, `( ) ' &`: quote the shell layer.** `${X:Q}` on the ~320 unquoted path
-   expansions in recipes, and a word-list representation for `SUBDIR_MODULES`,
-   `PREREQS` and the order files that does not split at a space.
-3. **`#`: the `${X:U<path>}` expressions** in `mk.local.mk` and the other places
-   a path is the default of a modifier.
-4. **`{ }` in module names:** encode the name in the variable name that
-   `.gen-mod-order.mk` writes (`MODULE_DEPS.<name>`).
-5. **A linker option with a path** (`-Wl,-rpath,<path>`) needs `-Xlinker` form
-   for a comma; a comma stays refused, so this only matters for 2.
+**1. The shell: every path in a recipe is quoted.** Each expansion of a
+directory (`${.CURDIR}`, `${BMK_MKDIR}`, `${_FWDIR}`, …) in a recipe or in a
+`!=` command carries bmake's `:Q`, which writes it for the shell (`a\ b`,
+`it\'s`, `R\&D`); one that stands inside double quotes is left as it was. Flags
+that carry a directory (`-I`, `-L`, `-Wl,-rpath,`) are written the same way when
+they are built, because `CFLAGS` and `LDFLAGS` are shell text. The link recipes
+build their argument list with `set --` and `"$@"`, no longer a string split
+again at its spaces.
 
-Every one of them is done by moving a character from "not yet" to "works" in
-`bmk-names.sh` and in the case's `MUST_FIX` list at the same time.
+**2. Word lists: a name is one encoded word.** Make splits a value at a space,
+reads `#` as a comment, `'` as a quote, and a variable name cannot carry `=`. So
+a name is written, in every word list (`SUBDIR_FRAMEWORKS`, `SUBDIR_MODULES`,
+the module dependency lists, `PREREQS`, `PARENT_WS`, `_LOCAL_MK_DIRS`,
+`_LIB_SEARCH_DIRS`) and in every variable name made from it
+(`MODULE_DEPS.<m>`, `_PREREQ_BASE.<p>`), with those characters as `%XX`
+(percent-encoding; `%` is `%25`):
 
-### Measured on the BSDs (2026-11-08)
+| Character | Written | Character | Written |
+|---|---|---|---|
+| space | `%20` | `[` `]` | `%5B` `%5D` |
+| `#` | `%23` | `~` | `%7E` |
+| `'` | `%27` | `{` `}` | `%7B` `%7D` |
+| `&` | `%26` | `=` | `%3D` |
+| `(` `)` | `%28` `%29` | `%` | `%25` |
+
+A name without any of them is unchanged, so nothing else looks different.
+`mk.common.mk` has the make side (`_BMK_ENC`, `_BMK_ENCW`, `_BMK_DEC`), and
+`scripts/bmk-names.sh` the shell side (`bmk_enc`, `bmk_dec`); they are two
+implementations of one scheme, and case 117 checks that they agree on every name
+of a list. Two details of make's modifiers are why the make side is written as
+it is: a modifier works on each word of a value, so `${.CURDIR:T}` is the last
+piece of *each word* of a path with a space in it (`p Fw` for `/tmp/p p/Fw`; the
+directory's name is `${.CURDIR:tW:T}` here, one word), and every modifier after
+a space is in a value splits it again and joins the pieces with **one** space, so
+decoding puts the space back last, as one word, or a name with two adjacent
+spaces would lose one.
+
+Writing a name in `PREREQS=` or `PARENT_WS=`: a backslash before a space, an
+apostrophe and a hash sign, because make reads those. Nothing else needs one.
+
+```make
+PREREQS = My\ Framework John\'s R\&D C\#
+PARENT_WS = /home/me/My\ Projects/core
+```
+
+`make add-prereq FW=<name>` and `add-parent WS=<path>` write that form.
+
+**3. Dependency lines: no path in one carries a space or a parenthesis.**
+Make cannot name a file with a space in its path in a dependency line (a quote or
+a backslash is read as part of the word), and reads `d(1)/x.h` as the member `1`
+of an archive `d`. So the paths a rule or a compiler's dependency file names are
+relative to the module directory — bmake always runs there — and no part of the
+workspace's path is in them: `-I../include`, `-Iinclude`, `../build/<key>/lib`.
+A prerequisite framework (named in `PREREQS=`) is the one thing outside the
+module that a header or a library comes from; one whose name or place has a space
+or a parenthesis in it is reached through a link in the module's own build
+directory, `build/<key>/prereqs/<encoded name>`, made when the module is built.
+Ampersand, apostrophe and hash can be written in a dependency line, and are.
+
+Two more places where bmake gets in the way, found by the case:
+
+- **`-m` with a space.** bmake writes `-m <dir>` into `MAKEFLAGS` without quoting,
+  so the sub-makes read a directory with a space in it as two words. The `mk/`
+  directory is passed with `MAKESYSPATH=` — a colon-separated list, which is why a
+  colon in the directory's name goes by `-m` instead. The README names
+  `MAKESYSPATH`; the case does each as it must.
+- **`bmake -V NAME`** prints the value as written, not expanded; a query that
+  needs the expansion is `-V '${NAME}'`.
+
+### What the cases cover
+
+Case 116: a build, `clean` and `install`, with a program, a shared library the
+program links, and two frameworks one of which lists the other, for every
+character. Case 118, in a directory named `sp dir (1) & co's #x`: a prerequisite
+framework in a `PARENT_WS` workspace (the parent written with backslashes);
+`IMPORT=` resolved by `<NAME>_PREFIX`; `IMPORT=fetch:` with a patch and a
+`file://` URL written percent-encoded; `FETCH_BUILD=cmake` (in a directory
+without the `#`, see below); `add-prereq` and `add-parent`; `bmake run`;
+`bmake test` with a compiled ATF test; `bmake docs`; and the HTML dashboards of
+`REPORT=yes`. Running the whole suite with its work directory under such a path
+(`TMPDIR="/tmp/sp dir (1) & co's #x" sh tests/harness/run-tests.sh`) found the
+bugs fixed with this page; the cases that still fail there write a path, without
+escaping it, into a file whose format needs it (see below), or run a shell-script
+test.
+
+### Limits that belong to other tools
+
+- **`FETCH_URL=` is a list of URLs**, so a path with a space in a `file://` URL is
+  written `%20`, an apostrophe `%27`, a hash `%23`, and so on (the same encoding
+  as names); the fetch decodes it. Case 118 does so; a case that writes
+  `file://$PWD/...` raw does not work in such a directory.
+- **pkg-config cannot carry a space or an apostrophe in a package's prefix**: it
+  prints `-I/a b/include` unquoted and then cannot read it back ("Text ended
+  before matching quote"). An `IMPORT=pkg:` of a library installed under such a
+  prefix fails there, whatever Bmake It does; `<NAME>_PREFIX=` does not use it. A
+  `#` in the prefix is a comment in a `.pc` file.
+- **CMake's makefiles cannot have a `#` in the path** (make reads it as a comment):
+  `FETCH_BUILD=cmake` does not build in a workspace whose path has one. On a BSD the
+  generated makefiles are read by the BSD make, which cannot take a space, a
+  parenthesis or an apostrophe in them either (FreeBSD 15.1, NetBSD 10.2); case 118
+  skips that part there.
+- **LLVM's linkers** (lld, lld-link, and LLVM's `ar`) make a temporary output
+  file by replacing every `%` in the output's name with a random character, so a
+  `%` anywhere in an output path fails. Bmake It names its outputs relative to the
+  module directory.
+- **On Windows**: `cl.exe` cannot follow a Cygwin link, so it reports a
+  prerequisite framework's real path, which the MSVC wrapper writes back through
+  the module's link; a `/LIBPATH:` with `=` in it finds nothing through `cl.exe`,
+  so such a directory goes by `LIB`; and under the C locale Cygwin hands a native
+  program a non-ASCII path garbled, so the MSVC wrappers run under `C.UTF-8`.
+- **Kyua** names its results file after the directory; the tests are run with an
+  explicit results file (`-r`) so that a space or an apostrophe in the path does not
+  stop `report-junit` from finding it.
+
+### Not covered by a case
+
+- The cross-test runner's shipping of library directories to a remote host
+  (`mk.crosstest.mk`) quotes them; no case runs it with such a path.
+Windows (Cygwin llvm and gcc, mingw-w64, MSVC, clang/MSVC) was run by hand on
+2026-11-10: the whole suite passes on each.
+
+### Refused, for a reason that is not Bmake It's
+
+`bmake test` runs a compiled ATF test (`TESTS_C`, `TESTS_CXX`, `TEST_PROG`) in a
+workspace whose path has a space in it, and says so, before running anything,
+for a shell-script test (`testcases/*.sh`, `TESTS_SH`): ATF's own shell library
+(`libatf-sh.subr`, the version MacPorts ships) tests its test directory unquoted
+and stops with "too many arguments", which Kyua reports as `broken: Test program
+did not exit cleanly`. Parentheses, apostrophes, ampersands and hash signs are
+fine. The message names the cause and the two ways out (a workspace path
+without a space, or a test in C or C++). Found by running the tests of case 91's
+tree under `/tmp/bmk dev2/w (1) & co`.
+
+## Measured on the BSDs (2026-11-08, before the fix)
 
 The same case on FreeBSD 15.1 and NetBSD 10.2 (arm64 guests), run from the
 cache copied to the network drive:
@@ -183,12 +299,19 @@ cache copied to the network drive:
 `tests/cases/116-path-characters`: for each of 36 characters, builds and cleans
 a tree with the character in the module name, in the workspace name (and a
 parent directory), in every name at once, and with the `mk/` files installed
-under a name that carries it. The expectation per place is the table above.
+under a name that carries it. Where the build is meant to work the tree is the
+fuller one — a shared library in one framework, a program in a second framework
+that lists the first in `PREREQS=` and links the library, then `install` into a
+directory that carries the character too, then `clean`; where it is refused,
+the small one (one program). The expectation per place is the table above.
 A refusal must carry the message (`Bmake It cannot …`); any other failure
 (`raw`), or a build that says it succeeded and built nothing (`SILENT`), fails
-the case. The case ends SKIP while a meant-to-work character is still refused
-as "not yet", or builds nothing under this platform's bmake (`=`); it fails on
-any other deviation. A character the file system itself refuses (Windows:
-`" * ? < > | : \`) is skipped for that character. Measured with the earlier
-version of this case (no check yet): the same table on macOS, Linux glibc arm64
-and musl amd64.
+the case. It fails on any deviation. A character the file system itself refuses
+(Windows: `" * ? < > | : \`) is skipped for that character. The `mk/` directory
+goes by `-m` when its name has a colon and by `MAKESYSPATH` otherwise (see
+above). `BMK_CASE_CHARS="space hash"` runs only those characters.
+
+`tests/cases/117-name-encoding`: the make and the shell implementation of the
+encoding agree on a list of names (space, two spaces, `#`, a leading `#`, `'`,
+`&`, `( )`, `=`, `%` and `%20` as names, `[ ]`, `~`, `{ }`, non-ASCII), one by
+one and as a list.

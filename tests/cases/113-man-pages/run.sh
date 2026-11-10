@@ -6,4 +6,5 @@ set -eu
 . "$BMK_TESTLIB"
 c="$BMK_MKDIR/../tests/harness/check-man.sh"
 [ -f "$c" ] || { echo "skip: no $c in this tree" >&2; exit 77; }
+[ -d "$BMK_MKDIR/../man" ] || { echo "skip: no man/ beside $BMK_MKDIR (a guest that was sent only mk/ scripts/ tests/)" >&2; exit 77; }
 sh "$c"

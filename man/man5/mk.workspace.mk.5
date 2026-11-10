@@ -21,6 +21,11 @@ A framework whose prerequisite failed is skipped, not built, and counts as faile
 Absolute paths of parent workspaces, searched in order for frameworks and
 hook files not found here.
 A path that does not exist is a warning.
+A space, an apostrophe or a hash sign in a path is written with a backslash
+before it, as in
+.Va PREREQS
+of
+.Xr mk.framework.mk 5 .
 .It Va BUILD_REPORT_DIR
 Where
 .Cm all Va REPORT=yes

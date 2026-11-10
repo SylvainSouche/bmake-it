@@ -20,6 +20,11 @@ set -eu
 
 OUT=${1:?usage: atf-build.sh OUTDIR}
 MODE=${ATF_BMK_MODE:-posix}
+# q <string>: the string as one shell word. CC, CXX and AR are shell text (they may
+# hold a quoted path and arguments), and every path is put into the text the same way,
+# so a directory with a space, a parenthesis or an apostrophe in its name stays one word
+# (path-characters-supported-req).
+q() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 HERE=$(cd "$(dirname "$0")" && pwd)
 SRC=$HERE/../contrib/atf-0.23
 BMK=$HERE/../contrib/atf-bmk
@@ -82,15 +87,15 @@ if [ "$MODE" = win ]; then
     # (TOOLCHAIN=llvm ABI=msvc: BMK_MSVC_CL set) takes POSIX ones.
     if [ "${TOOLCHAIN:-}" = msvc ]; then
         if [ -n "${BMK_MSVC_CL:-}" ]; then mpath() { cygpath -ua "$1"; }; else mpath() { cygpath -m "$1"; }; fi
-        inc() { printf '%s' "-I$(mpath "$1")"; }
-        FI="/FI$(mpath "$WIN/atfw-compat.h")"
+        inc() { printf '%s' "-I$(q "$(mpath "$1")")"; }
+        FI="/FI$(q "$(mpath "$WIN/atfw-compat.h")")"
         CSTD="-std=c11"
         CXXEH="/EHsc"  # ATF's C++ part throws and catches (cl.exe: C4530 without)
         INCS="$(inc "$WIN") $(inc "$WIN/msvc") $(inc "$BMK/include") $(inc "$WIN/include-msvc") $(inc "$SRC")"
         MSVCSRCS="atfw-msvc.c"  # (what MSVC's C runtime lacks and mingw's has)
     else
-        inc() { printf '%s' "-I$1"; }
-        FI="-include $WIN/atfw-compat.h"
+        inc() { printf '%s' "-I$(q "$1")"; }
+        FI="-include $(q "$WIN/atfw-compat.h")"
         INCS="$(inc "$WIN") $(inc "$BMK/include") $(inc "$SRC")"
         MSVCSRCS=""
     fi
@@ -131,12 +136,10 @@ EOF
 #include <unistd.h>
 int main(void) { optreset = 1; return EXIT_SUCCESS; }
 EOF
-    # shellcheck disable=SC2086
-    if $CC "$OUT/probe/plus.c" -o "$OUT/probe/plus" >> "$OUT/build.log" 2>&1 && "$OUT/probe/plus" >> "$OUT/build.log" 2>&1; then
+    if eval "$CC $(q "$OUT/probe/plus.c") -o $(q "$OUT/probe/plus")" >> "$OUT/build.log" 2>&1 && "$OUT/probe/plus" >> "$OUT/build.log" 2>&1; then
         echo '#define HAVE_GNU_GETOPT 1' >> "$OUT/config.h"
     fi
-    # shellcheck disable=SC2086
-    if $CC -c "$OUT/probe/optreset.c" -o "$OUT/probe/optreset.o" >> "$OUT/build.log" 2>&1; then
+    if eval "$CC -c $(q "$OUT/probe/optreset.c") -o $(q "$OUT/probe/optreset.o")" >> "$OUT/build.log" 2>&1; then
         echo '#define HAVE_OPTRESET 1' >> "$OUT/config.h"
     fi
     # What configure bakes in for atf_check_build_* and the tests that
@@ -152,7 +155,7 @@ EOF
         echo "#define ATF_INCLUDEDIR \"$OUT/include\""
     } >> "$OUT/config.h"
     # (build.c reads ATF_BUILD_* without including config.h itself)
-    CPPFLAGS="-I$OUT -I$BMK/include -I$SRC -DHAVE_CONFIG_H -include $OUT/config.h"
+    CPPFLAGS="-I$(q "$OUT") -I$(q "$BMK/include") -I$(q "$SRC") -DHAVE_CONFIG_H -include $(q "$OUT/config.h")"
     CSRCS="$CSRCS atf-c/detail/user.c"
 fi
 
@@ -169,8 +172,7 @@ compile() {  # compile <source path> <object> <c|c++>
     fi
     if [ "$3" = c ]; then cc="$CC $CSTD"; else cc="$CXX $CXXEH"; fi
     echo "--- $cc -O1 $CPPFLAGS $extra -c $1 -o $2" >> "$OUT/build.log"
-    # shellcheck disable=SC2086
-    if ! $cc -O1 $CPPFLAGS $extra -c "$1" -o "$2" >> "$OUT/build.log" 2>&1; then
+    if ! eval "$cc -O1 $CPPFLAGS $extra -c $(q "$1") -o $(q "$2")" >> "$OUT/build.log" 2>&1; then
         echo "error: $WHAT: compiling $(basename "$1") failed with CC=$CC CXX=$CXX -- the compiler's messages:" >&2
         # (the messages of this source only, not the echoed command lines)
         awk -v src="$1" '/^--- / { this = index($0, src) > 0; next } this' "$OUT/build.log" |
@@ -182,21 +184,20 @@ compile() {  # compile <source path> <object> <c|c++>
 
 cobjs=""; cxxobjs=""
 for f in $CSRCS; do
-    o=$OUT/obj/$(echo "$f" | tr / _).o; compile "$SRC/$f" "$o" c; cobjs="$cobjs $o"
+    o=$OUT/obj/$(echo "$f" | tr / _).o; compile "$SRC/$f" "$o" c; cobjs="$cobjs $(q "$o")"
 done
 for f in $WSRCS; do
     case $f in *.cpp) l=c++ ;; *) l=c ;; esac
-    o=$OUT/obj/w_$f.o; compile "$WIN/$f" "$o" $l; cobjs="$cobjs $o"
+    o=$OUT/obj/w_$f.o; compile "$WIN/$f" "$o" $l; cobjs="$cobjs $(q "$o")"
 done
 for f in $CXXSRCS; do
-    o=$OUT/obj/$(echo "$f" | tr / _).o; compile "$SRC/$f" "$o" c++; cxxobjs="$cxxobjs $o"
+    o=$OUT/obj/$(echo "$f" | tr / _).o; compile "$SRC/$f" "$o" c++; cxxobjs="$cxxobjs $(q "$o")"
 done
 for f in $WXXSRCS; do
-    o=$OUT/obj/w_$f.o; compile "$WIN/$f" "$o" c++; cxxobjs="$cxxobjs $o"
+    o=$OUT/obj/w_$f.o; compile "$WIN/$f" "$o" c++; cxxobjs="$cxxobjs $(q "$o")"
 done
 
-# shellcheck disable=SC2086
-if ! { $AR rcs "$LIBC" $cobjs && $AR rcs "$LIBCXX" $cxxobjs; } >> "$OUT/build.log" 2>&1; then
+if ! { eval "$AR rcs $(q "$LIBC") $cobjs" && eval "$AR rcs $(q "$LIBCXX") $cxxobjs"; } >> "$OUT/build.log" 2>&1; then
     echo "error: $WHAT: archiving the libraries failed with AR=$AR -- see $OUT/build.log" >&2
     tail -5 "$OUT/build.log" >&2
     exit 1

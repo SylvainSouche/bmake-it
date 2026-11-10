@@ -59,11 +59,13 @@ _DELAYLOAD_FILES =
 _DELAYLOAD_NOTES += ${_l}
 .    endif
 .  else
-.    for _d in ${_LIB_SEARCH_DIRS}
-.      if !defined(_DELAY_INFO.${_l}) && exists(${_d}/lib${_l}.delayload)
-_DELAY_INFO.${_l} != cat ${_d}/lib${_l}.delayload
-_DELAY_DIR.${_l} = ${_d}
-_DELAYLOAD_FILES += ${_d}/lib${_l}.delayload
+# (the directories as a dependency line may name them, relative to the module
+# directory: _DELAYLOAD_FILES are make prerequisites of the link)
+.    for _d in ${_LIB_SEARCH_DIRS_DEP}
+.      if !defined(_DELAY_INFO.${_l}) && exists(${_d:${_BMK_DEC}}/lib${_l}.delayload)
+_DELAY_INFO.${_l} != cat ${_d:${_BMK_DEC}:Q}/lib${_l}.delayload
+_DELAY_DIR.${_l} = ${_d:${_BMK_DEC}}
+_DELAYLOAD_FILES += ${_d:${_BMK_DEC}}/lib${_l}.delayload
 .      endif
 .    endfor
 .    if defined(_DELAY_INFO.${_l})
@@ -88,7 +90,7 @@ LDFLAGS += -Wl,--delayload=${_DELAY_INFO.${_l}:[2]}
 .      endif
 .    elif ${DELAYLOAD.${_l}:Uno} == "yes"
 _DELAYLOAD_ERRORS += ${_l}
-_DELAY_ERR.${_l} = no lib${_l}.delayload in ${_LIB_SEARCH_DIRS}: is ${_l} a library module of this workspace? For a system DLL, give the linker its flags in LDFLAGS
+_DELAY_ERR.${_l} = no lib${_l}.delayload in ${_LIB_SEARCH_DIRS:${_BMK_DEC}}: is ${_l} a library module of this workspace? For a system DLL, give the linker its flags in LDFLAGS
 .    endif
 .  endif
 .endfor
@@ -97,10 +99,10 @@ _DELAY_ERR.${_l} = no lib${_l}.delayload in ${_LIB_SEARCH_DIRS}: is ${_l} a libr
 # nothing without a word, and bmake cannot list variables: the module's own
 # makefile is searched, and only when it links. Not the hooks of mk/: a hook can
 # set one for every module of a framework, and not all of them link that library.
-_DELAYLOAD_NAMED = for _v in $$(grep -ho 'DELAYLOAD\.[A-Za-z0-9_+-]*' ${.CURDIR}/${MAKEFILE:T:Umakefile} /dev/null 2>/dev/null | sort -u); do \
+_DELAYLOAD_NAMED = for _v in $$(grep -ho 'DELAYLOAD\.[A-Za-z0-9_+-]*' ${.CURDIR:Q}/${MAKEFILE:T:Umakefile:Q} /dev/null 2>/dev/null | sort -u); do \
 		case " ${LIBS} " in \
 			*" $${_v\#DELAYLOAD.} "*) ;; \
-			*) echo "error: $$_v is set in ${.CURDIR:T}, but $${_v\#DELAYLOAD.} is not in its LIBS= (${LIBS})" >&2; exit 1 ;; \
+			*) echo "error: $$_v is set in ${_CURNAME}, but $${_v\#DELAYLOAD.} is not in its LIBS= (${LIBS})" >&2; exit 1 ;; \
 		esac; \
 	done
 
